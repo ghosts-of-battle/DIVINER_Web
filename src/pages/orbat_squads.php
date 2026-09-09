@@ -91,6 +91,31 @@ $orphans   = array_diff(array_keys($claimed), array_keys($defined));
   <div class="actions"><button type="submit">Save squads and channels</button></div>
 </form>
 
+<h2>Squad arsenal and motorpool</h2>
+<p class="dim">What this squad gets <em>on top of</em> the common and platoon
+arsenals. A machine gun team's belts, a medic's extra kit - not the whole
+loadout.</p>
+<table class="grid">
+  <thead><tr><th>Squad</th><th>Arsenal</th><th>Motorpool</th></tr></thead>
+  <tbody>
+  <?php foreach ($groups as $g): ?>
+    <?php
+      $sn = (string) ($g[0] ?? '');
+      if ($sn === '') { continue; }
+      $sv = ghostd_squad_variant($sn);
+    ?>
+    <tr>
+      <td><strong><?= h($sn) ?></strong></td>
+      <td><a href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($sv) ?>">
+            <?= ghostd_variant_exists('arsenal', $sv) ? 'edit' : 'create' ?></a>
+          <span class="dim"><code><?= h($sv) ?></code></span></td>
+      <td><a href="?page=configedit&amp;t=motorpool&amp;v=<?= urlencode($sv) ?>">
+            <?= ghostd_variant_exists('motorpool', $sv) ? 'edit' : 'create' ?></a></td>
+    </tr>
+  <?php endforeach; ?>
+  </tbody>
+</table>
+
 <h2>Copy a squad</h2>
 <p class="dim">Takes its roles, its condition and its channels. Four rifle
 squads differ by a digit; this is how you make the other three.</p>

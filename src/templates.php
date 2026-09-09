@@ -563,3 +563,45 @@ function ghostd_template_code_save(string $key, string $code, string $variant = 
         'updatedAt' => gmdate('Y-m-d H:i:s'),
     ]);
 }
+
+// ---- the arsenal and motorpool layers -------------------------------------
+// Gear is merged in four layers, narrowest last:
+//
+//   common          <unit>.arsenal                 everybody
+//   platoon         <unit>.arsenal.plt_<id>        everyone in that platoon
+//   squad           <unit>.arsenal.sqd_<name>      everyone in that squad
+//   role            the role document's own arsenalWeapons/Items/... and its
+//                   groupArsenal variant
+//
+// The document name is DERIVED from the platoon id or squad name rather than
+// stored anywhere, so adding a platoon arsenal is creating a document and
+// nothing else - no field to set, nothing to keep in step. The mod computes
+// the same name with the same rule.
+
+/** "BANSHEE 1-1" -> "BANSHEE_1_1". Upper case, anything else an underscore. */
+function ghostd_slug(string $s): string
+{
+    $s = strtoupper(trim($s));
+    $s = preg_replace('/[^A-Z0-9]+/', '_', $s) ?? $s;
+    return trim($s, '_');
+}
+
+function ghostd_platoon_variant(string $platoonId): string
+{
+    return 'plt_' . ghostd_slug($platoonId);
+}
+
+function ghostd_squad_variant(string $squadName): string
+{
+    return 'sqd_' . ghostd_slug($squadName);
+}
+
+/** Does a variant document exist? Used to show "set up" against a link. */
+function ghostd_variant_exists(string $key, string $variant): bool
+{
+    try {
+        return ghostd_get(ghostd_template_doc_id($key, $variant)) !== null;
+    } catch (Throwable $e) {
+        return false;
+    }
+}

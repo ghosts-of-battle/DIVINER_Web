@@ -44,6 +44,36 @@ foreach ($groups as $g) { $known[] = (string) ($g[0] ?? ''); }
   <div class="actions"><button type="submit">Save platoons</button></div>
 </form>
 
+<h2>Platoon arsenal and motorpool</h2>
+<p class="dim">Gear is merged in layers, narrowest last: the
+<a href="?page=configedit&amp;t=arsenal">common arsenal</a> everybody draws
+from, then the platoon's, then the squad's, then the role's own. A platoon
+holds only what that platoon gets <em>in addition</em> - so these are usually
+short.</p>
+<table class="grid">
+  <thead><tr><th>Platoon</th><th>Arsenal</th><th>Motorpool</th></tr></thead>
+  <tbody>
+  <?php foreach ($platoons as $p): ?>
+    <?php
+      $pid = (string) ($p[0] ?? '');
+      if ($pid === '') { continue; }
+      $pv = ghostd_platoon_variant($pid);
+      $hasA = ghostd_variant_exists('arsenal', $pv);
+      $hasM = ghostd_variant_exists('motorpool', $pv);
+    ?>
+    <tr>
+      <td><strong><?= h((string) ($p[1] ?: $pid)) ?></strong>
+          <span class="dim"><?= h($pid) ?></span></td>
+      <td><a href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($pv) ?>">
+            <?= $hasA ? 'edit' : 'create' ?></a>
+          <span class="dim"><code><?= h($pv) ?></code></span></td>
+      <td><a href="?page=configedit&amp;t=motorpool&amp;v=<?= urlencode($pv) ?>">
+            <?= $hasM ? 'edit' : 'create' ?></a></td>
+    </tr>
+  <?php endforeach; ?>
+  </tbody>
+</table>
+
 <h2>Faction</h2>
 <form method="post" class="inline">
   <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
