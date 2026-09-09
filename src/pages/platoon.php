@@ -20,9 +20,13 @@ require_once __DIR__ . '/../orbat.php';
 $unit = ghostd_config()['unit'];
 
 $variant = trim((string) ($_GET['v'] ?? ($_POST['v'] ?? '')));
-if ($variant !== '' && !ghostd_variant_ok($variant)) {
-    $variant = '';
+// NO VERSION NAMED MEANS THE DEFAULT ONE. Every order of battle on this unit is
+// named, so the unnamed document does not exist and reading it found no squad
+// at all (2026-09-09).
+if ($variant === '' || !ghostd_variant_ok($variant)) {
+    $variant = ghostd_default_orbat_id();
 }
+
 $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
 
 $pid = (string) ($_GET['id'] ?? ($_POST['id'] ?? ''));

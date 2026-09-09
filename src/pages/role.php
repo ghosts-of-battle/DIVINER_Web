@@ -22,6 +22,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../roles.php';
+// ghostd_variant_summary and the slug helpers live with the ORBAT.
+require_once __DIR__ . '/../orbat.php';
 
 $unit = ghostd_config()['unit'];
 
@@ -242,7 +244,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             case 'arsenal':
                 ghostd_role_save($id, [
-                    'groupArsenal'     => trim((string) ($_POST['groupArsenal'] ?? '')),
                     'arsenalWeapons'   => $lines($_POST['arsenalWeapons'] ?? ''),
                     'arsenalMagazines' => $lines($_POST['arsenalMagazines'] ?? ''),
                     'arsenalItems'     => $lines($_POST['arsenalItems'] ?? ''),
@@ -710,22 +711,24 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
   <strong>add up</strong> - nothing here takes anything away.</p>
 
   <?php $open('arsenal'); ?>
-    <div class="fields">
-      <label>Group arsenal <span class="dim">a named arsenal version this role also draws from</span>
-        <select name="groupArsenal">
-          <option value="">- none -</option>
-          <?php foreach ($arsenals as $a): ?>
-            <option value="<?= h($a) ?>" <?= $r['groupArsenal'] === $a ? 'selected' : '' ?>><?= h($a) ?></option>
-          <?php endforeach; ?>
-          <?php if ($r['groupArsenal'] !== '' && !in_array($r['groupArsenal'], $arsenals, true)): ?>
-            <option value="<?= h($r['groupArsenal']) ?>" selected><?= h($r['groupArsenal']) ?> (no such arsenal)</option>
-          <?php endif; ?>
-        </select></label>
-    </div>
-    <?php if ($r['groupArsenal'] !== ''): ?>
-      <p class="dim"><a href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($r['groupArsenal']) ?>">Edit
-      <?= h($r['groupArsenal']) ?></a></p>
-    <?php endif; ?>
+    <?php
+      // THE ROLE'S ARSENAL IS THE ROLE'S. It used to be a dropdown naming a
+      // separate document - "Arsenal_Wraith", which on this unit did not exist
+      // and had never been filled in (user, 2026-09-09). The document is
+      // derived from the role's id now, the way a squad's and a platoon's are,
+      // so there is nothing to point at.
+      $rv = ghostd_role_variant($rid);
+      $rvHas = ghostd_variant_summary('arsenal', $rv);
+    ?>
+    <table class="kv">
+      <tr><th>This role's arsenal</th>
+          <td><code><?= h(ghostd_template_doc_id('arsenal', $rv)) ?></code></td></tr>
+      <tr><th>Holds</th><td><?= $rvHas === ''
+            ? '<span class="dim">nothing yet</span>' : h($rvHas) ?></td></tr>
+    </table>
+    <p class="actions">
+      <a class="btnlink" href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($rv) ?>">Edit the role arsenal</a>
+    </p>
 
     <h3>This role's own gear <span class="dim">one classname per line</span></h3>
     <p class="dim">On top of everything above. The kit the job needs and nobody

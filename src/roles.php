@@ -384,6 +384,32 @@ function ghostd_orbat_role_rename(string $from, string $to): int
 function ghostd_doc_delete(string $id): bool
 {
     ghostd_guard_write();
+
+    // A DELETE IS BACKED UP LIKE A WRITE. ghostd_put copies the previous
+    // version into the backup collection before replacing it; deleting did not,
+    // so a document removed by a button was gone with only the nightly file
+    // behind it (2026-09-09 - an order of battle went that way). Same shape as
+    // ghostd_put's copy, so one restore reads both.
+    try {
+        $was  = ghostd_get($id);
+        $coll = (string) (ghostd_config()['backup_collection'] ?? '');
+        if (is_array($was) && $coll !== '') {
+            unset($was['_id']);
+            $b = new MongoDB\Driver\BulkWrite();
+            $b->insert([
+                'sourceId'   => $id,
+                'backedUpAt' => gmdate('Y-m-d H:i:s'),
+                'by'         => 'DIVINER_Web (delete)',
+                'document'   => $was,
+            ]);
+            ghostd_manager()->executeBulkWrite(ghostd_ns($coll), $b);
+        }
+    } catch (Throwable $e) {
+        // A backup that cannot be written must not stop the delete, but it is
+        // the one thing worth saying out loud.
+        error_log('ghostd_doc_delete: no backup for ' . $id . ' - ' . $e->getMessage());
+    }
+
     $bulk = new MongoDB\Driver\BulkWrite();
     $bulk->delete(['_id' => $id], ['limit' => 1]);
     $res = ghostd_manager()->executeBulkWrite(ghostd_ns(), $bulk);

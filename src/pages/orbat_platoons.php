@@ -30,7 +30,34 @@ $vq         = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
   <p class="dim">No platoons yet. Without one, no squad appears in the group menu.</p>
 <?php endif; ?>
 
+<?php
+// A FILTER, not a search engine: type a word and the list narrows to what
+// matches its id or its name. Server side and in the URL, so a filtered list
+// is a link you can keep (user, 2026-09-09: "add a filter to roles squads and
+// plt's").
+$q = strtolower(trim((string) ($_GET['q'] ?? '')));
+$hit = static function (string ...$parts) use ($q): bool {
+    if ($q === '') { return true; }
+    foreach ($parts as $p) {
+        if (str_contains(strtolower($p), $q)) { return true; }
+    }
+    return false;
+};
+?>
+<form method="get" class="inline">
+  <input type="hidden" name="page" value="orbat">
+  <input type="hidden" name="s" value="platoons">
+  <?php if ($variant !== ''): ?><input type="hidden" name="v" value="<?= h($variant) ?>"><?php endif; ?>
+  <label for="q">Filter</label>
+  <input type="text" id="q" name="q" value="<?= h($q) ?>" placeholder="1st, air, wraith">
+  <button type="submit">Filter</button>
+  <?php if ($q !== ''): ?>
+    <a class="btnlink" href="?page=orbat&amp;s=platoons<?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>">Clear</a>
+  <?php endif; ?>
+</form>
+
 <?php foreach ($pool as $pid => $p): ?>
+  <?php if (!$hit((string) $pid, (string) ($p[1] ?? ''), (string) ($p[2] ?? ''))) { continue; } ?>
   <?php
     $pname    = (string) ($p[1] ?? '');
     $callsign = (string) ($p[2] ?? '');

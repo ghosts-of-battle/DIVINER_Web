@@ -23,9 +23,13 @@ require_once __DIR__ . '/../roles.php';
 $unit = ghostd_config()['unit'];
 
 $variant = trim((string) ($_GET['v'] ?? ($_POST['v'] ?? '')));
-if ($variant !== '' && !ghostd_variant_ok($variant)) {
-    $variant = '';
+// NO VERSION NAMED MEANS THE DEFAULT ONE. Every order of battle on this unit is
+// named, so the unnamed document does not exist and reading it found no squad
+// at all (2026-09-09).
+if ($variant === '' || !ghostd_variant_ok($variant)) {
+    $variant = ghostd_default_orbat_id();
 }
+
 $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
 
 $name = (string) ($_GET['sq'] ?? ($_POST['sq'] ?? ''));
@@ -75,12 +79,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('A squad called "' . $to . '" already exists.');
                 }
 
-                ghostd_orbat_edit($variant, static function (array &$doc) use ($name, $to, $cond) {
+                // THE KIND OF ELEMENT IT IS - infantry, mechanised, air. It is
+                // part of the squad (user, 2026-09-09: "the words inf mech air
+                // ectr ect are part of the squd config") and it is what the
+                // blue force tracker draws the group with.
+                $type = strtolower(trim((string) ($_POST['type'] ?? '')));
+
+                ghostd_orbat_edit($variant, static function (array &$doc) use ($name, $to, $cond, $type) {
                     $groups = is_array($doc['groups'] ?? null) ? $doc['groups'] : [];
                     foreach ($groups as $i => $g) {
                         if ((string) ($g[0] ?? '') === $name) {
                             $groups[$i][0] = $to;
                             $groups[$i][2] = $cond;
+                            $groups[$i][3] = $type;
                         }
                     }
                     // A rename has to follow into every platoon that lists it,
@@ -315,10 +326,20 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
     <div class="fields">
       <label>Name <span class="dim">renaming takes its platoon, nets and channels with it</span>
         <input type="text" name="newname" value="<?= h($sq['name']) ?>" required></label>
+      <label>Kind <span class="dim">what it is - the icon the blue force tracker draws it with</span>
+        <input type="text" name="type" list="bfticons" value="<?= h((string) ($sq['type'] ?? '')) ?>"
+               placeholder="inf"></label>
       <label>Offered when
         <span class="dim">leave it <code>true</code> unless this squad only exists on some nights</span>
         <input type="text" name="cond" value="<?= h($sq['cond']) ?>"></label>
     </div>
+    <datalist id="bfticons">
+      <?php foreach (['inf', 'motor_inf', 'mech_inf', 'air', 'armor', 'recon', 'antiair', 'art',
+                      'hq', 'installation', 'maint', 'med', 'mortar', 'naval', 'ordnance',
+                      'plane', 'service', 'support', 'uav', 'unknown'] as $ic): ?>
+        <option value="<?= h($ic) ?>"></option>
+      <?php endforeach; ?>
+    </datalist>
     <div class="actions"><button type="submit">Save identity</button></div>
   </form>
   <p class="note"><strong>Offered when</strong> is SQF that has to be true for

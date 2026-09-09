@@ -402,6 +402,9 @@ function ghostd_squad(string $variant, string $name): ?array
                 'name'  => (string) ($g[0] ?? ''),
                 'roles' => array_values(array_map('strval', (array) ($g[1] ?? []))),
                 'cond'  => (string) ($g[2] ?? 'true'),
+                // The kind of element - inf, mech_inf, air. The blue force
+                // tracker draws the group with it; empty means infantry.
+                'type'  => (string) ($g[3] ?? ''),
             ];
         }
     }

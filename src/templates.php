@@ -637,6 +637,11 @@ function ghostd_platoon_variant(string $platoonId): string
     return 'plt_' . ghostd_slug($platoonId);
 }
 
+function ghostd_role_variant(string $roleId): string
+{
+    return 'role_' . ghostd_slug($roleId);
+}
+
 function ghostd_squad_variant(string $squadName): string
 {
     return 'sqd_' . ghostd_slug($squadName);

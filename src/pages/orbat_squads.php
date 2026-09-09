@@ -50,7 +50,34 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
   <p class="dim">No squads yet.</p>
 <?php endif; ?>
 
+<?php
+// A FILTER, not a search engine: type a word and the list narrows to what
+// matches its id or its name. Server side and in the URL, so a filtered list
+// is a link you can keep (user, 2026-09-09: "add a filter to roles squads and
+// plt's").
+$q = strtolower(trim((string) ($_GET['q'] ?? '')));
+$hit = static function (string ...$parts) use ($q): bool {
+    if ($q === '') { return true; }
+    foreach ($parts as $p) {
+        if (str_contains(strtolower($p), $q)) { return true; }
+    }
+    return false;
+};
+?>
+<form method="get" class="inline">
+  <input type="hidden" name="page" value="orbat">
+  <input type="hidden" name="s" value="squads">
+  <?php if ($variant !== ''): ?><input type="hidden" name="v" value="<?= h($variant) ?>"><?php endif; ?>
+  <label for="q">Filter</label>
+  <input type="text" id="q" name="q" value="<?= h($q) ?>" placeholder="banshee, nomad, 1-1">
+  <button type="submit">Filter</button>
+  <?php if ($q !== ''): ?>
+    <a class="btnlink" href="?page=orbat&amp;s=squads<?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>">Clear</a>
+  <?php endif; ?>
+</form>
+
 <?php foreach ($groups as $g): ?>
+  <?php if (!$hit((string) ($g[0] ?? ''))) { continue; } ?>
   <?php
     $sn    = (string) ($g[0] ?? '');
     $roles = array_values(array_map('strval', (array) ($g[1] ?? [])));
