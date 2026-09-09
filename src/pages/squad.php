@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../orbat.php';
 require_once __DIR__ . '/../roles.php';
+require_once __DIR__ . '/../inline_edit.php';
 
 $unit = ghostd_config()['unit'];
 
@@ -51,6 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         switch ($what) {
+
+            // THE ARSENAL AND THE MOTORPOOL ARE EDITED ON THIS PAGE, in the
+            // boxes themselves - see src/pages/_edit_inline.php. The document
+            // is named after the squad, so there is nothing here to choose:
+            // the renderer wrote which one in the form.
+            case 'inlineedit':
+                $msg = ghostd_inline_save($_POST);
+                break;
 
             // A squad is created by name alone; everything else follows.
             case 'create':
@@ -437,13 +446,11 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
   <p class="dim">The squad's own, on top of what everyone draws and its
   platoon's. <code><?= h(ghostd_template_doc_id('arsenal', $arsenalVar)) ?></code>,
   named after the squad.</p>
-  <table class="kv">
-    <tr><th>Holds</th><td><?= $arsenalHas === ''
-          ? '<span class="dim">nothing yet</span>' : h($arsenalHas) ?></td></tr>
-  </table>
-  <p class="actions">
-    <a class="btnlink" href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($arsenalVar) ?>">Edit the squad arsenal</a>
-  </p>
+  <?php
+    $ilKey = 'arsenal'; $ilVariant = $arsenalVar; $ilLabel = 'squad arsenal';
+    $ilHidden = ['sq' => $name, 'v' => $variant, 'sec' => $sec];
+    require __DIR__ . '/_edit_inline.php';
+  ?>
 </section>
 <?php endif; ?>
 
@@ -454,13 +461,11 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
   <p class="dim">The vehicles this squad may draw.
   <code><?= h(ghostd_template_doc_id('motorpool', $arsenalVar)) ?></code>,
   named after the squad.</p>
-  <table class="kv">
-    <tr><th>Holds</th><td><?= $motorpoolHas === ''
-          ? '<span class="dim">nothing yet</span>' : h($motorpoolHas) ?></td></tr>
-  </table>
-  <p class="actions">
-    <a class="btnlink" href="?page=configedit&amp;t=motorpool&amp;v=<?= urlencode($arsenalVar) ?>">Edit the squad motorpool</a>
-  </p>
+  <?php
+    $ilKey = 'motorpool'; $ilVariant = $arsenalVar; $ilLabel = 'squad motorpool';
+    $ilHidden = ['sq' => $name, 'v' => $variant, 'sec' => $sec];
+    require __DIR__ . '/_edit_inline.php';
+  ?>
 </section>
 <?php endif; ?>
 

@@ -163,7 +163,7 @@ if ($readErr !== null) { ghostd_flash('bad', 'Could not be read: ' . $readErr); 
           <?php if ($meta['kind'] === 'block') { continue; } ?>
           <td>
             <?php if ($meta['kind'] === 'list'): ?>
-              <textarea name="<?= h($f) ?>[<?= $row ?>]" rows="2" class="short"><?= h(implode("\n", (array) ($it[$f] ?? []))) ?></textarea>
+              <textarea name="<?= h($f) ?>[<?= $row ?>]" rows="<?= max(6, min(20, count((array) ($it[$f] ?? [])) + 2)) ?>" class="short"><?= h(implode("\n", (array) ($it[$f] ?? []))) ?></textarea>
             <?php else: ?>
               <input type="text" name="<?= h($f) ?>[<?= $row ?>]" value="<?= h((string) ($it[$f] ?? '')) ?>">
             <?php endif; ?>
@@ -190,7 +190,7 @@ if ($readErr !== null) { ghostd_flash('bad', 'Could not be read: ' . $readErr); 
           <?php if ($meta['kind'] === 'block') { continue; } ?>
           <td>
             <?php if ($meta['kind'] === 'list'): ?>
-              <textarea name="<?= h($f) ?>[<?= $r ?>]" rows="2" class="short" placeholder="one per line"></textarea>
+              <textarea name="<?= h($f) ?>[<?= $r ?>]" rows="6" class="short" placeholder="one per line"></textarea>
             <?php else: ?>
               <input type="text" name="<?= h($f) ?>[<?= $r ?>]" placeholder="<?= h($meta['label']) ?>">
             <?php endif; ?>

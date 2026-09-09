@@ -16,6 +16,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../orbat.php';
+require_once __DIR__ . '/../inline_edit.php';
 
 $unit = ghostd_config()['unit'];
 
@@ -48,6 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         switch ($what) {
+
+            // The arsenal and the motorpool are edited in the boxes on this
+            // page - src/pages/_edit_inline.php - not on a template page.
+            case 'inlineedit':
+                $msg = ghostd_inline_save($_POST);
+                break;
 
             case 'create':
                 $wanted = trim((string) ($_POST['newid'] ?? ''));
@@ -387,13 +394,11 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
   <p class="dim">The platoon's own, on top of what everyone draws and under its
   squads'. <code><?= h(ghostd_template_doc_id('arsenal', $pv)) ?></code>, named
   after the platoon.</p>
-  <table class="kv">
-    <tr><th>Holds</th><td><?= $arsenalHas === ''
-          ? '<span class="dim">nothing yet</span>' : h($arsenalHas) ?></td></tr>
-  </table>
-  <p class="actions">
-    <a class="btnlink" href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($pv) ?>">Edit the platoon arsenal</a>
-  </p>
+  <?php
+    $ilKey = 'arsenal'; $ilVariant = $pv; $ilLabel = 'platoon arsenal';
+    $ilHidden = ['id' => $pid, 'v' => $variant, 'sec' => $sec];
+    require __DIR__ . '/_edit_inline.php';
+  ?>
 </section>
 <?php endif; ?>
 
@@ -404,13 +409,11 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
   <p class="dim">The vehicles this platoon may draw.
   <code><?= h(ghostd_template_doc_id('motorpool', $pv)) ?></code>, named after
   the platoon.</p>
-  <table class="kv">
-    <tr><th>Holds</th><td><?= $motorpoolHas === ''
-          ? '<span class="dim">nothing yet</span>' : h($motorpoolHas) ?></td></tr>
-  </table>
-  <p class="actions">
-    <a class="btnlink" href="?page=configedit&amp;t=motorpool&amp;v=<?= urlencode($pv) ?>">Edit the platoon motorpool</a>
-  </p>
+  <?php
+    $ilKey = 'motorpool'; $ilVariant = $pv; $ilLabel = 'platoon motorpool';
+    $ilHidden = ['id' => $pid, 'v' => $variant, 'sec' => $sec];
+    require __DIR__ . '/_edit_inline.php';
+  ?>
 </section>
 <?php endif; ?>
 

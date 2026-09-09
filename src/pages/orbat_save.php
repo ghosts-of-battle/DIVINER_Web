@@ -261,6 +261,37 @@ switch ($what) {
         $msg = count($items) . ' messaging nets saved.';
         break;
 
+    // ---- deleting a whole comms template ----------------------------------
+    // The Messaging, ACRE and TFAR tabs each list their templates and each row
+    // has a Delete, like every other list on this site. A template an order of
+    // battle still runs has no button - the list shows "in use" instead - so
+    // this is the second line of that defence, not the first.
+    case 'tpldel':
+        require_once __DIR__ . '/../roles.php';        // ghostd_doc_delete
+        $fam = (string) ($_POST['fam'] ?? '');
+        $tpl = trim((string) ($_POST['tpl'] ?? ''));
+        if ($fam !== 'nets' && $fam !== 'radio') {
+            throw new RuntimeException('There is no template family called "' . $fam . '".');
+        }
+        if ($tpl === '') {
+            throw new RuntimeException('The default is not a template - it is what an order of '
+                . 'battle gets when it names none.');
+        }
+        foreach (ghostd_orbat_variants() as $ov) {
+            $o = ghostd_orbat($ov);
+            if ((string) ($fam === 'nets' ? $o['nets'] : $o['radio']) === $tpl) {
+                throw new RuntimeException($tpl . ' is still run by the '
+                    . ($ov === '' ? 'default' : $ov) . ' order of battle. Point that at another '
+                    . 'one first.');
+            }
+        }
+        $docId = $fam === 'nets'
+            ? ghostd_template_doc_id('nets', $tpl)
+            : ghostd_radio_doc_id($tpl);
+        ghostd_doc_delete($docId);
+        $msg = $docId . ' deleted. A copy went to the backup collection first.';
+        break;
+
     case 'msgnetdel':
         $gone  = trim((string) ($_POST['net'] ?? ''));
         $items = ghostd_template_items('nets', $nv);

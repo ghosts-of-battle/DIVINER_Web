@@ -25,6 +25,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../roles.php';
 // ghostd_variant_summary and the slug helpers live with the ORBAT.
 require_once __DIR__ . '/../orbat.php';
+require_once __DIR__ . '/../inline_edit.php';
 
 $unit = ghostd_config()['unit'];
 
@@ -241,6 +242,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $l = ghostd_sqf_decode((string) ($_POST['loadout'] ?? ''));
                 ghostd_role_save($id, ['defaultLoadout' => $l]);
                 $msg = 'Default loadout saved - ' . count($l) . ' slots.';
+                break;
+
+            // The role's own arsenal document, edited in the boxes below the
+            // gear lists - src/pages/_edit_inline.php - not on a template page.
+            case 'inlineedit':
+                $msg = ghostd_inline_save($_POST);
                 break;
 
             case 'arsenal':
@@ -725,16 +732,6 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
       $rv = ghostd_role_variant($id);
       $rvHas = ghostd_variant_summary('arsenal', $rv);
     ?>
-    <table class="kv">
-      <tr><th>This role's arsenal</th>
-          <td><code><?= h(ghostd_template_doc_id('arsenal', $rv)) ?></code></td></tr>
-      <tr><th>Holds</th><td><?= $rvHas === ''
-            ? '<span class="dim">nothing yet</span>' : h($rvHas) ?></td></tr>
-    </table>
-    <p class="actions">
-      <a class="btnlink" href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($rv) ?>">Edit the role arsenal</a>
-    </p>
-
     <h3>This role's own gear <span class="dim">one classname per line</span></h3>
     <p class="dim">On top of everything above. The kit the job needs and nobody
     else gets - a laser designator, a spare 117F.</p>
@@ -750,6 +747,18 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
     </div>
     <div class="actions"><button type="submit">Save arsenal</button></div>
   </form>
+
+  <?php // THE ROLE'S WHOLE ARSENAL, in the boxes, on this page. A separate form
+        // because the gear lists above are their own save and HTML has no
+        // nested forms - two buttons, two documents, one page. ?>
+  <h3>This role's arsenal <span class="dim">the whole document, its own</span></h3>
+  <p class="dim">A list only this role draws from, on top of the common one, its
+  platoon's and its squad's. Empty until you put something in it.</p>
+  <?php
+    $ilKey = 'arsenal'; $ilVariant = $rv; $ilLabel = "this role's arsenal";
+    $ilHidden = ['id' => $id, 's' => $sec];
+    require __DIR__ . '/_edit_inline.php';
+  ?>
 </section>
 <?php endif; ?>
 

@@ -598,6 +598,9 @@ input[type=range] { width: 100%; min-width: 0; }
 
 .qhelp { margin: 0 0 var(--s1); font-size: .8rem; }
 textarea.short { min-height: 5rem; }
+/* A list inside a table row - vehicle classes, a crate's contents.
+   Four lines behind a scrollbar is not an editor. */
+.grid textarea.short { min-height: 9rem; resize: vertical; }
 
 /* ---- the JSON editor (public/editor.js) ---------------------------------
    The highlighted <pre> and the real <textarea> are stacked. EVERY metric
@@ -825,3 +828,9 @@ textarea.blockbox { min-height: 9rem; width: 100%; }
 td.rowacts { white-space: nowrap; }
 td.rowacts > * { margin-right: .35rem; }
 td.rowacts > *:last-child { margin-right: 0; }
+
+/* The version row on a template editor: one line of links, the open one plain
+   text. Was a dropdown, an Open button, a text box and a Create button. */
+.vbar { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+.vbar a, .vbar > span.on { padding: .1rem .45rem; border-radius: 3px; }
+.vbar > span.on { background: var(--accent); color: #fff; font-weight: 600; }
