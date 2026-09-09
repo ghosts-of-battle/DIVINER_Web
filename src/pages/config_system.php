@@ -56,37 +56,24 @@ foreach ($sections as $meta) { $fieldCount += count((array) ($meta['fields'] ?? 
 <?php endforeach; ?>
 
 <h2>PAC requests <span class="dim"><?= count($kinds) ?> kinds</span></h2>
-<p class="dim">What a player may raise on the
+<p class="dim">A card per kind a player may raise on the
 <a href="?page=tickets">PAC actions</a> page. The id is what every ticket
 already raised carries, so renaming one orphans them.</p>
 
-<form method="post">
-  <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
-  <input type="hidden" name="t" value="system">
-  <input type="hidden" name="what" value="ticketkinds">
+<p class="actions"><a href="?page=ticket_kind" class="btnlink">+ New kind</a></p>
 
-  <table class="grid">
-    <thead><tr><th style="width:20%">Id</th><th style="width:30%">Shown as</th>
-        <th style="width:42%">What to put in it</th><th style="width:8%">Del</th></tr></thead>
-    <tbody>
-    <?php $i = 0; foreach ($kinds as $kid => $k): ?>
-      <tr>
-        <td><input type="text" name="k_id[<?= $i ?>]" value="<?= h((string) $kid) ?>"></td>
-        <td><input type="text" name="k_label[<?= $i ?>]" value="<?= h($k['label']) ?>"></td>
-        <td><input type="text" name="k_hint[<?= $i ?>]" value="<?= h($k['hint']) ?>"></td>
-        <td><input type="checkbox" name="k_remove[]" value="<?= $i ?>"></td>
-      </tr>
-    <?php $i++; endforeach; ?>
-    <?php for ($j = 0; $j < 2; $j++): $n = $i + $j; ?>
-      <tr>
-        <td><input type="text" name="k_id[<?= $n ?>]" placeholder="transfer"></td>
-        <td><input type="text" name="k_label[<?= $n ?>]" placeholder="Transfer request"></td>
-        <td><input type="text" name="k_hint[<?= $n ?>]" placeholder="what to say in it"></td>
-        <td></td>
-      </tr>
-    <?php endfor; ?>
-    </tbody>
+<?php foreach ($kinds as $kid => $k): ?>
+<details class="card">
+  <summary>
+    <strong><?= h((string) ($k['label'] ?? $kid)) ?></strong>
+    <code><?= h((string) $kid) ?></code>
+    <a class="edit" href="?page=ticket_kind&amp;id=<?= urlencode((string) $kid) ?>">edit</a>
+  </summary>
+  <table class="kv">
+    <tr><th>What to put in it</th>
+        <td><?= ($k['hint'] ?? '') !== '' ? h((string) $k['hint']) : '<span class="dim">nothing said</span>' ?></td></tr>
   </table>
+</details>
+<?php endforeach; ?>
 
-  <div class="actions"><button type="submit">Save</button></div>
-</form>
+<?php require __DIR__ . '/schemes_edit.php'; ?>

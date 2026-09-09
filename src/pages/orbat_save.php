@@ -114,6 +114,25 @@ switch ($what) {
         });
         break;
 
+    // THE ENGINE'S COEFFICIENTS, FOR EVERYBODY ON THIS ORDER OF BATTLE (user,
+    // 2026-09-09: "these can be set via the orbat for all players"). They are
+    // numbers describing the unit, not the job, so they are not on a role.
+    case 'coefs':
+        require_once __DIR__ . '/../roles.php';
+        $coefs = [];
+        foreach (GHOSTD_TRAIT_COEFS as $c => $_h) {
+            $v = trim((string) ($_POST['coef_' . $c] ?? ''));
+            if ($v === '' || !is_numeric($v)) {
+                continue;
+            }
+            $coefs[$c] = max(0, $v + 0);
+        }
+        $editOrbat(static function (array &$doc) use ($coefs, &$msg) {
+            $doc['coefs'] = $coefs;
+            $msg = count($coefs) . ' coefficients saved. They apply at the next role selection.';
+        });
+        break;
+
     case 'faction':
         $editOrbat(static function (array &$doc) use (&$msg) {
             $doc['faction'] = trim((string) ($_POST['faction'] ?? ''));
@@ -141,8 +160,7 @@ switch ($what) {
         break;
 
     case 'neworbat':
-        $from = trim((string) ($_POST['from'] ?? ''));
-        $to   = trim((string) ($_POST['to'] ?? ''));
+        $to = trim((string) ($_POST['to'] ?? ''));
         if (!ghostd_variant_ok($to)) {
             throw new RuntimeException('An order of battle is named with letters, digits and '
                 . 'underscore, starting with a letter - "NightOps", not "Night Ops".');
@@ -150,16 +168,18 @@ switch ($what) {
         if (in_array($to, ghostd_orbat_variants(), true)) {
             throw new RuntimeException('"' . $to . '" already exists.');
         }
-        $src = ghostd_orbat($from);
+        // EMPTY, NOT A COPY (user, 2026-09-09: "just a simple new button, only
+        // squads and plt need a copy"). An order of battle is a choice of
+        // platoons that already exist; there is nothing to duplicate.
+        $src = ghostd_orbat('');
         ghostd_orbat_edit($to, static function (array &$doc) use ($src) {
             $doc['faction']   = $src['faction'];
             $doc['side']      = $src['side'];
-            $doc['groups']    = $src['groups'];
-            $doc['platoons']  = $src['platoons'];
-            $doc['radioNets'] = $src['radioNets'];
+            $doc['groups']    = [];
+            $doc['platoons']  = [];
+            $doc['radioNets'] = [];
         });
-        $msg = 'Copied ' . ghostd_orbat_doc_id($from) . ' to ' . $to
-             . '. It is not the default until you tick it.';
+        $msg = $to . ' created. Pick its platoons, then tick it as the default when it is ready.';
         break;
 
     case 'deleteorbat':
@@ -213,15 +233,43 @@ switch ($what) {
                 throw new RuntimeException('"' . $nid . '" is not a net name. Letters, digits and '
                     . 'underscore, with a dot to hang one under another - C2, C2.reports.');
             }
+            // THE NUMBER IN THE BOX IS THE ORDER. It used to be the row's
+            // position, which meant the only way to move a net was to retype
+            // every name below it.
             $order += 10;
+            $typed = $_POST['n_order'][$i] ?? '';
             $items[$nid] = [
                 'id'    => $nid,
-                'order' => $order,
+                'order' => is_numeric($typed) ? (int) $typed : $order,
                 'name'  => trim((string) ($_POST['n_name'][$i] ?? '')),
             ];
         }
+        uasort($items, static fn($a, $b) => $a['order'] <=> $b['order']);
         ghostd_template_save('nets', $items);
         $msg = count($items) . ' messaging nets saved.';
+        break;
+
+    case 'msgnetnew':
+        $nid = trim((string) ($_POST['nn_id'] ?? ''));
+        if (!preg_match('/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/', $nid)) {
+            throw new RuntimeException('"' . $nid . '" is not a net name. Letters, digits and '
+                . 'underscore, with a dot to hang one under another - C2, C2.reports.');
+        }
+        $items = ghostd_template_items('nets');
+        if (isset($items[$nid])) {
+            throw new RuntimeException('There is already a net called "' . $nid . '".');
+        }
+        $last = 0;
+        foreach ($items as $it) {
+            $last = max($last, (int) ($it['order'] ?? 0));
+        }
+        $items[$nid] = [
+            'id'    => $nid,
+            'order' => $last + 10,
+            'name'  => trim((string) ($_POST['nn_name'] ?? '')),
+        ];
+        ghostd_template_save('nets', $items);
+        $msg = $nid . ' added.';
         break;
 
     // ---- the unit's own trait names ---------------------------------------

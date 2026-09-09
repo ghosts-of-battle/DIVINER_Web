@@ -19,28 +19,36 @@ replaces <code><?= h($t['replaces']) ?></code></p>
 
 <p class="note"><?= h($t['blurb']) ?></p>
 
-<h2>Versions</h2>
-<?php if ($variants !== []): ?>
-<nav class="sections">
-  <span class="tabsep">version</span>
-  <a href="?page=configedit&amp;t=<?= urlencode($key) ?>"
-     class="<?= $variant === '' ? 'on' : '' ?>">Default</a>
-  <?php foreach ($variants as $v): ?>
-    <a href="?page=configedit&amp;t=<?= urlencode($key) ?>&amp;v=<?= urlencode($v) ?>"
-       class="<?= $variant === $v ? 'on' : '' ?>"><?= h($v) ?></a>
-  <?php endforeach; ?>
-</nav>
-<?php else: ?>
-  <p class="dim">Only the default so far - what a mission gets when it names no version. Name one below to add another.</p>
-<?php endif; ?>
+<h2>Versions <span class="dim"><?= count($variants) + 1 ?></span></h2>
+
+<?php // A DROPDOWN, NOT TABS. The list comes out of Mongo - every document
+      // named "<unit>.<doc>." - and there is no limit on how many a unit
+      // makes, so a row of tabs runs off the page (user, 2026-09-09: "there
+      // will be too many at some point to have tabs"). Nothing here is a
+      // hard-coded list. ?>
 <form method="get" class="inline">
   <input type="hidden" name="page" value="configedit">
   <input type="hidden" name="t" value="<?= h($key) ?>">
-  <label for="v">Open or create a version</label>
-  <input type="text" id="v" name="v" value="<?= h($variant) ?>"
-         placeholder="<?= h($t['variantHint'] ?? 'Arsenal_Banshee') ?>">
+  <label for="vpick">Version</label>
+  <select id="vpick" name="v">
+    <option value="" <?= $variant === '' ? 'selected' : '' ?>>Default</option>
+    <?php foreach ($variants as $v): ?>
+      <option value="<?= h($v) ?>" <?= $variant === $v ? 'selected' : '' ?>><?= h($v) ?></option>
+    <?php endforeach; ?>
+  </select>
   <button type="submit">Open</button>
+  <span class="dim">Default is what a mission gets when it names no version.</span>
 </form>
+
+<form method="get" class="inline">
+  <input type="hidden" name="page" value="configedit">
+  <input type="hidden" name="t" value="<?= h($key) ?>">
+  <label for="v">New version</label>
+  <input type="text" id="v" name="v"
+         placeholder="<?= h($t['variantHint'] ?? 'Arsenal_Banshee') ?>">
+  <button type="submit">Create</button>
+</form>
+
 <p class="dim">Editing
-  <strong><?= $variant === '' ? 'the common version' : h($variant) ?></strong>.
+  <strong><?= $variant === '' ? 'the default' : h($variant) ?></strong>.
   A version that has never been saved opens empty - saving it creates it.</p>

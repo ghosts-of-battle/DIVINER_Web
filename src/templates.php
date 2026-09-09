@@ -30,7 +30,7 @@ const GHOSTD_TEMPLATES = [
         'doc'      => 'welcome',
         'shape'    => 'welcome',
         'replaces' => 'config_welcome.hpp',
-        'blurb'    => "The panel every player sees once, at mission start. A title, a subtitle, and the text - typed the way it reads, with Arma's own tags for a heading, a colour or an image.",
+        'blurb'    => "The panel every player sees once, at mission start. A title, a subtitle, and the text - typed the way it reads, with Arma's own tags for a heading, a color or an image.",
     ],
     'arsenal' => [
         'label'    => 'Common arsenal',
@@ -136,6 +136,14 @@ const GHOSTD_TEMPLATES = [
     // flag wrong is thrown away without a word. Listing them turns the role
     // editor's boxes into checkboxes and takes the flag out of anybody's hands.
     // Edited on the ORBAT page's Roles tab, beside the roles that assign them.
+    'radar' => [
+        'label'   => 'Radar network',
+        'doc'     => 'radar',
+        'shape'   => 'lists',
+        'replaces' => 'config_radar.hpp',
+        'blurb'   => 'The vehicle classes that count as a radar. Whether the network is on at all is a CBA setting; this is what it links together.',
+        'lists'   => ['classes'],
+    ],
     'traits' => [
         'label'   => 'Custom traits',
         'doc'     => 'traits',

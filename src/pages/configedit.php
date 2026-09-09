@@ -32,6 +32,24 @@ $err = null;
 $variant  = trim((string) ($_GET['v'] ?? ($_POST['v'] ?? '')));
 $variants = ghostd_template_variants($key);
 
+// A SQUAD'S, A PLATOON'S OR A ROLE'S OWN VERSION IS EDITED ON THAT PAGE, and is
+// not offered in this list - one document, one place to change it. plt_* and
+// sqd_* are those two; an arsenal a role names in groupArsenal is the third.
+if ($key === 'arsenal' || $key === 'motorpool') {
+    require_once __DIR__ . '/../roles.php';
+    $owned = [];
+    if ($key === 'arsenal') {
+        foreach (ghostd_role_ids() as $rid) {
+            $ga = ghostd_role($rid)['groupArsenal'];
+            if ($ga !== '') {
+                $owned[$ga] = true;
+            }
+        }
+    }
+    $variants = array_values(array_filter($variants, static fn($v) =>
+        !str_starts_with($v, 'plt_') && !str_starts_with($v, 'sqd_') && !isset($owned[$v])));
+}
+
 // The welcome screen is its own shape - a title and an ordered run of lines,
 // not a keyed list - so it has its own form below.
 if ($t['shape'] === 'welcome') {

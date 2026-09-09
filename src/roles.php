@@ -56,14 +56,30 @@ const GHOSTD_TILES = [
  * Two of them are NUMBERS (audibleCoef, camouflageCoef, loadCoef take a
  * coefficient); the rest are true/false.
  */
+// FOUR, AND THEY ARE ALL BOOLEANS (user, 2026-09-09). These are the traits
+// that describe the JOB, so they belong to a role. The engine's numeric
+// coefficients - audibleCoef, camouflageCoef, loadCoef, staminaDrainCoef -
+// describe the UNIT and are set once for everybody on the order of battle,
+// not per role.
 const GHOSTD_ENGINE_TRAITS = [
-    'audibleCoef'         => 'how much noise he makes - a number, 1 is normal',
-    'camouflageCoef'      => 'how easily he is seen - a number, 1 is normal',
-    'loadCoef'            => 'how much he can carry - a number, 1 is normal',
-    'medic'               => 'engine medic',
-    'engineer'            => 'engine engineer',
-    'explosiveSpecialist' => 'engine EOD',
-    'UAVHacker'           => 'may take over enemy UAVs',
+    'medic'               => 'treat self and others with a medikit - attendant = 1',
+    'engineer'            => 'partially repair vehicles with a toolkit - engineer = 1',
+    'explosiveSpecialist' => 'defuse mines with a toolkit - canDeactivateMines = 1',
+    'UAVHacker'           => 'hack enemy and friendly drones - uavHacker = 1',
+];
+
+/**
+ * The engine's numeric coefficients, set on the ORDER OF BATTLE for everybody.
+ *
+ * A lower audibleCoef is harder to hear, a lower camouflageCoef is harder to
+ * spot, loadCoef multiplies equipment weight against stamina, and
+ * staminaDrainCoef (Arma 2.22) is how fast stamina goes - never negative.
+ */
+const GHOSTD_TRAIT_COEFS = [
+    'audibleCoef'      => 'lower is harder to hear',
+    'camouflageCoef'   => 'lower is harder to spot',
+    'loadCoef'         => 'equipment weight against stamina',
+    'staminaDrainCoef' => 'how fast stamina drains - never negative',
 ];
 
 /**

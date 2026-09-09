@@ -95,7 +95,12 @@ body {
 
 /* ---- page --------------------------------------------------------------- */
 
-main { padding: var(--s5); max-width: 1200px; }
+/* ONE WIDTH FOR EVERY PAGE (user, 2026-09-09: "no standards, some pages are
+   100% of the page other are radom shit"). Pages inside the wiki shell were
+   full width and the rest capped at 1200px, so the same table was two
+   different widths depending on where it was drawn. Prose is still capped at
+   68ch below, which is what stops a paragraph running the width of a monitor. */
+main { padding: var(--s5); max-width: none; }
 
 h1 {
   font-size: 1.35rem; letter-spacing: .04em; font-weight: 600;
@@ -214,12 +219,16 @@ ul.cols li { margin-bottom: var(--s2); break-inside: avoid; font-family: var(--m
 label { display: block; margin: var(--s3) 0 var(--s1); font-size: .82rem; color: var(--dim); }
 .fields label .dim { font-weight: 400; text-transform: none; letter-spacing: 0; }
 
-input[type=text], input[type=password], textarea, select {
+input[type=text], input[type=password], input[type=number], textarea, select {
   background: var(--well); color: var(--ink);
   border: 1px solid var(--line); border-radius: 3px;
   padding: var(--s2) var(--s3); font: inherit; min-width: 12rem;
 }
-input[type=text], input[type=password], textarea { font-family: var(--mono); font-size: .86rem; }
+input[type=text], input[type=password], input[type=number], textarea { font-family: var(--mono); font-size: .86rem; }
+/* A number box is a box like any other - left to the browser it comes out
+   white on a dark page, which is how the channel index looked like a control
+   of some other kind entirely. */
+input[type=number] { min-width: 5rem; }
 textarea { width: 100%; min-height: 24rem; line-height: 1.5; }
 
 input:focus, textarea:focus, select:focus {

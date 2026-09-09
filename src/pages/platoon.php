@@ -380,19 +380,15 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
 <?php if ($sec === 'arsenal'): ?>
 <section class="tsection" id="arsenal">
   <h2>Arsenal</h2>
-  <p class="note">Everyone in this platoon draws from it, on top of the common
-  arsenal and under their squad's. One document,
-  <code><?= h(ghostd_template_doc_id('arsenal', $pv)) ?></code>, named after the
-  platoon.</p>
+  <p class="dim">The platoon's own, on top of what everyone draws and under its
+  squads'. <code><?= h(ghostd_template_doc_id('arsenal', $pv)) ?></code>, named
+  after the platoon.</p>
   <table class="kv">
     <tr><th>Holds</th><td><?= $arsenalHas === ''
-          ? '<span class="dim">nothing yet - the platoon draws the common arsenal only</span>'
-          : h($arsenalHas) ?></td></tr>
+          ? '<span class="dim">nothing yet</span>' : h($arsenalHas) ?></td></tr>
   </table>
   <p class="actions">
-    <a class="btnlink" href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($pv) ?>">
-      <?= $arsenalHas === '' ? 'Create the platoon arsenal' : 'Open the platoon arsenal' ?></a>
-    <a class="btnlink" href="?page=configedit&amp;t=arsenal">Common arsenal</a>
+    <a class="btnlink" href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($pv) ?>">Edit the platoon arsenal</a>
   </p>
 </section>
 <?php endif; ?>
@@ -401,18 +397,15 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
 <?php if ($sec === 'motorpool'): ?>
 <section class="tsection" id="motorpool">
   <h2>Motorpool</h2>
-  <p class="note">The vehicles this platoon may draw. Same arrangement -
-  <code><?= h(ghostd_template_doc_id('motorpool', $pv)) ?></code> - and empty
-  means it uses the common motorpool.</p>
+  <p class="dim">The vehicles this platoon may draw.
+  <code><?= h(ghostd_template_doc_id('motorpool', $pv)) ?></code>, named after
+  the platoon.</p>
   <table class="kv">
     <tr><th>Holds</th><td><?= $motorpoolHas === ''
-          ? '<span class="dim">nothing yet - the platoon uses the common motorpool</span>'
-          : h($motorpoolHas) ?></td></tr>
+          ? '<span class="dim">nothing yet</span>' : h($motorpoolHas) ?></td></tr>
   </table>
   <p class="actions">
-    <a class="btnlink" href="?page=configedit&amp;t=motorpool&amp;v=<?= urlencode($pv) ?>">
-      <?= $motorpoolHas === '' ? 'Create the platoon motorpool' : 'Open the platoon motorpool' ?></a>
-    <a class="btnlink" href="?page=configedit&amp;t=motorpool">Common motorpool</a>
+    <a class="btnlink" href="?page=configedit&amp;t=motorpool&amp;v=<?= urlencode($pv) ?>">Edit the platoon motorpool</a>
   </p>
 </section>
 <?php endif; ?>

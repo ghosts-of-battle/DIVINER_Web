@@ -61,6 +61,11 @@ foreach (GHOSTD_TEMPLATES as $k => $t) {
 // THE FORMS THE SYSTEM ITSELF IS MADE OF - the shape of an operation order and
 // the kinds of PAC request. Not config a mission ships, which is why they are
 // their own tab rather than mixed in with the arsenal and the motorpool.
+// THE REPORT DECK AND THE COLOUR SCHEMES LIVE HERE TOO (user, 2026-09-09:
+// "Report deck can go under templates", "Colour schemes ... move under
+// templates/system"). Neither is a versioned template, so neither goes through
+// configedit - they are drawn by their own partial below.
+$tabs['deck']   = 'Report deck';
 $tabs['system'] = 'System';
 
 // THE ORBAT IS NOT A TAB HERE. It is a template type like the rest, but it has
@@ -85,26 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['t'] ?? '') === 'system') {
         switch ((string) ($_POST['what'] ?? '')) {
             // The operation order is edited a section at a time - see
             // src/pages/opord_section.php, which owns that save.
-            case 'ticketkinds':
-                $items = [];
-                foreach ((array) ($_POST['k_id'] ?? []) as $i => $kid) {
-                    $kid = trim((string) $kid);
-                    if ($kid === '' || in_array((string) $i, (array) ($_POST['k_remove'] ?? []), true)) {
-                        continue;
-                    }
-                    if (!preg_match('/^[a-z][a-z0-9_]*$/', $kid)) {
-                        throw new RuntimeException('"' . $kid . '" is not a kind id - lower case '
-                            . 'letters, digits and underscore. It is what every ticket carries.');
-                    }
-                    $items[$kid] = [
-                        'label' => trim((string) ($_POST['k_label'][$i] ?? '')) ?: $kid,
-                        'hint'  => trim((string) ($_POST['k_hint'][$i] ?? '')),
-                    ];
-                }
-                ghostd_ticket_kinds_save($items);
-                $msg = count($items) . ' request kinds saved.';
-                break;
-
+            // The request kinds are edited one at a time - see
+            // src/pages/ticket_kind.php, which owns that save.
             case 'resetopord':
                 ghostd_system_reset('opord');
                 $msg = 'The order is back to the shape it ships with.';
@@ -128,23 +115,15 @@ if ($msg !== null) { ghostd_flash('good', $msg); }
 if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
 <?php if ($tab !== 'system'): ?>
-<p class="note"><strong>The mission decides which version it runs.</strong>
-The <em>default</em> is simply the one a mission gets when it names none - it is
-not a version to choose between, and the only thing with a default worth setting
-deliberately is the <a href="?page=orbat&amp;s=versions">order of battle</a>.
-Each type can hold as many versions as you like; a mission names the ones it
-wants in its own <code>CfgGFA_PAC &gt; settings</code> -
-<code>currentArsenal</code>, <code>currentMotorpool</code>,
-<code>currentWelcome</code> and the rest. Nothing on this page picks one, because
-two places to decide is one too many. Unnamed means the common version.</p>
+<p class="dim">A mission names the versions it runs in its own
+<code>CfgGFA_PAC &gt; settings</code> - <code>currentArsenal</code>,
+<code>currentWelcome</code> and the rest. Default is what it gets when it names
+none. One set per unit: every mission naming <code><?= h($unit) ?></code> reads
+these.</p>
 
 <p class="dim">A platoon's or a squad's own version of any of these is edited on
 that platoon or that squad, not here.</p>
 
-<p class="note">What a mission used to ship in its <code>config\</code> folder,
-kept in the database instead. <strong>One set per unit</strong> - every mission
-naming <code><?= h($unit) ?></code> reads these, so the framework missions and
-Roomba share them.</p>
 <?php endif; ?>
 
 <nav class="sections onebar">
@@ -154,7 +133,9 @@ Roomba share them.</p>
   <?php endforeach; ?>
 </nav>
 
-<?php if ($tab === 'system'): ?>
+<?php if ($tab === 'deck'): ?>
+  <?php require __DIR__ . '/deck_list.php'; ?>
+<?php elseif ($tab === 'system'): ?>
   <?php require __DIR__ . '/config_system.php'; ?>
 <?php endif; ?>
 

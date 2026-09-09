@@ -105,12 +105,11 @@ function ghostd_head(string $title, string $active = ''): void
             'applications' => 'Applications',
             'tickets'      => 'PAC actions',
             'opords'       => 'Orders',
+            'records'      => 'Configs',
             'config'       => 'Templates',
-            'arsenal'      => 'Arsenals',
             'orbat'        => 'ORBAT',
-            'templates'    => 'Report deck',
             'documents'    => 'Mongo docs',
-            'schemes'      => 'Colours',
+            'backup'       => 'Backup',
             'branding'     => 'Branding',
             // An admin is a member too - they have a record like anybody else,
             // and dropping this left them no way to reach their own details.
@@ -170,8 +169,8 @@ function ghostd_head(string $title, string $active = ''): void
   </nav>
   <?php endif; ?>
   <button type="button" id="wikishow" class="wikishow" title="Show the wiki panel">wiki</button>
-  <label class="themepick" title="Colour scheme">
-    <span class="vh">Colour scheme</span>
+  <label class="themepick" title="Color scheme">
+    <span class="vh">Color scheme</span>
     <select id="themepick">
       <?php foreach (ghostd_themes() as $k => $label): ?>
         <option value="<?= h($k) ?>"><?= h($label) ?></option>

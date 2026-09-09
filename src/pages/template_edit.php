@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     $del = (string) ($_POST['id'] ?? '');
     if ($del !== '' && isset($items[$del])) {
         ghostd_unset_path($docId, 'items.' . $del);
-        header('Location: ?page=templates');
+        header('Location: ?page=config&t=deck');
         exit;
     }
     $err = 'No such template to delete.';
@@ -197,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save'
             ghostd_unset_path($docId, 'items.' . $orig);
         }
         ghostd_set_path($docId, 'items.' . $id, $tpl);
-        header('Location: ?page=templates');
+        header('Location: ?page=config&t=deck');
         exit;
     }
 }
@@ -245,7 +245,7 @@ foreach ($form['lines'] as $i => $l) {
     }
 }
 
-ghostd_head($isEdit ? 'Edit template' : 'New template', 'templates');
+ghostd_head($isEdit ? 'Edit template' : 'New template', 'config');
 if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
 <p class="note">
@@ -350,7 +350,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 
   <div class="actions">
     <button type="submit"><?= $isEdit ? 'Save changes' : 'Create template' ?></button>
-    <a href="?page=templates">Cancel</a>
+    <a href="?page=config&amp;t=deck">Cancel</a>
   </div>
 </form>
 

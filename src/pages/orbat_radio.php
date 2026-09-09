@@ -67,7 +67,13 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
   not get <code>C2.reports</code>. Squad nets are not listed here; they exist
   because the squads do.</p>
   <p class="dim">These are the names a role picks its nets from, and what a
-  platoon commands on. Clearing a name removes the row.</p>
+  platoon commands on. <strong>Order</strong> is the place on the rail and in
+  the mailbox list, lowest first. Clearing a name removes the row.</p>
+  <?php
+    // Shown in the order the rail draws them, not the order the document
+    // happens to hold - the number in the box is the answer.
+    uasort($netItems, static fn($a, $b) => ((int) ($a['order'] ?? 0)) <=> ((int) ($b['order'] ?? 0)));
+  ?>
 
   <form method="post">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
@@ -77,10 +83,14 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
     <input type="hidden" name="what" value="msgnets">
 
     <table class="grid">
-      <thead><tr><th>Net</th><th>What it is for</th><th>Read by</th><th>Remove</th></tr></thead>
+      <thead><tr><th style="width:10%">Order</th><th style="width:26%">Net</th>
+          <th style="width:34%">What it is for</th><th style="width:22%">Read by</th>
+          <th style="width:8%">Remove</th></tr></thead>
       <tbody>
       <?php $i = 0; foreach ($netItems as $nid => $n): ?>
         <tr>
+          <td><input type="number" name="n_order[<?= $i ?>]" step="1"
+                     value="<?= h((string) ($n['order'] ?? ($i + 1) * 10)) ?>"></td>
           <td><input type="text" name="n_id[<?= $i ?>]" value="<?= h((string) $nid) ?>"></td>
           <td><input type="text" name="n_name[<?= $i ?>]" value="<?= h((string) ($n['name'] ?? '')) ?>"></td>
           <td class="dim">
@@ -93,30 +103,31 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
           <td><input type="checkbox" name="n_remove[]" value="<?= $i ?>"></td>
         </tr>
       <?php $i++; endforeach; ?>
-      <?php for ($k = 0; $k < 3; $k++): $r2 = $i + $k; ?>
-        <tr>
-          <td><input type="text" name="n_id[<?= $r2 ?>]" placeholder="FIRES.cas"></td>
-          <td><input type="text" name="n_name[<?= $r2 ?>]" placeholder="what it is for"></td>
-          <td class="dim">new</td><td></td>
-        </tr>
-      <?php endfor; ?>
       </tbody>
     </table>
 
     <div class="actions"><button type="submit">Save messaging nets</button></div>
   </form>
 
+  <form method="post" class="inline">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <input type="hidden" name="v" value="<?= h($variant) ?>">
+    <input type="hidden" name="s" value="radio">
+    <input type="hidden" name="r" value="nets">
+    <input type="hidden" name="what" value="msgnetnew">
+    <label for="nn_id">New net</label>
+    <input type="text" id="nn_id" name="nn_id" placeholder="FIRES.cas" required
+           pattern="[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*">
+    <input type="text" name="nn_name" placeholder="what it is for">
+    <button type="submit">Add</button>
+  </form>
+
   <p class="dim">Kept in <code><?= h(ghostd_template_doc_id('nets')) ?></code>.
   A role reads a net only if its own list names it - that IS the privacy rule.</p>
 
   <h2>Shared nets <span class="dim"><?= count($radioNets) ?></span></h2>
-  <p class="note">Squads that share a net <strong>across a platoon boundary</strong>
-  - GROUND 1 is a rifle squad and the crew that carries it, one element of 1st
-  PLT and one of 2nd. Asked before the platoon's own net when a man is tuned, so
-  this is the finer answer and the platoon is the fallback.</p>
-  <p class="dim">Was on the Platoons tab, which is not where anybody looks for a
-  net. The <strong>net</strong> must be a name from the list above and an MR
-  channel of the same name.</p>
+  <p class="dim">Squads that share a net across a platoon boundary. The net must
+  be a name from the list above, and an MR channel of the same name.</p>
 
   <form method="post">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
@@ -192,7 +203,8 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
         <tbody>
         <?php $i = 0; foreach ($rows as $r): ?>
           <tr>
-            <td><input type="number" name="c_idx[<?= $i ?>]" value="<?= h((string) ($r[0] ?? '')) ?>"></td>
+            <td class="dim"><?= h((string) ($r[0] ?? '')) ?>
+                <input type="hidden" name="c_idx[<?= $i ?>]" value="<?= h((string) ($r[0] ?? '')) ?>"></td>
             <td><input type="text" name="c_freq[<?= $i ?>]" value="<?= h((string) ($r[1] ?? '')) ?>"></td>
             <td><input type="text" name="c_label[<?= $i ?>]" value="<?= h((string) ($r[2] ?? '')) ?>"></td>
             <?php if ($which === 'lrChannels'): ?>
@@ -203,7 +215,8 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
         <?php $i++; endforeach; ?>
         <?php for ($n = 0; $n < 3; $n++): $r = $i + $n; ?>
           <tr>
-            <td><input type="number" name="c_idx[<?= $r ?>]" value="<?= $i + $n + 1 ?>"></td>
+            <td class="dim">new
+                <input type="hidden" name="c_idx[<?= $r ?>]" value="<?= $i + $n + 1 ?>"></td>
             <td><input type="text" name="c_freq[<?= $r ?>]"></td>
             <td><input type="text" name="c_label[<?= $r ?>]" placeholder="new channel"></td>
             <?php if ($which === 'lrChannels'): ?><td><input type="number" name="c_power[<?= $r ?>]"></td><?php endif; ?>

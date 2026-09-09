@@ -113,7 +113,7 @@ ghostd_require_login();
 $adminPages  = ['dashboard', 'roster', 'player', 'templates', 'template_edit', 'documents', 'document',
                 'branding', 'applications', 'questions', 'tickets', 'ticket', 'opords', 'opord',
                 'config', 'configedit', 'orbat', 'role', 'squad', 'platoon', 'arsenal', 'schemes',
-                'opord_section'];
+                'opord_section', 'ticket_kind', 'pylon', 'records', 'record', 'backup'];
 $memberPages = ['me', 'apply', 'tickets', 'ticket'];
 
 if (ghostd_is_admin() || !ghostd_is_member()) {

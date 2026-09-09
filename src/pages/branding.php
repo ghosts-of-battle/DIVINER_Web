@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'loginFit'     => (($_POST['loginFit'] ?? 'cover') === 'contain') ? 'contain' : 'cover',
                 'loginDim'     => max(0, min(90, (int) ($_POST['loginDim'] ?? 55))),
             ]);
-            $msg = 'Saved. The name, colours and login page are updated for everyone.';
+            $msg = 'Saved. The name, colors and login page are updated for everyone.';
 
         } elseif ($what === 'upload') {
             $which = (string) ($_POST['which'] ?? '');
@@ -158,9 +158,9 @@ in <code><?= h($assetId) ?></code>.</p>
   <input type="text" id="tagline" name="tagline" maxlength="120"
          placeholder="Personnel and operations" value="<?= h((string) $b['tagline']) ?>">
 
-  <h2>Colours</h2>
-  <p class="dim">Tick a colour to use it. Anything left unticked follows the
-  scheme the visitor picked. The shades either side of a colour - panel edges,
+  <h2>Colors</h2>
+  <p class="dim">Tick a color to use it. Anything left unticked follows the
+  scheme the visitor picked. The shades either side of a color - panel edges,
   the text on a button - are worked out from it.</p>
   <?php foreach (GHOSTD_BRAND_COLOURS as $token => $label): ?>
     <div class="fieldrow colourrow">

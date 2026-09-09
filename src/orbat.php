@@ -42,13 +42,18 @@ const GHOSTD_SIDES = [
 ];
 
 /** Which parts of a squad are edited together - one section, one page. */
+// ONE ARSENAL AND ONE MOTORPOOL EACH (user, 2026-09-09: "on squad and platoos
+// no create they get a single arnonal config single motor pool config"). Not a
+// version to be created - the squad simply has one, and opening it is editing
+// it.
 const GHOSTD_SQUAD_SECTIONS = [
-    'identity' => 'Identity',
-    'slots'    => 'Slots',
-    'radio'    => 'Radio',
-    'arsenal'  => 'Arsenal',
-    'copy'     => 'Copy',
-    'remove'   => 'Remove',
+    'identity'  => 'Identity',
+    'slots'     => 'Slots',
+    'radio'     => 'Radio',
+    'arsenal'   => 'Arsenal',
+    'motorpool' => 'Motorpool',
+    'copy'      => 'Copy',
+    'remove'    => 'Remove',
 ];
 
 /** The same for a platoon. */
@@ -189,6 +194,9 @@ function ghostd_orbat(string $variant = ''): array
         'platoons'  => $arr($doc['platoons'] ?? null),
         'groups'    => $arr($doc['groups'] ?? null),
         'radioNets' => $arr($doc['radioNets'] ?? null),
+        // The engine's numeric coefficients, one set for everybody in this
+        // order of battle - see GHOSTD_TRAIT_COEFS.
+        'coefs'     => is_array($doc['coefs'] ?? null) ? $doc['coefs'] : [],
         'exists'    => is_array($doc),
     ];
 }

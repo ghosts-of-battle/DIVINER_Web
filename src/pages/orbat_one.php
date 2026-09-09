@@ -37,6 +37,24 @@ foreach ($platoons as $p) { $inThis[(string) ($p[0] ?? '')] = true; }
   <div class="actions"><button type="submit">Save</button></div>
 </form>
 
+<h2>Everybody in it</h2>
+<p class="dim">The engine's numeric coefficients, set once for every player on
+this order of battle. 1 is normal.</p>
+
+<form method="post" class="fields">
+  <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+  <input type="hidden" name="v" value="<?= h($variant) ?>">
+  <input type="hidden" name="s" value="one">
+  <input type="hidden" name="what" value="coefs">
+  <?php require_once __DIR__ . '/../roles.php'; ?>
+  <?php foreach (GHOSTD_TRAIT_COEFS as $c => $help): ?>
+    <label><?= h($c) ?> <span class="dim"><?= h($help) ?></span>
+      <input type="number" step="0.05" min="0" name="coef_<?= h($c) ?>"
+             value="<?= h((string) ($cur['coefs'][$c] ?? 1)) ?>"></label>
+  <?php endforeach; ?>
+  <div class="actions"><button type="submit">Save</button></div>
+</form>
+
 <h2>Communications</h2>
 <p class="dim">Written on the <a href="?page=orbat&amp;s=radio<?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>">Communications</a>
 tab; this says which of them this order of battle runs.</p>

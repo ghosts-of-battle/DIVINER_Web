@@ -283,7 +283,8 @@ foreach (ghostd_orbat($variant)['platoons'] as $p) {
 }
 
 $arsenalVar = ghostd_squad_variant($name);
-$arsenalHas = ghostd_variant_summary('arsenal', $arsenalVar);
+$arsenalHas   = ghostd_variant_summary('arsenal', $arsenalVar);
+$motorpoolHas = ghostd_variant_summary('motorpool', $arsenalVar);
 
 $csrf = ghostd_csrf_token();
 $open = static function (string $what) use ($sec, $csrf, $name, $variant) {
@@ -420,20 +421,32 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
 <?php if ($sec === 'arsenal'): ?>
 <section class="tsection" id="arsenal">
   <h2>Arsenal</h2>
-  <p class="note">Everyone in this squad draws from it, on top of the common
-  arsenal and their platoon's. It is one document,
-  <code><?= h(ghostd_template_doc_id('arsenal', $arsenalVar)) ?></code>, named
-  after the squad - so renaming the squad means creating it again under the new
-  name.</p>
+  <p class="dim">The squad's own, on top of what everyone draws and its
+  platoon's. <code><?= h(ghostd_template_doc_id('arsenal', $arsenalVar)) ?></code>,
+  named after the squad.</p>
   <table class="kv">
     <tr><th>Holds</th><td><?= $arsenalHas === ''
-          ? '<span class="dim">nothing yet - the squad draws the common arsenal only</span>'
-          : h($arsenalHas) ?></td></tr>
+          ? '<span class="dim">nothing yet</span>' : h($arsenalHas) ?></td></tr>
   </table>
   <p class="actions">
-    <a class="btnlink" href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($arsenalVar) ?>">
-      <?= $arsenalHas === '' ? 'Create the squad arsenal' : 'Open the squad arsenal' ?></a>
-    <a class="btnlink" href="?page=configedit&amp;t=arsenal">Common arsenal</a>
+    <a class="btnlink" href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($arsenalVar) ?>">Edit the squad arsenal</a>
+  </p>
+</section>
+<?php endif; ?>
+
+<!-- ----------------------------------------------------------- motorpool -->
+<?php if ($sec === 'motorpool'): ?>
+<section class="tsection" id="motorpool">
+  <h2>Motorpool</h2>
+  <p class="dim">The vehicles this squad may draw.
+  <code><?= h(ghostd_template_doc_id('motorpool', $arsenalVar)) ?></code>,
+  named after the squad.</p>
+  <table class="kv">
+    <tr><th>Holds</th><td><?= $motorpoolHas === ''
+          ? '<span class="dim">nothing yet</span>' : h($motorpoolHas) ?></td></tr>
+  </table>
+  <p class="actions">
+    <a class="btnlink" href="?page=configedit&amp;t=motorpool&amp;v=<?= urlencode($arsenalVar) ?>">Edit the squad motorpool</a>
   </p>
 </section>
 <?php endif; ?>

@@ -79,25 +79,15 @@ the default below when it names none.</p>
   <div class="actions"><button type="submit">Make that one the default</button></div>
 </form>
 
-<h2>Build another</h2>
-<p class="dim">A second order of battle is the first with a couple of squads
-changed, so it is made by copying.</p>
-
+<h2>New</h2>
 <form method="post" class="inline">
   <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
   <input type="hidden" name="s" value="versions">
   <input type="hidden" name="what" value="neworbat">
-
-  <label for="from">Copy</label>
-  <select id="from" name="from">
-    <?php foreach ($rows as $r): ?>
-      <option value="<?= h($r['id']) ?>" <?= $r['id'] === $default ? 'selected' : '' ?>>
-        <?= h($r['doc']) ?> (<?= $r['squads'] ?> squads)</option>
-    <?php endforeach; ?>
-  </select>
-  <label for="to">to</label>
+  <label for="to">Name</label>
   <input type="text" id="to" name="to" placeholder="NightOps" required
          pattern="[A-Za-z][A-Za-z0-9_]*">
-  <button type="submit">Copy it</button>
-  <span class="dim">Letters, digits and underscore.</span>
+  <button type="submit">New order of battle</button>
+  <span class="dim">Letters, digits and underscore. Squads and platoons are
+  what get copied; an order of battle is a choice of platoons.</span>
 </form>

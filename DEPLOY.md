@@ -696,3 +696,34 @@ no build step and no migration - the documents belong to the mod.
   `backup_collection` to `''`.
 - Edits made mid-mission are lost: the game server rewrites the store whole on
   SAVE and at mission end. Edit between sessions.
+
+## The nightly backup
+
+Every document in Mongo is written to one JSON file on the web server, once a
+day, so an admin can still hand a mission its configuration when the service is
+down. Nothing on the site writes to it and there is no restore button.
+
+```
+/var/www/DIVINER_Web/backups/latest.json          the whole database, one object
+/var/www/DIVINER_Web/backups/latest.index.json    just the ids, for the page
+/var/www/DIVINER_Web/backups/GHOST-<date>.json    kept 14 days
+```
+
+`root:apache 640`, outside `public/`, so nothing serves them and php-fpm can
+read them. **There is no cron on this box** - it is a systemd timer:
+
+```
+/usr/local/sbin/diviner-backup.sh          = tools/backup.sh
+/etc/systemd/system/diviner-backup.service
+/etc/systemd/system/diviner-backup.timer   OnCalendar=*-*-* 04:15:00, Persistent
+systemctl list-timers diviner-backup.timer
+journalctl -u diviner-backup.service
+```
+
+The script pulls `GHOSTD_MONGO` and `GHOSTD_UNIT` out of `/etc/php-fpm.d/*.conf`
+rather than keeping a second copy of them. Run it by hand with
+`sudo systemctl start diviner-backup.service`.
+
+The **Backup** page (admins only) shows when it was taken, how many documents it
+holds, one document at a time in a read-only box, the whole file in a browser
+tab, and a download link.
