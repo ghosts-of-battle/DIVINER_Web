@@ -62,6 +62,12 @@ if ($t['shape'] === 'lists') {
 }
 // PYLONS ARE A TABLE, NOT A CODE BOX. The file is a literal array with no logic
 // in it, so there was never a reason to make somebody edit brackets.
+// LOGISTICS IS A CATALOGUE OF CRATES, not a code box - the file is a literal
+// array, same as the pylons.
+if ($key === 'logistics') {
+    require __DIR__ . '/configedit_logistics.php';
+    return;
+}
 if ($key === 'pylons') {
     require __DIR__ . '/configedit_pylons.php';
     return;

@@ -15,6 +15,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../records.php';
+require_once __DIR__ . '/../promotion.php';
 
 $sec = (string) ($_GET['s'] ?? ($_POST['s'] ?? ''));
 if (!isset(GHOSTD_RECORDS[$sec])) {
@@ -70,7 +71,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $items[$id] = $row;
         }
 
+        // THE RANK RUNGS ARE EDITED ON THE RANK, and the promotion list is
+        // only how to calculate - so each page has to put back what the other
+        // owns instead of writing the document flat.
+        if ($sec === 'promotion') {
+            foreach (ghostd_record_items('promotion') as $pid => $pit) {
+                if (str_starts_with((string) $pid, 'rank_')) {
+                    $items[(string) $pid] = $pit;
+                }
+            }
+            ghostd_auto_promote_save(isset($_POST['autoPromote']));
+        }
+
         ghostd_record_save($sec, $items);
+
+        // THE PICTURES. The game path went in with the row above; this is the
+        // upload beside it - stored in <unit>.web.images, drawn by the site,
+        // and invisible to the game.
+        foreach ($meta['fields'] as $f => $fm) {
+            if (($fm['kind'] ?? '') !== 'image') {
+                continue;
+            }
+            $files = $_FILES['r_up_' . $f] ?? null;
+            $clear = (array) ($_POST['r_clr_' . $f] ?? []);
+
+            foreach ((array) ($_POST['r_id'] ?? []) as $i => $rid) {
+                $rid = trim((string) $rid);
+                if ($rid === '' || in_array((string) $i, $remove, true)) {
+                    continue;
+                }
+                $key  = ghostd_record_image_key($sec, $rid, (string) $f);
+                $orig = trim((string) ($_POST['r_orig'][$i] ?? ''));
+
+                // A renamed row takes its picture with it.
+                if ($orig !== '' && $orig !== $rid) {
+                    $was = ghostd_record_image(ghostd_record_image_key($sec, $orig, (string) $f));
+                    if ($was !== null) {
+                        ghostd_record_image_put($key, (string) $was['mime'],
+                            (string) base64_decode((string) $was['data'], true));
+                        ghostd_record_image_put(ghostd_record_image_key($sec, $orig, (string) $f), null);
+                    }
+                }
+
+                if (in_array((string) $i, $clear, true)) {
+                    ghostd_record_image_put($key, null);
+                }
+
+                $err0 = $files['error'][$i] ?? UPLOAD_ERR_NO_FILE;
+                if ($err0 !== UPLOAD_ERR_OK) {
+                    continue;
+                }
+                if ((int) ($files['size'][$i] ?? 0) > GHOSTD_RECORD_IMAGE_MAX) {
+                    throw new RuntimeException('"' . $rid . '" - that picture is '
+                        . round(((int) $files['size'][$i]) / 1024) . ' KB and the limit is '
+                        . round(GHOSTD_RECORD_IMAGE_MAX / 1024) . ' KB. It is an insignia, not a poster.');
+                }
+                // The browser's word for the type is not evidence; ask the file.
+                $mime = (string) (new finfo(FILEINFO_MIME_TYPE))->file((string) $files['tmp_name'][$i]);
+                if (!isset(GHOSTD_ASSET_TYPES[$mime])) {
+                    throw new RuntimeException('"' . $rid . '" - that is a ' . $mime
+                        . '. Use PNG, JPEG, GIF, WebP or SVG. A .paa goes in the box on the left.');
+                }
+                $bytes = (string) file_get_contents((string) $files['tmp_name'][$i]);
+                ghostd_record_image_put($key, $mime, $bytes);
+            }
+        }
+
+        if ($sec === 'ranks') {
+            // Points required, off the ranks grid and into the promotion
+            // document where the mod reads them.
+            $rungs = [];
+            foreach ((array) ($_POST['r_id'] ?? []) as $i => $rid) {
+                $rid = trim((string) $rid);
+                $pts = trim((string) ($_POST['r_points'][$i] ?? ''));
+                if ($rid === '' || $pts === '' || !is_numeric($pts)
+                    || in_array((string) $i, $remove, true)) {
+                    continue;
+                }
+                $rungs[$rid] = $pts + 0;
+            }
+            ghostd_rank_thresholds_save($rungs);
+        }
+
         $msg = count($items) . ' saved.';
     } catch (Throwable $e) {
         $err = $e->getMessage();
@@ -78,6 +160,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $items = ghostd_record_items($sec);
+
+// The promotion list is the weights. The rungs are on the ranks page.
+if ($sec === 'promotion') {
+    $items = array_filter($items, static fn($k) => !str_starts_with((string) $k, 'rank_'),
+        ARRAY_FILTER_USE_KEY);
+}
+$thresholds = $sec === 'ranks' ? ghostd_rank_thresholds() : [];
 
 ghostd_head($meta['label'], 'records');
 if ($msg !== null) { ghostd_flash('good', $msg); }
@@ -89,7 +178,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 <h2><?= h($meta['label']) ?> <span class="dim"><?= count($items) ?></span></h2>
 <p class="dim"><?= $meta['blurb'] ?> Clearing an id removes it.</p>
 
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
   <input type="hidden" name="s" value="<?= h($sec) ?>">
 
@@ -105,9 +194,10 @@ if ($err !== null) { ghostd_flash('bad', $err); }
       <?php foreach ($meta['fields'] as $fm): ?>
         <th style="width:<?= $fldW ?>%"><?= h($fm['label']) ?></th>
       <?php endforeach; ?>
+      <?php if ($sec === 'ranks'): ?><th style="width:12%">Points required</th><?php endif; ?>
       <th style="width:<?= $delW ?>%">Del</th></tr>
     </thead>
-    <tbody>
+    <tbody id="rows">
     <?php $i = 0; foreach ($items as $id => $it): ?>
       <tr>
         <td><input type="text" name="r_id[<?= $i ?>]" value="<?= h((string) $id) ?>">
@@ -117,10 +207,33 @@ if ($err !== null) { ghostd_flash('bad', $err); }
             $v = $it[$f] ?? '';
             if (is_array($v)) { $v = implode(', ', array_map('strval', $v)); }
           ?>
-          <td><input type="<?= $fm['kind'] === 'number' ? 'number' : 'text' ?>"
-                     name="r_<?= h($f) ?>[<?= $i ?>]" value="<?= h((string) $v) ?>"
-                     <?= isset($fm['help']) ? 'title="' . h($fm['help']) . '"' : '' ?>></td>
+          <?php if ($fm['kind'] === 'image'): ?>
+            <?php $ik = ghostd_record_image_key($sec, (string) $id, (string) $f); ?>
+            <td>
+              <input type="text" name="r_<?= h($f) ?>[<?= $i ?>]" value="<?= h((string) $v) ?>"
+                     placeholder="<?= h((string) ($fm['help'] ?? '')) ?>"
+                     title="the game path - a .paa the browser cannot draw">
+              <div class="fieldrow">
+                <?php if (ghostd_record_image($ik) !== null): ?>
+                  <img class="recthumb" src="?page=recimg&amp;k=<?= urlencode($ik) ?>" alt="">
+                  <label class="inlinelabel">
+                    <input type="checkbox" name="r_clr_<?= h($f) ?>[]" value="<?= $i ?>"> drop
+                  </label>
+                <?php endif; ?>
+                <input type="file" name="r_up_<?= h($f) ?>[<?= $i ?>]" accept="image/*">
+              </div>
+            </td>
+          <?php else: ?>
+            <td><input type="<?= $fm['kind'] === 'number' ? 'number' : 'text' ?>"
+                       name="r_<?= h($f) ?>[<?= $i ?>]" value="<?= h((string) $v) ?>"
+                       <?= isset($fm['help']) ? 'title="' . h($fm['help']) . '"' : '' ?>></td>
+          <?php endif; ?>
         <?php endforeach; ?>
+        <?php if ($sec === 'ranks'): ?>
+          <td><input type="number" step="1" name="r_points[<?= $i ?>]"
+                     value="<?= h((string) ($thresholds[(string) $id] ?? '')) ?>"
+                     title="points a man needs before he can hold this rank"></td>
+        <?php endif; ?>
         <td><input type="checkbox" name="r_remove[]" value="<?= $i ?>"></td>
       </tr>
     <?php $i++; endforeach; ?>
@@ -131,10 +244,37 @@ if ($err !== null) { ghostd_flash('bad', $err); }
                      name="r_<?= h($f) ?>[<?= $i ?>]"
                      placeholder="<?= h((string) ($fm['help'] ?? $fm['label'])) ?>"></td>
         <?php endforeach; ?>
+        <?php if ($sec === 'ranks'): ?><td><input type="number" name="r_points[<?= $i ?>]"></td><?php endif; ?>
         <td></td>
       </tr>
     </tbody>
   </table>
+
+  <template id="rows-row">
+    <tr>
+      <td><input type="text" name="r_id[__I__]" placeholder="new"></td>
+      <?php foreach ($meta['fields'] as $f => $fm): ?>
+        <td><input type="<?= $fm['kind'] === 'number' ? 'number' : 'text' ?>"
+                   name="r_<?= h($f) ?>[__I__]"
+                   placeholder="<?= h((string) ($fm['help'] ?? $fm['label'])) ?>"></td>
+      <?php endforeach; ?>
+      <?php if ($sec === 'ranks'): ?><td><input type="number" name="r_points[__I__]"></td><?php endif; ?>
+      <td></td>
+    </tr>
+  </template>
+
+  <p class="actions"><button type="button" data-addrow="rows">+ Add</button></p>
+
+  <?php if ($sec === 'promotion'): ?>
+    <p class="dim">Points required to hold a rank are on the
+    <a href="?page=record&amp;s=ranks">ranks</a> page - this is how the points
+    are counted.</p>
+    <label class="inlinelabel">
+      <input type="checkbox" name="autoPromote" <?= ghostd_auto_promote() ? 'checked' : '' ?>>
+      Promote automatically when a man is over the line
+    </label>
+    <p class="dim">Off, the dashboard lists who is due and a human does it.</p>
+  <?php endif; ?>
 
   <div class="actions"><button type="submit">Save <?= h(strtolower($meta['label'])) ?></button></div>
 </form>

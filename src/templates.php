@@ -136,14 +136,6 @@ const GHOSTD_TEMPLATES = [
     // flag wrong is thrown away without a word. Listing them turns the role
     // editor's boxes into checkboxes and takes the flag out of anybody's hands.
     // Edited on the ORBAT page's Roles tab, beside the roles that assign them.
-    'radar' => [
-        'label'   => 'Radar network',
-        'doc'     => 'radar',
-        'shape'   => 'lists',
-        'replaces' => 'config_radar.hpp',
-        'blurb'   => 'The vehicle classes that count as a radar. Whether the network is on at all is a CBA setting; this is what it links together.',
-        'lists'   => ['classes'],
-    ],
     'traits' => [
         'label'   => 'Custom traits',
         'doc'     => 'traits',

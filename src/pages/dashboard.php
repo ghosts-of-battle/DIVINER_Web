@@ -151,6 +151,53 @@ foreach (array_slice(array_reverse($log), 0, 8) as $l) {
   actions, and the ORBAT's squads and roles all resolve.</p>
 <?php endif; ?>
 
+<?php
+// ---- WHO IS DUE A PROMOTION (user, 2026-09-09) ----------------------------
+// Admins only, like the rest of the personnel side. The points are the same
+// sum the game does - see src/promotion.php - so this and the operator file
+// cannot disagree.
+if (ghostd_is_admin() && $store !== null):
+    require_once __DIR__ . '/../promotion.php';
+    $auto = ghostd_auto_promote();
+    $due  = [];
+    foreach (ghostd_promotion_table((array) $store) as $uid => $r) {
+        if ($r['next'] !== '' && $r['needed'] === 0) {
+            $due[$uid] = $r;
+        }
+    }
+    uasort($due, static fn($a, $b) => $b['points'] <=> $a['points']);
+    $rankNames = [];
+    foreach (ghostd_record_items('ranks') as $rid => $rk) {
+        $rankNames[(string) $rid] = (string) ($rk['name'] ?? $rid);
+    }
+?>
+  <h2>Promotable <span class="dim"><?= count($due) ?></span></h2>
+  <p class="dim">Automatic promotion is
+    <strong><?= $auto ? 'on' : 'off' ?></strong> -
+    <a href="?page=record&amp;s=promotion">change it</a>. Points required to
+    hold a rank are on the <a href="?page=record&amp;s=ranks">ranks</a> page.</p>
+
+  <?php if ($due === []): ?>
+    <p class="dim">Nobody is over the line.</p>
+  <?php else: ?>
+    <table class="grid">
+      <thead><tr><th style="width:34%">Who</th><th style="width:22%">Rank</th>
+          <th style="width:14%">Points</th><th style="width:30%">Due</th></tr></thead>
+      <tbody>
+      <?php foreach ($due as $uid => $r): ?>
+        <tr>
+          <td><a href="?page=player&amp;uid=<?= urlencode((string) $uid) ?>"><?= h($r['name']) ?></a></td>
+          <td class="dim"><?= h($rankNames[$r['rankId']] ?? $r['rankId']) ?></td>
+          <td><?= (int) $r['points'] ?></td>
+          <td><strong><?= h($rankNames[$r['next']] ?? $r['next']) ?></strong>
+              <span class="dim">at <?= (int) $r['nextAt'] ?></span></td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  <?php endif; ?>
+<?php endif; ?>
+
 <h2>The unit</h2>
 <table class="kv">
   <tr><th>Unit id</th><td><code><?= h($unit) ?></code></td></tr>

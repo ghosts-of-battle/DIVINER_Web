@@ -809,3 +809,8 @@ textarea.blockbox { min-height: 9rem; width: 100%; }
 
 /* A checkbox must not be stretched to the cell. */
 .grid input[type=checkbox], .grid input[type=radio] { width: auto; }
+
+/* A record's uploaded picture, beside its game path. Small on purpose: it is
+   an insignia or a ribbon, and the row has to stay a row. */
+.recthumb { height: 2rem; width: auto; max-width: 6rem; object-fit: contain;
+            background: var(--well); border: 1px solid var(--line); border-radius: 3px; }

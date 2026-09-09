@@ -21,11 +21,9 @@ try {
     return;
 }
 
-ghostd_head('Report deck', 'templates');
 
 if ($doc === null) {
     ghostd_flash('bad', 'No ' . $id . ' document. This unit\'s deck lives in the mission config instead.');
-    ghostd_foot();
     return;
 }
 

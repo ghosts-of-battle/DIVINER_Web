@@ -126,3 +126,38 @@
     for (var i = 0; i < list.length; i++) { attach(list[i]); }
   });
 })();
+
+/* ---------------------------------------------------------------------------
+   ADD A ROW.
+
+   Every grid used to draw two or three blank rows and hope that was enough
+   (user, 2026-09-09: "add a simple add button stop hard coding thigns"). A
+   page now draws ONE spare row - so it still works with no JavaScript - and a
+   button that adds more.
+
+       <tbody id="rows"> ... </tbody>
+       <template id="rows-row"><tr>... name="x[__I__]" ...</tr></template>
+       <button type="button" data-addrow="rows">+ Add</button>
+
+   __I__ becomes an index nothing else on the page is using; PHP reindexes on
+   the way in, so it only has to be unique, not tidy.
+--------------------------------------------------------------------------- */
+(function () {
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-addrow]') : null;
+    if (!b) { return; }
+    var id = b.getAttribute('data-addrow');
+    var box = document.getElementById(id);
+    var tpl = document.getElementById(id + '-row');
+    if (!box || !tpl) { return; }
+
+    var n = parseInt(box.getAttribute('data-next') || '', 10);
+    if (isNaN(n)) { n = box.children.length + 100; }
+    box.insertAdjacentHTML('beforeend', tpl.innerHTML.split('__I__').join(String(n)));
+    box.setAttribute('data-next', String(n + 1));
+
+    var last = box.lastElementChild;
+    var first = last ? last.querySelector('input, select, textarea') : null;
+    if (first) { first.focus(); }
+  });
+})();

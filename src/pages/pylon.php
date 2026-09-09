@@ -107,9 +107,10 @@ $known = ghostd_classnames('vehicles');
 
 $rows = (array) $p['loadout'];
 $have = count($rows);
-for ($k = 0; $k < 3; $k++) {
-    $rows[] = ['', '{0}', ''];
-}
+// ONE SPARE ROW so the page works with no JavaScript, and an add button for
+// when you are putting in a dozen (user, 2026-09-09: "when you edit a plyon
+// config there is no add button to add a new mag").
+$rows[] = ['', '{0}', ''];
 
 ghostd_head($isEdit ? $veh . ' - ' . $preset : 'New pylon preset', 'config');
 if ($err !== null) { ghostd_flash('bad', $err); }
@@ -143,7 +144,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
   <table class="grid">
     <thead><tr><th style="width:56%">Magazine</th><th style="width:16%">Turret</th>
         <th style="width:16%">Rounds</th><th style="width:12%">Del</th></tr></thead>
-    <tbody>
+    <tbody id="mags">
     <?php foreach ($rows as $i => $r): ?>
       <tr>
         <td><input type="text" name="m_mag[<?= $i ?>]" value="<?= h((string) $r[0]) ?>"
@@ -155,6 +156,17 @@ if ($err !== null) { ghostd_flash('bad', $err); }
     <?php endforeach; ?>
     </tbody>
   </table>
+
+  <template id="mags-row">
+    <tr>
+      <td><input type="text" name="m_mag[__I__]" placeholder="24Rnd_120mm_APFSDS_shells"></td>
+      <td><input type="text" name="m_turret[__I__]" value="{0}"></td>
+      <td><input type="number" name="m_rounds[__I__]"></td>
+      <td></td>
+    </tr>
+  </template>
+
+  <p class="actions"><button type="button" data-addrow="mags" id="addmag">+ Add magazine</button></p>
 
   <div class="actions">
     <button type="submit"><?= $isEdit ? 'Save changes' : 'Create preset' ?></button>

@@ -20,6 +20,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/branding.php';    // GHOSTD_ASSET_TYPES, the same list
 
 const GHOSTD_RECORDS = [
     'ranks' => [
@@ -32,7 +33,8 @@ const GHOSTD_RECORDS = [
             'payGrade' => ['label' => 'Pay grade', 'kind' => 'text', 'help' => 'E-4'],
             'armaRank' => ['label' => 'Arma rank', 'kind' => 'text',
                            'help' => 'PRIVATE CORPORAL SERGEANT LIEUTENANT CAPTAIN MAJOR COLONEL'],
-            'insignia' => ['label' => 'Insignia', 'kind' => 'text', 'help' => 'texture path'],
+            'insignia' => ['label' => 'Insignia', 'kind' => 'image',
+                           'help' => 'the game path - data\ranks\sgt.paa'],
         ],
     ],
     'skills' => [
@@ -54,7 +56,8 @@ const GHOSTD_RECORDS = [
         'fields' => [
             'name'     => ['label' => 'Name', 'kind' => 'text'],
             'type'     => ['label' => 'Type', 'kind' => 'text', 'help' => 'badge / ribbon / medal'],
-            'image'    => ['label' => 'Image', 'kind' => 'text', 'help' => 'texture path, may be empty'],
+            'image'    => ['label' => 'Image', 'kind' => 'image',
+                           'help' => 'the game path, may be empty'],
             'campaign' => ['label' => 'Campaign', 'kind' => 'text'],
         ],
     ],
@@ -139,4 +142,75 @@ function ghostd_record_save(string $section, array $items): void
         $doc['ids'] = $ids;
     }
     ghostd_put(ghostd_record_doc_id($section), $doc);
+}
+
+// ---- the pictures ---------------------------------------------------------
+// TWO THINGS FOR ONE PICTURE (user, 2026-09-09: "anythigjn with an image needs
+// 2 things, 1 a game path and only on thew web a local upload"). The game path
+// is a .paa inside a mod and the browser cannot draw it; the upload is a PNG
+// the site can. They are not alternatives - the game reads the path, the site
+// shows the upload, and neither knows about the other.
+//
+// Stored the way the branding pictures are: base64 in a document, so there is
+// no upload folder to create, no permissions to get wrong and nothing to lose
+// when the server is rebuilt from git.
+
+/** How big one record picture may be - an insignia, not a wallpaper. */
+const GHOSTD_RECORD_IMAGE_MAX = 524288;
+
+function ghostd_record_images_id(): string
+{
+    return ghostd_config()['unit'] . '.web.images';
+}
+
+/**
+ * The key one picture is filed under.
+ *
+ * NO DOTS: the key is a field name inside the document and ghostd_set_path
+ * reads a dot as a step down into it, so "ranks.sergeant.insignia" would make
+ * three nested objects instead of one entry.
+ */
+function ghostd_record_image_key(string $section, string $id, string $field): string
+{
+    $safe = static fn(string $s): string => preg_replace('/[^A-Za-z0-9_-]+/', '-', $s) ?? '';
+    return $safe($section) . '__' . $safe($id) . '__' . $safe($field);
+}
+
+/** Every stored picture, keyed. Read once per request. */
+function ghostd_record_images(bool $fresh = false): array
+{
+    static $cache = null;
+    if ($fresh) {
+        $cache = null;
+    }
+    if ($cache === null) {
+        $cache = [];
+        try {
+            $doc = ghostd_get(ghostd_record_images_id());
+            $cache = is_array($doc['images'] ?? null) ? $doc['images'] : [];
+        } catch (Throwable $e) {
+            $cache = [];
+        }
+    }
+    return $cache;
+}
+
+/** ['mime' => ..., 'data' => base64], or null. */
+function ghostd_record_image(string $key): ?array
+{
+    $a = ghostd_record_images()[$key] ?? null;
+    return (is_array($a) && ($a['data'] ?? '') !== '') ? $a : null;
+}
+
+/** Write one, or remove it when $mime is null. The rest are left alone. */
+function ghostd_record_image_put(string $key, ?string $mime, string $bytes = ''): void
+{
+    $id = ghostd_record_images_id();
+    if ($mime === null) {
+        ghostd_unset_path($id, 'images.' . $key);
+    } else {
+        ghostd_set_path($id, 'images.' . $key,
+            ['mime' => $mime, 'data' => base64_encode($bytes), 'at' => gmdate('Y-m-d H:i:s')]);
+    }
+    ghostd_record_images(true);
 }

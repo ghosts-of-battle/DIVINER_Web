@@ -4,3 +4,7 @@ src/config.local.php
 # Local scratch
 *.log
 .DS_Store
+
+# The nightly database dump. Written on the server by tools/backup.sh; it is
+# the whole database, so it never goes anywhere near a public repo.
+backups/

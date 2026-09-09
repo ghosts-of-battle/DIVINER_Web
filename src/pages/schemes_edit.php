@@ -73,7 +73,7 @@ painted from in game, and this site with it. Clearing an id removes it.</p>
           <th style="width:17%">Ground</th><th style="width:17%">Ink</th>
           <th style="width:17%">Accent</th><th style="width:9%">Del</th></tr>
     </thead>
-    <tbody>
+    <tbody id="schemes">
     <?php $i = 0; foreach ($schemes as $id => $s): ?>
       <tr>
         <td><input type="text" name="s_id[<?= $i ?>]" value="<?= h((string) $id) ?>"></td>
@@ -84,18 +84,30 @@ painted from in game, and this site with it. Clearing an id removes it.</p>
         <td><input type="checkbox" name="s_remove[]" value="<?= $i ?>"></td>
       </tr>
     <?php $i++; endforeach; ?>
-    <?php for ($k = 0; $k < 2; $k++): $n = $i + $k; ?>
+    <?php // ONE spare row, so the page works with no JavaScript. ?>
       <tr>
-        <td><input type="text" name="s_id[<?= $n ?>]" placeholder="GFR_Winter"></td>
-        <td><input type="text" name="s_name[<?= $n ?>]" placeholder="GFR WINTER"></td>
-        <td><input type="color" name="s_ground[<?= $n ?>]" value="#101010"></td>
-        <td><input type="color" name="s_ink[<?= $n ?>]" value="#e6e5e2"></td>
-        <td><input type="color" name="s_accent[<?= $n ?>]" value="#cc4331"></td>
+        <td><input type="text" name="s_id[<?= $i ?>]" placeholder="GFR_Winter"></td>
+        <td><input type="text" name="s_name[<?= $i ?>]" placeholder="GFR WINTER"></td>
+        <td><input type="color" name="s_ground[<?= $i ?>]" value="#101010"></td>
+        <td><input type="color" name="s_ink[<?= $i ?>]" value="#e6e5e2"></td>
+        <td><input type="color" name="s_accent[<?= $i ?>]" value="#cc4331"></td>
         <td></td>
       </tr>
-    <?php endfor; ?>
     </tbody>
   </table>
+
+  <template id="schemes-row">
+    <tr>
+      <td><input type="text" name="s_id[__I__]" placeholder="GFR_Winter"></td>
+      <td><input type="text" name="s_name[__I__]" placeholder="GFR WINTER"></td>
+      <td><input type="color" name="s_ground[__I__]" value="#101010"></td>
+      <td><input type="color" name="s_ink[__I__]" value="#e6e5e2"></td>
+      <td><input type="color" name="s_accent[__I__]" value="#cc4331"></td>
+      <td></td>
+    </tr>
+  </template>
+
+  <p class="actions"><button type="button" data-addrow="schemes">+ Add scheme</button></p>
 
   <div class="actions"><button type="submit">Save</button></div>
 </form>
