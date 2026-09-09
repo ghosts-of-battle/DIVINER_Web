@@ -158,3 +158,19 @@ a.btnlink:hover { background: var(--accent); color: var(--ground); }
 .card summary a.edit { float: right; font-size: .75rem; }
 
 #addline { margin-bottom: 1rem; }
+
+/* Sign in through Steam. Steam's own blue rather than the site accent - a
+   federated button is recognised by its colour before anyone reads it. */
+.steam {
+  display: inline-block; margin-top: .7rem; padding: .5rem 1rem;
+  background: #1b2838; border: 1px solid #66c0f4; color: #c7d5e0;
+  text-decoration: none; text-transform: uppercase;
+  font-size: .78rem; letter-spacing: .06em;
+}
+.steam:hover { background: #2a475e; color: #fff; }
+
+/* Who is signed in, beside Log out. */
+.bar nav .who { margin-left: auto; font-size: .78rem; padding-right: .9rem; }
+/* Log out already claims the free space with margin-left:auto; with the name
+   beside it, only one of the two may, or they drift apart. */
+.bar nav .who + a.right { margin-left: 0; }

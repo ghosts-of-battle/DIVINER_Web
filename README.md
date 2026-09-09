@@ -18,9 +18,13 @@ extension directly, so deploying is: install the extension, point a vhost at
 - The **`mongodb`** PHP extension (`pecl install mongodb`, or
   `apt install php-mongodb`, or `yum install php-pecl-mongodb`)
 - nginx or Apache
-- A MongoDB Atlas database - the same one the mod uses
+- A MongoDB database - the same one the mod uses. Atlas, or one you run
+  yourself ([MONGODB.md](MONGODB.md))
 
 ## Install
+
+Full Linux runbook - Debian/Ubuntu and RHEL/Rocky/Alma/Fedora, with SELinux, TLS
+and troubleshooting - is in [DEPLOY.md](DEPLOY.md). The short version:
 
 1. Copy this folder onto the web server.
 2. Configure it, either way round - **the environment wins over the file**:
@@ -39,7 +43,8 @@ extension directly, so deploying is: install the extension, point a vhost at
    ```
    php -r "echo password_hash('your password', PASSWORD_DEFAULT), PHP_EOL;"
    ```
-   With no hash set the site refuses every request rather than opening.
+   With neither a password hash nor Steam sign-in configured, the site
+   refuses every request rather than opening. See **Signing in** below.
 
 4. **Atlas Network Access**: add the web server's public IP. The database user
    should be scoped to the `ghostd` database alone - the same advice as
@@ -89,6 +94,44 @@ is marked `secure` automatically once the request arrives over HTTPS.
 
 Only `public/` is ever served. `src/` sits above the document root on purpose -
 if you must place everything in one servable folder, deny `src/` explicitly.
+
+## Signing in
+
+Two gates, and either is a complete configuration:
+
+- **A shared password** - `password_hash`, the original. Simple, and it works
+  when the database does not.
+- **Sign in through Steam** - `steam_login`, and the site asks Steam who you
+  are, then checks that id against **the mod's own admin list**.
+
+The second is worth setting up because there is no new list to keep. PAC's
+`<unit>.admins` document is keyed by Steam id - the same digits
+`getPlayerUID` returns in game - so whoever can open the admin console in the
+mission can sign in here, and `STRUCTURE > ADMINS > ADD ME` in game is also how
+someone is given the site.
+
+```php
+'steam_login'          => true,
+'steam_admins'         => ['76561198000000000'],  // extra ids, beyond the admin list
+'steam_use_pac_admins' => true,                   // false to use steam_admins alone
+'steam_api_key'        => '',                     // optional, persona names only
+'base_url'             => '',                     // only behind a TLS proxy
+```
+
+**Steam proves who, not whether.** A valid Steam sign-in for an id on neither
+list is refused, and the refusal shows the id so it can be added.
+
+Keep the password set as well as Steam while you are finding your feet: if the
+database is unreachable the admin list cannot be read, and Steam sign-in
+refuses everyone until it comes back.
+
+It is OpenID 2.0 - Steam has never offered anything else - written out in
+`src/steam.php` rather than pulled from a library, in keeping with the rest of
+the site. The assertion is verified by posting it back to Steam
+(`check_authentication`); nothing in the redirect is trusted on its own. The
+server needs outbound HTTPS to `steamcommunity.com`, but the site itself does
+not need to be reachable from the internet - the redirect happens in the
+browser, so a LAN box works.
 
 ## The pages
 

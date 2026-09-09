@@ -55,6 +55,11 @@ function ghostd_head(string $title, string $active = ''): void
     <?php foreach ($nav as $k => $label): ?>
       <a href="?page=<?= h($k) ?>" class="<?= $active === $k ? 'on' : '' ?>"><?= h($label) ?></a>
     <?php endforeach; ?>
+    <?php $who = ghostd_identity(); if ($who !== null): ?>
+      <span class="dim who" title="<?= h($who['steamid'] ?? 'password login') ?>">
+        <?= h($who['name'] ?? ($who['steamid'] ?? 'signed in')) ?>
+      </span>
+    <?php endif; ?>
     <a href="?page=logout" class="right">Log out</a>
   </nav>
 </header>

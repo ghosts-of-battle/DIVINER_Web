@@ -35,7 +35,46 @@ function ghostd_session_start(): void
 
 function ghostd_configured(): bool
 {
+    // Either gate counts. Steam alone is a complete configuration; so is a
+    // password alone. Neither means the site stays closed.
+    $cfg = ghostd_config();
+    return $cfg['password_hash'] !== '' || $cfg['steam_login'];
+}
+
+/** True when the password form should be drawn at all. */
+function ghostd_password_enabled(): bool
+{
     return ghostd_config()['password_hash'] !== '';
+}
+
+/**
+ * Mark the session signed in as a verified Steam id.
+ *
+ * Called only from the OpenID return in public/index.php, and only after
+ * ghostd_steam_validate() and ghostd_steam_allowed() have both passed.
+ */
+function ghostd_login_steam(string $steamid, ?string $name): void
+{
+    ghostd_session_start();
+    session_regenerate_id(true);
+    $_SESSION['ghostd_auth']    = true;
+    $_SESSION['ghostd_steamid'] = $steamid;
+    $_SESSION['ghostd_name']    = $name;
+}
+
+/** Who is signed in, for the header bar: kind, steamid, name - or null. */
+function ghostd_identity(): ?array
+{
+    ghostd_session_start();
+    if (empty($_SESSION['ghostd_auth'])) {
+        return null;
+    }
+    $sid = $_SESSION['ghostd_steamid'] ?? null;
+    return [
+        'kind'    => $sid !== null ? 'steam' : 'password',
+        'steamid' => $sid,
+        'name'    => $_SESSION['ghostd_name'] ?? null,
+    ];
 }
 
 function ghostd_logged_in(): bool
