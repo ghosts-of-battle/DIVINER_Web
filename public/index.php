@@ -2,6 +2,14 @@
 /**
  * Front controller. Point the web server's root at this folder; everything
  * else lives one level up in src/ where the server cannot serve it directly.
+ *
+ * WHO SEES WHAT. Signing in and being allowed something are separate (see
+ * src/steam.php). This file is where the second question is answered:
+ *
+ *     admin    every page
+ *     member   their own details, and nothing else
+ *     visitor  the application form, and nothing else
+ *     password the admin pages, read-only (src/db.php enforces the "read")
  */
 
 declare(strict_types=1);
@@ -10,8 +18,36 @@ require_once __DIR__ . '/../src/config.php';
 require_once __DIR__ . '/../src/auth.php';
 require_once __DIR__ . '/../src/render.php';
 require_once __DIR__ . '/../src/db.php';
+require_once __DIR__ . '/../src/branding.php';
 
 $page = (string) ($_GET['page'] ?? 'dashboard');
+
+// ---- the unit's logo and login background --------------------------------
+// Before the login gate on purpose: the login page needs both, and neither is
+// a secret - they are the pictures every visitor is meant to see.
+if ($page === 'asset') {
+    $asset = ghostd_brand_asset((string) ($_GET['which'] ?? ''));
+    if ($asset === null) {
+        http_response_code(404);
+        exit;
+    }
+    $bytes = base64_decode($asset['data'], true);
+    if ($bytes === false) {
+        http_response_code(404);
+        exit;
+    }
+    $etag = '"' . md5($bytes) . '"';
+    if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? '') === $etag) {
+        http_response_code(304);
+        exit;
+    }
+    header('Content-Type: ' . $asset['mime']);
+    header('Content-Length: ' . strlen($bytes));
+    header('Cache-Control: public, max-age=31536000, immutable');
+    header('ETag: ' . $etag);
+    echo $bytes;
+    exit;
+}
 
 // A deployment with neither gate configured is not open to the world.
 if (!ghostd_configured()) {
@@ -48,20 +84,15 @@ if ($page === 'steam') {
         exit;
     }
 
-    [$allowed, $why] = ghostd_steam_allowed($steamid);
-    if (!$allowed) {
-        ghostd_head('Not on the list');
-        ghostd_flash('bad', 'Steam id ' . h($steamid) . ' may not use this site - ' . h($why) . '.');
-        echo '<p>Steam confirmed who you are; the unit has not said you may in. '
-           . 'Add this id in game - admin console, <strong>STRUCTURE > ADMINS > ADD ME</strong> - '
-           . 'or name it in the site configuration.</p>'
-           . '<p><a href="?page=login">Back to the login page</a></p>';
-        ghostd_foot();
-        exit;
-    }
-
-    ghostd_login_steam($steamid, ghostd_steam_pac_name($steamid) ?? ghostd_steam_name($steamid));
-    header('Location: ?page=dashboard');
+    // Everyone with a Steam account may sign in; what they get is decided by
+    // whether they are an admin, and whether they are on the roster.
+    [$isAdmin] = ghostd_steam_is_admin($steamid);
+    ghostd_login_steam(
+        $steamid,
+        ghostd_steam_pac_name($steamid) ?? ghostd_steam_name($steamid),
+        $isAdmin
+    );
+    header('Location: ' . ($isAdmin ? '?page=dashboard' : '?page=me'));
     exit;
 }
 
@@ -78,15 +109,28 @@ if ($page === 'logout') {
 
 ghostd_require_login();
 
-$pages = ['dashboard', 'roster', 'templates', 'template_edit', 'documents', 'document'];
-if (!in_array($page, $pages, true)) {
-    $page = 'dashboard';
+// ---- what this session may open ------------------------------------------
+$adminPages  = ['dashboard', 'roster', 'templates', 'template_edit', 'documents', 'document',
+                'branding', 'applications', 'questions'];
+$memberPages = ['me', 'apply'];
+
+if (ghostd_is_admin() || !ghostd_is_member()) {
+    // Admins get everything; a password session gets the admin pages read-only.
+    $allowed = array_merge($adminPages, ['me', 'apply']);
+    $fallback = 'dashboard';
+} else {
+    $allowed = $memberPages;
+    $fallback = 'me';
+}
+
+if (!in_array($page, $allowed, true)) {
+    $page = $fallback;
 }
 
 try {
     require __DIR__ . '/../src/pages/' . $page . '.php';
 } catch (Throwable $e) {
-    ghostd_head('Error');
+    ghostd_head('Error', 'error');
     ghostd_flash('bad', $e->getMessage());
     echo '<p class="dim">If this is a connection error: check the Atlas Network Access allowlist '
        . 'includes this web server\'s public IP, and that the connection string is right.</p>';

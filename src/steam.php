@@ -16,8 +16,18 @@
  * with no second list to maintain. config.local.php can name extra ids for
  * someone who needs the site but not the in-game console.
  *
- * STEAM PROVES WHO, NOT WHETHER. A valid Steam login for an id that is on
- * neither list is refused. The assertion is an identity, not a permission.
+ * STEAM PROVES WHO, NOT WHETHER. The assertion is an identity, not a
+ * permission - so signing in and being allowed to do something are two
+ * separate questions, answered separately:
+ *
+ *     admin   on <unit>.admins (or steam_admins) - the whole site, and writes
+ *     member  has a record in the store - their own details, nothing else
+ *     visitor neither - may apply to join, and nothing else
+ *
+ * Anyone with a Steam account may therefore sign IN. That is deliberate: an
+ * application form nobody can reach is not an application form. What they can
+ * SEE is decided per tier in public/index.php, and what they can WRITE at the
+ * choke point in db.php.
  */
 
 declare(strict_types=1);
@@ -158,14 +168,18 @@ function ghostd_steam_validate(array $q): ?string
 }
 
 /**
- * May this Steam id use the site?
+ * Is this Steam id an admin?
  *
  * Two sources: the mod's own <unit>.admins document, and any extra ids named
- * in the configuration. Returns [allowed, reason] - the reason is shown when
- * it is false, because "you are not on the list" with the id visible is what
- * lets someone be added.
+ * in the configuration. Returns [isAdmin, reason] - the reason is shown to
+ * somebody who expected to be one, because "you are not on the list" with the
+ * id visible is what lets them be added.
+ *
+ * A DATABASE THAT CANNOT BE READ MEANS NOT AN ADMIN, never "assume yes". The
+ * steam_admins list in the configuration is the way back in when the store is
+ * unreachable, which is exactly when the admin list cannot be consulted.
  */
-function ghostd_steam_allowed(string $steamid): array
+function ghostd_steam_is_admin(string $steamid): array
 {
     $cfg = ghostd_config();
 

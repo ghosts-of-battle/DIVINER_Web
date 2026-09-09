@@ -229,14 +229,30 @@ rsync -av --exclude '.git' --exclude 'src/config.local.php' \
 Ownership - the web user only needs to **read** the code. It never writes to
 its own directory:
 
-```bash
-# Debian / Ubuntu
-chown -R root:www-data /var/www/DIVINER_Web
-# RHEL family (nginx runs as nginx; php-fpm's default pool user is apache)
-chown -R root:apache /var/www/DIVINER_Web
+**Two different users are involved, and this is where deployments break.**
+nginx serves `public/` *itself* - the stylesheet, any image - as the **nginx**
+user. PHP-FPM runs `index.php` as its own pool user, which on the Red Hat
+family is **apache**, not nginx. So `public/` must be readable by the web
+server, while `src/` only ever needs the FPM user:
 
-chmod -R u=rwX,g=rX,o= /var/www/DIVINER_Web
+```bash
+# Group-own everything by the FPM pool user (check it: grep '^user' in the pool)
+chown -R root:apache /var/www/DIVINER_Web        # root:www-data on Debian/Ubuntu
+
+# The docroot: nginx must be able to traverse and read it
+chmod 755 /var/www/DIVINER_Web /var/www/DIVINER_Web/public
+chmod 644 /var/www/DIVINER_Web/public/*
+
+# src/ holds the database password - FPM only, never the web server
+chmod 750 /var/www/DIVINER_Web/src /var/www/DIVINER_Web/src/pages
+find /var/www/DIVINER_Web/src -type f -exec chmod 640 {} \;
 ```
+
+Do **not** blanket the tree with `chmod -R o=`: on RHEL that locks the nginx
+user out of the docroot, every static file falls through `try_files` to
+`index.php`, and the site renders with no stylesheet at all while PHP keeps
+working perfectly. Check it with `sudo -u nginx cat .../public/style.css`
+(must work) and `sudo -u nginx cat .../src/config.local.php` (must not).
 
 `/var/www` already carries the `httpd_sys_content_t` SELinux label, which is
 why the path is worth keeping. If you install somewhere else, see step 5.
@@ -315,6 +331,15 @@ env[GHOSTD_UNIT] = framework
 
 `chmod 640` that pool file too, and restart FPM after editing it. This form
 also survives a `git pull` with no merge conflict.
+
+**Never put the password hash here.** PHP-FPM expands `$...` sequences in
+`env[]` values, so a bcrypt hash - which is nothing but `$` separated fields -
+arrives at PHP as an **empty string**, and the site reports itself
+unconfigured while the pool file plainly shows a correct hash. `GHOSTD_MONGO`
+and `GHOSTD_UNIT` are safe here because they contain no dollar signs. Put
+`password_hash` in `src/config.local.php`, where PHP's single quotes protect
+it (Form A). Also watch for a **trailing space** after any value: it becomes
+part of the string, and a 61-character bcrypt hash never verifies.
 
 Do **not** rely on `Environment=` in a systemd drop-in: PHP-FPM ships
 `clear_env = yes`, which wipes the inherited environment. Pool `env[...]` lines
@@ -504,6 +529,11 @@ fails and the rate limit is real (5 failures per hostname per hour):
 - **Port 80 is open** to the internet - Let's Encrypt validates over HTTP even
   when you only want HTTPS. Open 443 at the same time (step 5's firewall
   commands).
+- **`server_name` is your real hostname.** `certbot --nginx` finds the block to
+  edit by matching `-d` against `server_name`, so the vhost above still saying
+  `pac.example.org` is the usual reason it reports it cannot find one. Confirm
+  what nginx actually has - includes and all - with
+  `nginx -T | grep server_name`.
 
 #### Debian / Ubuntu
 
@@ -623,6 +653,10 @@ rm -f /var/www/DIVINER_Web/public/_x.php     # delete it immediately
 
 | Symptom | Cause |
 |---|---|
+| **Page renders with no styling; `style.css` 302s or 403s** | The docroot is not readable by the *nginx* user - `chmod -R o=` does this on RHEL, where FPM runs as apache. See step 2. `tail /var/log/nginx/error.log` shows `stat() ... Permission denied`. |
+| **"No password is set" though the pool clearly has the hash** | FPM ate the `$` signs. Move `password_hash` to `src/config.local.php`. See step 3. |
+| **Correct password rejected every time** | A trailing space (or newline) on the stored hash - it must be exactly 60 characters. Check with `password_get_info()`; `algoName: unknown` means it is malformed. |
+| **certbot: "Could not automatically find a matching server block"** | No `server_name` matches the `-d` hostname. Usually the example `pac.example.org` was never changed; also check the vhost is included (`sites-enabled` symlink on Debian, `conf.d/` on RHEL) and that nginx was reloaded after the edit. |
 | **Steam: "Steam did not confirm that sign-in"** | The return URL did not match what was sent. Set `base_url` to the public address - usual behind a TLS-terminating proxy. Also check outbound HTTPS to `steamcommunity.com`. |
 | **Steam: "may not use this site"** | Steam verified the id; it is not in `<unit>.admins`. Add it in game (STRUCTURE > ADMINS > ADD ME) or in `steam_admins`. |
 | **`No match for argument: epel-release`** | Not Rocky or Alma. RHEL installs EPEL from a URL, Amazon Linux has no EPEL. See step 1. |

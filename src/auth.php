@@ -53,13 +53,64 @@ function ghostd_password_enabled(): bool
  * Called only from the OpenID return in public/index.php, and only after
  * ghostd_steam_validate() and ghostd_steam_allowed() have both passed.
  */
-function ghostd_login_steam(string $steamid, ?string $name): void
+function ghostd_login_steam(string $steamid, ?string $name, bool $isAdmin): void
 {
     ghostd_session_start();
     session_regenerate_id(true);
     $_SESSION['ghostd_auth']    = true;
     $_SESSION['ghostd_steamid'] = $steamid;
     $_SESSION['ghostd_name']    = $name;
+    // Settled at sign-in rather than re-read per request: the admin list is a
+    // database round trip, and a change to it takes effect at their next
+    // sign-in. Removing somebody urgently means removing them AND telling them
+    // to sign out - or restarting php-fpm, which drops every session.
+    $_SESSION['ghostd_admin']   = $isAdmin;
+}
+
+/** The Steam id of whoever is signed in, or '' for a password session. */
+function ghostd_self_uid(): string
+{
+    ghostd_session_start();
+    return (string) ($_SESSION['ghostd_steamid'] ?? '');
+}
+
+/** An admin: the whole site, and writes to anything. */
+function ghostd_is_admin(): bool
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return false;
+    }
+    return !empty($_SESSION['ghostd_auth']) && !empty($_SESSION['ghostd_admin']);
+}
+
+/**
+ * Signed in as a person, admin or not - so they may edit their OWN details.
+ *
+ * A password session is excluded on purpose: it proves somebody knows a shared
+ * secret, so there is no "own" record for it to edit.
+ */
+function ghostd_is_member(): bool
+{
+    return ghostd_self_uid() !== '';
+}
+
+/**
+ * May this session change anything?
+ *
+ * ONLY A STEAM SESSION, AND ONLY AN ADMIN. The shared password proves
+ * somebody knows a secret;
+ * it does not say who they are, and a document written by "whoever had the
+ * password" cannot be traced to a person. A Steam sign-in has been checked
+ * against the unit's own admin list, so a write can be attributed - which is
+ * the same standard the game holds admins to.
+ *
+ * The password therefore signs in to a READ-ONLY site: useful for looking
+ * something up, and for reaching the site at all when the database is down and
+ * the admin list cannot be read.
+ */
+function ghostd_can_edit(): bool
+{
+    return ghostd_is_admin();
 }
 
 /** Who is signed in, for the header bar: kind, steamid, name - or null. */
@@ -83,11 +134,34 @@ function ghostd_logged_in(): bool
     return !empty($_SESSION['ghostd_auth']);
 }
 
-function ghostd_login(string $password): bool
+/** True when a secret is configured, so the form must ask for one. */
+function ghostd_secret_required(): bool
+{
+    return ghostd_config()['admin_secret_hash'] !== '';
+}
+
+/**
+ * The shared credential.
+ *
+ * TWO SECRETS, NOT A NAME AND A PASSWORD. A username is usually public - it
+ * is on Discord, in the credits, on the website - so it adds nothing an
+ * attacker has to guess. Two independent secrets, each hashed, means guessing
+ * has to succeed twice.
+ */
+function ghostd_login(string $secret, string $password): bool
 {
     ghostd_session_start();
-    $hash = ghostd_config()['password_hash'];
-    if ($hash === '' || !password_verify($password, $hash)) {
+    $cfg  = ghostd_config();
+    $hash = $cfg['password_hash'];
+    $shash = $cfg['admin_secret_hash'];
+
+    // BOTH ARE ALWAYS VERIFIED. Returning as soon as the secret is wrong would
+    // make a wrong secret faster to reject than a wrong password, and that
+    // difference alone tells somebody they have found the secret.
+    $secretOk = $shash === '' ? true : password_verify($secret, $shash);
+    $passOk   = $hash !== '' && password_verify($password, $hash);
+
+    if (!$secretOk || !$passOk) {
         return false;
     }
     session_regenerate_id(true);

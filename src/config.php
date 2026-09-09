@@ -73,6 +73,13 @@ function ghostd_config(): array
         // it - a management page with no password is not a management page.
         'password_hash' => (string) $pick('GHOSTD_WEB_PASSWORD_HASH', 'password_hash', ''),
 
+        // The FIRST half of the admin login. Not a username - a second secret,
+        // hashed the same way as the password. A username is public knowledge
+        // in most units; a secret is not, so guessing has to succeed twice.
+        // Empty means the login asks for the password alone.
+        //   php -r "echo password_hash('the secret', PASSWORD_DEFAULT), PHP_EOL;"
+        'admin_secret_hash' => (string) $pick('GHOSTD_WEB_SECRET_HASH', 'admin_secret_hash', ''),
+
         // Where replaced documents are copied before a write. Set to '' to
         // turn the safety net off, which you should not do.
         'backup_collection' => (string) $pick('GHOSTD_BACKUP_COLLECTION', 'backup_collection', 'pac_backups'),
@@ -98,6 +105,19 @@ function ghostd_config(): array
         // The site's own URL, when it cannot work it out - behind a proxy
         // that terminates TLS, say. Steam must return to exactly this host.
         'base_url'      => (string) $pick('GHOSTD_BASE_URL', 'base_url', ''),
+
+        // ---- appearance --------------------------------------------------
+        // The scheme a visitor gets before they pick one. Their choice is
+        // remembered in the browser, not here. See GHOSTD_THEMES in render.php.
+        'theme' => (string) $pick('GHOSTD_THEME', 'theme', 'ghost'),
+
+        // ---- the wiki panel (src/wiki.php) -------------------------------
+        // The published documentation page for whatever screen is open, pulled
+        // as raw markdown and cached. GitHub forbids framing the wiki, so this
+        // fetches it server-side.
+        'wiki_panel' => ghostd_truthy($pick('GHOSTD_WIKI', 'wiki_panel', true)),
+        'wiki_repo'  => (string) $pick('GHOSTD_WIKI_REPO', 'wiki_repo', 'ghosts-of-battle/DIVINER'),
+        'wiki_ttl'   => (int) $pick('GHOSTD_WIKI_TTL', 'wiki_ttl', 21600),
 
         'session_name' => 'ghostd_web',
     ];

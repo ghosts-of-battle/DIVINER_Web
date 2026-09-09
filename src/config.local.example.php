@@ -19,6 +19,20 @@ return [
     // php -r "echo password_hash('your password', PASSWORD_DEFAULT), PHP_EOL;"
     'password_hash' => '',
 
+    // The username that goes with it. Set it - a lone password is one secret
+    // to guess. Empty means the login asks for the password alone.
+    'admin_user' => '',
+
+    // ---- Appearance and help --------------------------------------------
+    // Default colour scheme: phosphor | amber | slate | daylight. A visitor's
+    // own choice is kept in their browser and wins over this.
+    'theme' => 'phosphor',
+
+    // The side panel showing the wiki page for the current screen.
+    'wiki_panel' => true,
+    'wiki_repo'  => 'ghosts-of-battle/DIVINER',
+    'wiki_ttl'   => 21600,   // seconds before a cached page is refetched
+
     // ---- Sign in through Steam ------------------------------------------
     // On, and the login page offers Steam instead of (or beside) the
     // password. Who may in: the mod's own <unit>.admins document, which is

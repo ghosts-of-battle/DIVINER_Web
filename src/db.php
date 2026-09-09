@@ -16,6 +16,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/auth.php';
 
 use MongoDB\Driver\BulkWrite;
 use MongoDB\Driver\Command;
@@ -97,8 +98,116 @@ function ghostd_get(string $id): ?array
  * $fields is the whole document minus _id. Anything not in it is REMOVED - this
  * is a replace, which is what a JSON editor means when it says save.
  */
+/**
+ * Every write goes through here first.
+ *
+ * THE RULE IS ENFORCED HERE, NOT IN THE PAGES. Hiding a form is a courtesy to
+ * the reader; it is not a permission. A page that forgets to hide one, a stale
+ * tab, or a hand-made POST all arrive at these three functions, so this is the
+ * only place the check is worth making.
+ */
+/**
+ * The fields a player may change about themselves, and what to call them.
+ *
+ * DELIBERATELY SHORT. Everything here is a way to be contacted or addressed -
+ * nothing that says what somebody has earned. Rank, role, group, skills and
+ * awards are an admin's to give, and a roster where people set their own rank
+ * is not a roster.
+ *
+ * Every one is OPTIONAL. The unit needs a Steam id, which it already has; the
+ * rest is what a person chooses to share.
+ */
+const GHOSTD_SELF_FIELDS = [
+    'milsimName' => 'Preferred name',
+    'discordId'  => 'Discord id',
+    'email'      => 'Email',
+];
+
+/**
+ * The next operator id, mirroring the mod's FUNC(operatorSeq): OP-10001 up,
+ * never reusing one a record already holds.
+ *
+ * The mod keeps its counter in the store's meta, which is profile-side and not
+ * in this document - so this takes the highest id in use and adds one. Safe in
+ * both directions: FUNC(operatorSeq) skips any id already taken, so a number
+ * issued here is never handed out a second time in game.
+ */
+function ghostd_next_operator_id(array $players): string
+{
+    $max = 10000;
+    foreach ($players as $p) {
+        $op = (string) ($p['operatorId'] ?? '');
+        if (preg_match('/^OP-(\d+)$/', $op, $m)) {
+            $max = max($max, (int) $m[1]);
+        }
+    }
+    return 'OP-' . ($max + 1);
+}
+
+/** Set while ghostd_set_self_path is doing a checked self-edit. */
+function ghostd_write_scope(?bool $set = null): bool
+{
+    static $open = false;
+    if ($set !== null) {
+        $open = $set;
+    }
+    return $open;
+}
+
+/**
+ * A player changing one of their own details.
+ *
+ * THE ONLY WAY PAST ghostd_guard_write, and it is narrow on purpose: the uid
+ * must be the signed-in Steam id (not a parameter to be trusted), the field
+ * must be one of GHOSTD_SELF_FIELDS, and the record must already exist. A
+ * member cannot create a record, only fill in their own.
+ */
+function ghostd_set_self_path(string $storeId, string $uid, string $field, string $value): array
+{
+    require_once __DIR__ . '/auth.php';
+
+    if (!ghostd_is_member()) {
+        throw new RuntimeException('Sign in through Steam to change your details.');
+    }
+    if ($uid === '' || $uid !== ghostd_self_uid()) {
+        throw new RuntimeException('You may only change your own details.');
+    }
+    if (!array_key_exists($field, GHOSTD_SELF_FIELDS)) {
+        throw new RuntimeException('That is not a field you can set.');
+    }
+
+    $store = ghostd_get($storeId);
+    if (!isset($store['players'][$uid])) {
+        throw new RuntimeException('You are not on the roster yet.');
+    }
+
+    ghostd_write_scope(true);
+    try {
+        $res = ghostd_set_path($storeId, 'players.' . $uid . '.' . $field, $value);
+        ghostd_set_path($storeId, 'players.' . $uid . '.updatedAt', gmdate('Y-m-d H:i:s'));
+        return $res;
+    } finally {
+        // Whatever happens, the door closes behind us.
+        ghostd_write_scope(false);
+    }
+}
+
+function ghostd_guard_write(): void
+{
+    if (ghostd_write_scope()) {
+        return;   // inside ghostd_set_self_path, which did its own checking
+    }
+    if (!ghostd_can_edit()) {
+        throw new RuntimeException(
+            'This session is read-only. Sign in through Steam to change anything - '
+            . 'the shared password can look, but a change has to be attributable to a person.'
+        );
+    }
+}
+
 function ghostd_put(string $id, array $fields): array
 {
+    ghostd_guard_write();
     unset($fields['_id']);
 
     $cfg = ghostd_config();
@@ -145,6 +254,7 @@ function ghostd_put(string $id, array $fields): array
 /** Set one dotted path inside a document, backing the document up first. */
 function ghostd_set_path(string $id, string $path, $value): array
 {
+    ghostd_guard_write();
     $current = ghostd_get($id);
     $cfg = ghostd_config();
 
@@ -170,6 +280,7 @@ function ghostd_set_path(string $id, string $path, $value): array
 /** Remove one dotted path from a document, backing the document up first. */
 function ghostd_unset_path(string $id, string $path): array
 {
+    ghostd_guard_write();
     $current = ghostd_get($id);
     $cfg = ghostd_config();
 
