@@ -111,6 +111,54 @@ switch ($what) {
         });
         break;
 
+    // ---- which order of battle is live, and building another --------------
+    // The tick is a SETTING, not part of any ORBAT document: it says which of
+    // them the game loads, and a document cannot sensibly claim to be the one
+    // in use while four others claim the same.
+    case 'default':
+        $want = trim((string) ($_POST['default'] ?? ''));
+        if ($want !== '' && !in_array($want, ghostd_orbat_variants(), true)) {
+            throw new RuntimeException('There is no order of battle called "' . $want . '".');
+        }
+        ghostd_setting_save('currentOrbat', $want);
+        $msg = ($want === '' ? 'The common order of battle' : $want) . ' is live.';
+        break;
+
+    case 'neworbat':
+        $from = trim((string) ($_POST['from'] ?? ''));
+        $to   = trim((string) ($_POST['to'] ?? ''));
+        if (!ghostd_variant_ok($to)) {
+            throw new RuntimeException('An order of battle is named with letters, digits and '
+                . 'underscore, starting with a letter - "NightOps", not "Night Ops".');
+        }
+        if (in_array($to, ghostd_orbat_variants(), true)) {
+            throw new RuntimeException('"' . $to . '" already exists.');
+        }
+        $src = ghostd_orbat($from);
+        ghostd_orbat_edit($to, static function (array &$doc) use ($src) {
+            $doc['faction']   = $src['faction'];
+            $doc['side']      = $src['side'];
+            $doc['groups']    = $src['groups'];
+            $doc['platoons']  = $src['platoons'];
+            $doc['radioNets'] = $src['radioNets'];
+        });
+        $msg = 'Copied ' . ($from === '' ? 'the common ORBAT' : $from) . ' to ' . $to
+             . '. It is not live until you tick it.';
+        break;
+
+    case 'deleteorbat':
+        if ($variant === '') {
+            throw new RuntimeException('The common order of battle cannot be deleted - it is what '
+                . 'everything falls back to.');
+        }
+        if ($variant === ghostd_default_orbat_id()) {
+            throw new RuntimeException('"' . $variant . '" is the live one. Make another live first, '
+                . 'or the next mission would start with no order of battle.');
+        }
+        ghostd_doc_delete(ghostd_orbat_doc_id($variant));
+        $msg = $variant . ' deleted.';
+        break;
+
     // ---- the unit's own trait names ---------------------------------------
     // NOT PART OF THE ORBAT DOCUMENT. A trait name does not change when the
     // order of battle does, so it is one set per unit - <unit>.traits - even
@@ -134,6 +182,7 @@ switch ($what) {
                 'order' => $order,
                 'label' => trim((string) ($_POST['t_label'][$i] ?? '')) ?: $tid,
                 'kind'  => ((string) ($_POST['t_kind'][$i] ?? 'bool')) === 'number' ? 'number' : 'bool',
+                'where' => ((string) ($_POST['t_where'][$i] ?? 'variable')) === 'trait' ? 'trait' : 'variable',
                 'help'  => trim((string) ($_POST['t_help'][$i] ?? '')),
             ];
         }

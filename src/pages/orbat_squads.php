@@ -82,7 +82,9 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
       <?php if ($bad !== []): ?>
         <tr><th>No document</th><td class="bad"><?= h(implode(', ', $bad)) ?> - those slots will not fill</td></tr>
       <?php endif; ?>
-      <tr><th>Shown when</th><td><code><?= h($cond) ?></code></td></tr>
+      <tr><th>Offered when</th><td><code><?= h($cond) ?></code>
+          <?= $cond === 'true' ? '<span class="dim">- always</span>'
+              : '<span class="dim">- only while that is true; otherwise the squad is not drawn</span>' ?></td></tr>
       <tr><th>ACRE</th><td><?= isset($acreOf[$sn]) ? (int) $acreOf[$sn] : '<span class="dim">not set</span>' ?></td></tr>
       <tr><th>TFAR</th><td><?= $tf[0] || $tf[1]
             ? 'short ' . (int) $tf[0] . ', long ' . (int) $tf[1]

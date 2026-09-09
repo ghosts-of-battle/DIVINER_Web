@@ -55,7 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ghostd_csrf_check();
     try {
         $k = (string) ($_POST['setting'] ?? '');
-        if (!in_array($k, ['currentArsenal', 'currentOrbat'], true)) {
+        // Only the settings this page actually offers - derived, so a template
+        // type added to the registry is covered without a second list.
+        $allowed = ['currentOrbat'];
+        foreach (array_keys(GHOSTD_TEMPLATES) as $tk) {
+            $sn = ghostd_template_setting($tk);
+            if ($sn !== '') { $allowed[] = $sn; }
+        }
+        if (!in_array($k, $allowed, true)) {
             throw new RuntimeException('Not a setting this page sets.');
         }
         ghostd_setting_save($k, trim((string) ($_POST['value'] ?? '')));
@@ -91,6 +98,13 @@ ghostd_head('Config templates', 'config');
 if ($msg !== null) { ghostd_flash('good', $msg); }
 if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
+<p class="note"><strong>A mission can name its own.</strong> Every "In use"
+below is the unit's <em>default</em>; a mission that names a version in its own
+<code>CfgGFA_PAC &gt; settings</code> - <code>currentArsenal</code>,
+<code>currentNets</code>, <code>currentMotorpool</code> and the rest - keeps
+that one instead. That is how two missions share a unit and still kit, brief
+and fight differently.</p>
+
 <p class="note">What a mission used to ship in its <code>config\</code> folder,
 kept in the database instead. <strong>One set per unit</strong> - every mission
 naming <code><?= h($unit) ?></code> reads these, so the framework missions and
@@ -127,24 +141,29 @@ the common one unless something names another.</p>
     <p class="dim"><a href="?page=configedit&amp;t=<?= urlencode($key) ?>">Open
     <?= h(strtolower($t['label'])) ?></a> to add a version.</p>
 
-    <?php if ($key === 'arsenal'): ?>
-      <?php $inUse = ghostd_setting('currentArsenal'); ?>
+    <?php $setting = ghostd_template_setting($key); ?>
+    <?php if ($setting !== ''): ?>
+      <?php $inUse = ghostd_setting($setting); ?>
       <form method="post" class="inline">
         <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
-        <input type="hidden" name="setting" value="currentArsenal">
-        <label for="currentArsenal">In use</label>
-        <select id="currentArsenal" name="value">
-          <option value="">Common - everything in the common document</option>
-          <?php foreach (ghostd_template_variants('arsenal') as $v): ?>
+        <input type="hidden" name="setting" value="<?= h($setting) ?>">
+        <label for="s_<?= h($setting) ?>">In use</label>
+        <select id="s_<?= h($setting) ?>" name="value">
+          <option value="">Common</option>
+          <?php foreach (ghostd_template_variants($key) as $v): ?>
             <option value="<?= h($v) ?>" <?= $inUse === $v ? 'selected' : '' ?>><?= h($v) ?></option>
           <?php endforeach; ?>
         </select>
         <button type="submit">Use it</button>
+        <span class="dim"><code><?= h($setting) ?></code> &middot; a version
+        <strong>replaces</strong> the common one, it does not add to it</span>
       </form>
-      <p class="dim"><strong>This REPLACES the common arsenal</strong>, it does
-      not add to it - the point of a camo set is that a man cannot draw the
-      other four. A platoon's, a squad's and a role's own arsenals still stack
-      on top. Read at the next mission start.</p>
+      <?php if ($key === 'arsenal'): ?>
+        <p class="dim">The point of a camo set is that a man cannot draw the
+        other four, so this replaces the common list outright. A platoon's, a
+        squad's and a role's own arsenals still stack on top of whichever is
+        chosen.</p>
+      <?php endif; ?>
     <?php endif; ?>
   </section>
 <?php endforeach; ?>

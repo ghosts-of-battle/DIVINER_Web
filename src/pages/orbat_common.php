@@ -66,9 +66,12 @@ in <code><?= h($docId) ?></code>.</p>
 to the seven the engine already has. A role assigns them by ticking, and the
 <code>setUnitTrait</code> custom flag is set for you - which is the argument
 that silently throws a trait away when it is wrong.</p>
-<p class="dim">The name is what the mod reads. <strong>Kind</strong> is
-<code>bool</code> for a yes/no or <code>number</code> for a value. Clearing the
-name removes the row.</p>
+<p class="dim">The name is what the mod reads. <strong>Set as</strong> decides
+which of a role's two lists it appears on: <em>a variable</em> is
+<code>setVariable</code> - <code>draWhitelisted</code>, <code>isISR</code>, and
+most of them - and <em>a trait</em> is <code>setUnitTrait</code>. They are two
+different things on the man, and getting it wrong is silent.
+<strong>Kind</strong> is a yes/no or a value. Clearing the name removes the row.</p>
 
 <form method="post">
   <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
@@ -77,9 +80,9 @@ name removes the row.</p>
   <input type="hidden" name="what" value="traits">
 
   <table class="grid">
-    <thead><tr><th>Name</th><th>Shown as</th><th>Kind</th><th>What it does</th><th>Remove</th></tr></thead>
+    <thead><tr><th>Name</th><th>Shown as</th><th>Set as</th><th>Kind</th><th>What it does</th><th>Remove</th></tr></thead>
     <tbody>
-    <?php $rows = $customTraits; $rows[''] = ['label' => '', 'kind' => 'bool', 'help' => '']; ?>
+    <?php $rows = $customTraits; $rows[''] = ['label' => '', 'kind' => 'bool', 'help' => '', 'where' => 'variable']; ?>
     <?php $i = 0; foreach ($rows as $tn => $meta): ?>
       <?php $isNew = ((string) $tn === ''); ?>
       <tr>
@@ -87,6 +90,12 @@ name removes the row.</p>
                    placeholder="<?= $isNew ? 'draWhitelisted' : '' ?>" style="min-width:12rem"></td>
         <td><input type="text" name="t_label[<?= $i ?>]" value="<?= h($meta['label']) ?>"
                    placeholder="<?= $isNew ? 'DRA whitelisted' : '' ?>"></td>
+        <td>
+          <select name="t_where[<?= $i ?>]">
+            <option value="variable" <?= ($meta['where'] ?? 'variable') !== 'trait' ? 'selected' : '' ?>>a variable</option>
+            <option value="trait" <?= ($meta['where'] ?? '') === 'trait' ? 'selected' : '' ?>>a trait</option>
+          </select>
+        </td>
         <td>
           <select name="t_kind[<?= $i ?>]">
             <option value="bool" <?= $meta['kind'] !== 'number' ? 'selected' : '' ?>>yes / no</option>

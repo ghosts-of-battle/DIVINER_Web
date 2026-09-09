@@ -80,10 +80,16 @@ function ghostd_custom_traits(): array
     try {
         foreach (ghostd_template_items('traits') as $id => $t) {
             $kind = strtolower(trim((string) ($t['kind'] ?? 'bool')));
+            // WHERE IT GOES ON THE MAN. setVariable for most of them - a unit
+            // flag like draWhitelisted - and setUnitTrait for the few that are
+            // really traits. Two different things, two different lists on a
+            // role, and getting it wrong is silent.
+            $where = strtolower(trim((string) ($t['where'] ?? 'variable')));
             $out[(string) $id] = [
                 'label' => trim((string) ($t['label'] ?? '')) ?: (string) $id,
                 'kind'  => $kind === 'number' ? 'number' : 'bool',
                 'help'  => trim((string) ($t['help'] ?? '')),
+                'where' => $where === 'trait' ? 'trait' : 'variable',
             ];
         }
     } catch (Throwable $e) {

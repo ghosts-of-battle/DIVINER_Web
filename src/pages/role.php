@@ -184,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'traits':
                 $on   = (array) ($_POST['t_on'] ?? []);
                 $nums = (array) ($_POST['t_num'] ?? []);
-                $custom = ghostd_custom_traits();
+                $custom = array_filter(ghostd_custom_traits(), static fn($m) => $m['where'] === 'trait');
                 $out = [];
                 foreach (array_merge(array_keys(GHOSTD_ENGINE_TRAITS), array_keys($custom)) as $t) {
                     $isCustom = !isset(GHOSTD_ENGINE_TRAITS[$t]);
@@ -203,9 +203,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $msg = count($out) . ' traits saved.';
                 break;
 
+            // TICKED, NOT TYPED - the same as the traits screen. The catalogue
+            // says which names exist and what kind each is; the global flag on
+            // an existing row is kept, because a variable deliberately set
+            // local should not be "corrected" by somebody editing the list.
             case 'vars':
-                ghostd_role_save($id, ['customVariables' => $rows('var', 3)]);
-                $msg = 'Custom variables saved.';
+                $on   = (array) ($_POST['v_on'] ?? []);
+                $nums = (array) ($_POST['v_num'] ?? []);
+                $wasGlobal = [];
+                foreach (ghostd_role($id)['customVariables'] as $row) {
+                    $wasGlobal[(string) $row[0]] = (string) ($row[2] ?? 'true');
+                }
+                $out = [];
+                foreach (ghostd_custom_traits() as $vn => $meta) {
+                    if ($meta['where'] !== 'variable') {
+                        continue;
+                    }
+                    $g = $wasGlobal[$vn] ?? 'true';
+                    if ($meta['kind'] === 'number') {
+                        $v = trim((string) ($nums[$vn] ?? ''));
+                        if ($v === '') {
+                            continue;              // not set is not zero
+                        }
+                        $out[] = [$vn, is_numeric($v) ? $v + 0 : $v, $g];
+                    } elseif (in_array($vn, $on, true)) {
+                        $out[] = [$vn, 'true', $g];
+                    }
+                }
+                ghostd_role_save($id, ['customVariables' => $out]);
+                $msg = count($out) . ' custom variables saved.';
                 break;
 
             case 'loadout':
@@ -489,7 +515,9 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
   skipped here whatever you tick.</p>
 
   <?php
-    $customTraits = ghostd_custom_traits();
+    // Only the names marked as TRAITS. The rest are variables and belong on
+    // the other screen; one list, two destinations, said once in the catalogue.
+    $customTraits = array_filter(ghostd_custom_traits(), static fn($m) => $m['where'] === 'trait');
     // What the role has now, by name, so a tick knows whether it is on.
     $has = [];
     foreach ($r['traits'] as $row) {
@@ -573,47 +601,62 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
 <?php if ($sec === 'vars'): ?>
 <section class="tsection" id="vars">
   <h2>Custom variables</h2>
-  <p class="dim">Put on the man with <code>setVariable</code> when he slots in -
-  <code>draWhitelisted</code>, <code>isISR</code>, <code>isJFO</code>.
-  <strong>Global</strong> means every machine sees it; leave it on unless you
-  know it is local.</p>
-  <p class="dim">PAC currently owns
-  <?php foreach ($pacOwned as $n): ?><code><?= h($n) ?></code> <?php endforeach; ?>
-  - a role setting any of those is skipped, because a skill sets them instead.</p>
-  <?php $open('vars'); ?>
-    <table class="grid">
-      <thead><tr><th>Variable</th><th>Value</th><th>Global</th><th>Remove</th></tr></thead>
-      <tbody>
-      <?php $varRows = $r['customVariables']; $varRows[] = ['', 'true', 'true']; ?>
-      <?php foreach ($varRows as $i => $row): ?>
-        <?php $isNew = $i >= count($r['customVariables']); ?>
-        <tr>
-          <td>
-            <input type="text" name="var_name[<?= $i ?>]" value="<?= h((string) $row[0]) ?>"
-                   placeholder="<?= $isNew ? 'draWhitelisted' : '' ?>" style="min-width:16rem">
-            <?php if ((string) $row[0] !== '' && in_array(strtolower((string) $row[0]), $pacOwned, true)): ?>
-              <div class="bad">PAC owns this - the role skips it. Set it as a skill instead.</div>
+  <p class="note">Put on the man with <code>setVariable</code> when he slots in.
+  These are the names <strong>this unit</strong> uses - the ones the engine has
+  never heard of - and they are kept in one list so every role ticks the same
+  spellings. Add one under <a href="?page=orbat&amp;s=common">ORBAT &rarr;
+  Common</a>.</p>
+
+  <?php
+    $cat = array_filter(ghostd_custom_traits(), static fn($m) => $m['where'] === 'variable');
+    $has = [];
+    foreach ($r['customVariables'] as $row) { $has[(string) $row[0]] = $row[1]; }
+    $isOn = static fn($n) => isset($has[$n])
+        && !in_array(strtolower((string) $has[$n]), ['false', '0', 'no', ''], true);
+  ?>
+
+  <?php if ($cat === []): ?>
+    <p class="note readonly">The list is empty, so there is nothing to tick.
+    Add names under <a href="?page=orbat&amp;s=common">ORBAT &rarr; Common</a>.</p>
+  <?php else: ?>
+    <?php $open('vars'); ?>
+      <div class="checkgrid">
+        <?php foreach ($cat as $vn => $meta): ?>
+          <?php $taken = in_array(strtolower($vn), $pacOwned, true); ?>
+          <label class="inlinelabel<?= $taken ? ' takenrow' : '' ?>">
+            <?php if ($meta['kind'] === 'number'): ?>
+              <input type="number" step="1" name="v_num[<?= h($vn) ?>]" style="width:5rem"
+                     value="<?= h(isset($has[$vn]) ? (string) $has[$vn] : '') ?>" <?= $taken ? 'disabled' : '' ?>>
+            <?php else: ?>
+              <input type="checkbox" name="v_on[]" value="<?= h($vn) ?>"
+                     <?= $isOn($vn) ? 'checked' : '' ?> <?= $taken ? 'disabled' : '' ?>>
             <?php endif; ?>
-          </td>
-          <td><input type="text" name="var_v1[<?= $i ?>]" value="<?= h((string) $row[1]) ?>"
-                     placeholder="true" style="min-width:8rem"></td>
-          <td>
-            <select name="var_v2[<?= $i ?>]">
-              <option value="true" <?= (string) ($row[2] ?? 'true') !== 'false' ? 'selected' : '' ?>>yes</option>
-              <option value="false" <?= (string) ($row[2] ?? 'true') === 'false' ? 'selected' : '' ?>>no</option>
-            </select>
-          </td>
-          <td><?= $isNew ? '' : '<input type="checkbox" name="var_remove[]" value="' . $i . '">' ?></td>
-        </tr>
-      <?php endforeach; ?>
-      </tbody>
-    </table>
-    <div class="actions"><button type="submit">Save custom variables</button></div>
-  </form>
+            <span><strong><?= h($meta['label']) ?></strong>
+              <?php if ($meta['label'] !== $vn): ?><code><?= h($vn) ?></code><?php endif; ?>
+              <span class="dim"><?= $taken ? 'PAC owns this - a skill sets it' : h($meta['help']) ?></span></span>
+          </label>
+        <?php endforeach; ?>
+      </div>
+      <div class="actions"><button type="submit">Save custom variables</button></div>
+    </form>
+  <?php endif; ?>
+
+  <?php
+    $stray = [];
+    foreach ($r['customVariables'] as $row) {
+        $vn = (string) $row[0];
+        if (!isset($cat[$vn])) { $stray[] = $vn; }
+    }
+  ?>
+  <?php if ($stray !== []): ?>
+    <p class="flash bad">This role sets variables that are not on the list:
+    <?= h(implode(', ', $stray)) ?>. <strong>Saving this page drops them.</strong>
+    Add them under <a href="?page=orbat&amp;s=common">ORBAT &rarr; Common</a> first
+    if you want to keep them.</p>
+  <?php endif; ?>
 </section>
 <?php endif; ?>
 
-<!-- ------------------------------------------------------------- loadout -->
 <?php if ($sec === 'loadout'): ?>
 <section class="tsection" id="loadout">
   <h2>Default loadout</h2>

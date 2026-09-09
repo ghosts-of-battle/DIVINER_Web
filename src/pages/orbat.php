@@ -21,12 +21,19 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../templates.php';
 require_once __DIR__ . '/../orbat.php';
+// ghostd_doc_delete lives with the roles - it is the one document delete there is.
+require_once __DIR__ . '/../roles.php';
 
 $cfg  = ghostd_config();
 $unit = $cfg['unit'];
 
 const GHOSTD_ORBAT_TABS = [
-    'common'   => 'Common',
+    'versions' => 'Orders of battle',
+    // NOT "Common". A VERSION is called Common - the unnamed one - and a tab
+    // with the same name reads as "edit the common ORBAT" when it is really
+    // "the details of whichever ORBAT you are editing". The key stays 'common'
+    // because links and saves use it; only the word changes.
+    'common'   => 'Details',
     'radio'    => 'Radio',
     'roles'    => 'Roles',
     'squads'   => 'Squads',
@@ -36,9 +43,9 @@ const GHOSTD_ORBAT_TABS = [
 // COMMON FIRST, because it is what the order of battle IS - who this unit is
 // and which side it fights on - before any of its parts. The four after it are
 // in the order they have to be filled in.
-$tab = (string) ($_GET['s'] ?? ($_POST['s'] ?? 'common'));
+$tab = (string) ($_GET['s'] ?? ($_POST['s'] ?? 'versions'));
 if (!isset(GHOSTD_ORBAT_TABS[$tab])) {
-    $tab = 'common';
+    $tab = 'versions';
 }
 
 // A tab's own sub-tabs, drawn in the SAME bar as the tabs themselves. Two

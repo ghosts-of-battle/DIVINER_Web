@@ -145,7 +145,7 @@ const GHOSTD_TEMPLATES = [
         'doc'     => 'traits',
         'shape'   => 'items',
         'replaces' => 'nothing - this is new',
-        'blurb'   => 'The names this unit invented, as opposed to the seven the engine already has. A role assigns these by ticking them, and the custom flag setUnitTrait needs is set for you.',
+        'blurb'   => 'Every name this unit invented - the ones a role puts on a man that the engine has never heard of. draWhitelisted, isISR, draAccessDrones. A role assigns them by ticking, and whether each is a setVariable or a setUnitTrait is decided here rather than by whoever is editing the role.',
         'idHelp'  => 'The name exactly as the mod reads it - draWhitelisted, isRTO. No spaces.',
         'idPattern' => '/^[A-Za-z_][A-Za-z0-9_]{0,63}$/',
         'fields'  => [
@@ -153,6 +153,8 @@ const GHOSTD_TEMPLATES = [
                         'help' => 'What it is called in the role editor. "DRA whitelisted".'],
             'kind'  => ['label' => 'Kind', 'kind' => 'text',
                         'help' => 'bool for a yes/no, number for a value. Anything else is read as bool.'],
+            'where' => ['label' => 'Set as', 'kind' => 'text',
+                        'help' => 'variable for setVariable (draWhitelisted, isISR - most of them), trait for setUnitTrait. They are two different things on the man and two different lists on a role.'],
             'help'  => ['label' => 'What it does', 'kind' => 'text',
                         'help' => 'One line, read by whoever is deciding whether a role should have it.'],
         ],
@@ -631,6 +633,26 @@ function ghostd_squad_variant(string $squadName): string
  * the common arsenal (the bare-bones one, or the camo set an operation is in)
  * and currentOrbat picks the order of battle. Both are read at mission start.
  */
+/**
+ * The setting that names which VERSION of a template is in use.
+ *
+ * "current" and the document's name - currentArsenal, currentNets,
+ * currentMotorpool. The same rule the mod uses (ghostD_pac_fnc_svcSections), so
+ * a template type added here is steerable from a mission without either side
+ * being told about it separately.
+ *
+ * Empty for the unit's own records - ranks, skills, the trait catalogue. A unit
+ * has one of each of those whatever mission is running.
+ */
+function ghostd_template_setting(string $key): string
+{
+    $t = GHOSTD_TEMPLATES[$key] ?? null;
+    if ($t === null || in_array($key, ['traits'], true)) {
+        return '';
+    }
+    return 'current' . ucfirst($t['doc']);
+}
+
 function ghostd_setting(string $key, string $default = ''): string
 {
     try {

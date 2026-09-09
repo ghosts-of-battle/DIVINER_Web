@@ -96,6 +96,52 @@ function ghostd_orbat_variants(): array
     return $out;
 }
 
+/**
+ * THE DEFAULT ORBAT - the version missions actually run.
+ *
+ * A unit builds several orders of battle and one of them is the live one. The
+ * "currentOrbat" setting names it and ghostD_pac_fnc_svcStructure reads that at
+ * boot, so it is the same answer the game gets. Empty means the common one.
+ *
+ * Everything that asks "what squads are there" - the roster's group dropdown,
+ * its role dropdown - asks this, not whichever version somebody happens to be
+ * editing. A roster full of squads from a draft ORBAT is a roster nobody can
+ * slot from.
+ */
+function ghostd_default_orbat_id(): string
+{
+    $v = ghostd_setting('currentOrbat');
+    return ($v !== '' && ghostd_variant_ok($v) && in_array($v, ghostd_orbat_variants(), true)) ? $v : '';
+}
+
+function ghostd_default_orbat(): array
+{
+    return ghostd_orbat(ghostd_default_orbat_id());
+}
+
+/**
+ * The roles a squad's slots ask for, in slot order, without repeats.
+ *
+ * Empty squad name, or a squad with no slots, answers every role there is -
+ * because a man in no squad still has to be given a role.
+ */
+function ghostd_roles_for_squad(string $squad): array
+{
+    $out = [];
+    if ($squad !== '') {
+        foreach (ghostd_default_orbat()['groups'] as $g) {
+            if (strcasecmp((string) ($g[0] ?? ''), $squad) !== 0) {
+                continue;
+            }
+            foreach ((array) ($g[1] ?? []) as $r) {
+                $r = (string) $r;
+                if ($r !== '' && !in_array($r, $out, true)) { $out[] = $r; }
+            }
+        }
+    }
+    return $out;
+}
+
 /** One version of the ORBAT, every list present. */
 function ghostd_orbat(string $variant = ''): array
 {

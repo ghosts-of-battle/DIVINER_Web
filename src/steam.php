@@ -306,7 +306,7 @@ function ghostd_http_get(string $url): ?string
             CURLOPT_SSL_VERIFYHOST => 2,
         ]);
         $body = curl_exec($ch);
-        curl_close($ch);
+        unset($ch);          // see above - curl_close is deprecated and does nothing
         return is_string($body) ? $body : null;
     }
 

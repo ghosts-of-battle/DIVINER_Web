@@ -322,11 +322,19 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
     <div class="fields">
       <label>Name <span class="dim">renaming takes its platoon, nets and channels with it</span>
         <input type="text" name="newname" value="<?= h($sq['name']) ?>" required></label>
-      <label>Shown when <span class="dim">an SQF condition; <code>true</code> is always</span>
+      <label>Offered when
+        <span class="dim">leave it <code>true</code> unless this squad only exists on some nights</span>
         <input type="text" name="cond" value="<?= h($sq['cond']) ?>"></label>
     </div>
     <div class="actions"><button type="submit">Save identity</button></div>
   </form>
+  <p class="note"><strong>Offered when</strong> is SQF that has to be true for
+  this squad to be drawn on the role screen - it is compiled and run each time
+  the screen lists this squad's slots. <code>true</code> means always, which is
+  what almost every squad wants. It is the escape hatch for a squad that only
+  exists on some nights: <code>count allPlayers &gt; 24</code> for one you only
+  field when enough people turn up. A squad whose condition is false is not
+  drawn at all and nobody can slot into it.</p>
 </section>
 <?php endif; ?>
 
