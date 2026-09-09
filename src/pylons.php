@@ -73,7 +73,7 @@ function ghostd_pylon_tree(string $variant = ''): array
                 }
                 $rows[] = [
                     (string) ($l[0] ?? ''),
-                    ghostd_sqf_encode(is_array($l[1] ?? null) ? $l[1] : [0]),
+                    ghostd_sqf_encode(is_array($l[1] ?? null) ? $l[1] : [0], 0, false),
                     (string) ($l[2] ?? ''),
                 ];
             }
@@ -104,8 +104,8 @@ function ghostd_pylon_tree_save(array $tree, string $variant = ''): void
                 if ($mag === '') {
                     continue;
                 }
-                $turret = trim((string) ($l[1] ?? '{0}'));
-                $load[] = [$mag, ghostd_sqf_decode($turret === '' ? '{0}' : $turret),
+                $turret = trim((string) ($l[1] ?? '[0]'));
+                $load[] = [$mag, ghostd_sqf_decode($turret === '' ? '[0]' : $turret),
                            is_numeric($l[2] ?? null) ? $l[2] + 0 : 0];
             }
             $ps[] = [(string) $pid, [
@@ -117,7 +117,7 @@ function ghostd_pylon_tree_save(array $tree, string $variant = ''): void
         $out[] = [(string) $veh, $ps];
     }
 
-    ghostd_template_code_save('pylons', $out === [] ? '' : ghostd_sqf_encode($out), $variant);
+    ghostd_template_code_save('pylons', $out === [] ? '' : ghostd_sqf_encode($out, 0, false), $variant);
 }
 
 /** How many magazines a vehicle's presets hold, for the card summary. */

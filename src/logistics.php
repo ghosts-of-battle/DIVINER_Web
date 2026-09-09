@@ -69,7 +69,7 @@ function ghostd_logistics_save(array $tree, string $variant = ''): void
         $out[] = [(string) $name, $items];
     }
 
-    ghostd_template_code_save('logistics', $out === [] ? '' : ghostd_sqf_encode($out), $variant);
+    ghostd_template_code_save('logistics', $out === [] ? '' : ghostd_sqf_encode($out, 0, false), $variant);
 }
 
 /** How many of everything a crate holds, for the card summary. */

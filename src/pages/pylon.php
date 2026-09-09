@@ -59,15 +59,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($mag === '' || in_array((string) $i, $remove, true)) {
                 continue;
             }
-            $turret = trim((string) ($_POST['m_turret'][$i] ?? '{0}'));
+            $turret = trim((string) ($_POST['m_turret'][$i] ?? '[0]'));
             if ($turret === '') {
-                $turret = '{0}';
+                $turret = '[0]';
             }
             try {
                 ghostd_sqf_decode($turret);
             } catch (Throwable $e) {
                 throw new RuntimeException('"' . $turret . '" is not a turret path. It is a list of '
-                    . 'numbers: {0} the main turret, {0,0} one mounted on it, {} the driver.');
+                    . 'numbers: [0] the main turret, [0,0] one mounted on it, [] the driver.');
             }
             $rounds = trim((string) ($_POST['m_rounds'][$i] ?? ''));
             $load[] = [$mag, $turret, is_numeric($rounds) ? $rounds + 0 : 0];
@@ -110,7 +110,7 @@ $have = count($rows);
 // ONE SPARE ROW so the page works with no JavaScript, and an add button for
 // when you are putting in a dozen (user, 2026-09-09: "when you edit a plyon
 // config there is no add button to add a new mag").
-$rows[] = ['', '{0}', ''];
+$rows[] = ['', '[0]', ''];
 
 ghostd_head($isEdit ? $veh . ' - ' . $preset : 'New pylon preset', 'config');
 if ($err !== null) { ghostd_flash('bad', $err); }
@@ -138,8 +138,8 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 
   <h2>Magazines <span class="dim"><?= $have ?></span></h2>
   <p class="dim"><strong>Turret</strong> is the standard Arma path -
-  <code>{0}</code> the main turret, <code>{0,0}</code> one mounted on it,
-  <code>{}</code> the driver.</p>
+  <code>[0]</code> the main turret, <code>[0,0]</code> one mounted on it,
+  <code>[]</code> the driver.</p>
 
   <table class="grid">
     <thead><tr><th style="width:56%">Magazine</th><th style="width:16%">Turret</th>
@@ -160,7 +160,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
   <template id="mags-row">
     <tr>
       <td><input type="text" name="m_mag[__I__]" placeholder="24Rnd_120mm_APFSDS_shells"></td>
-      <td><input type="text" name="m_turret[__I__]" value="{0}"></td>
+      <td><input type="text" name="m_turret[__I__]" value="[0]"></td>
       <td><input type="number" name="m_rounds[__I__]"></td>
       <td></td>
     </tr>

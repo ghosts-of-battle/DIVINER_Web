@@ -399,8 +399,15 @@ function ghostd_doc_delete(string $id): bool
 // ---------------------------------------------------------------------------
 
 /** A nested array of strings and numbers, written the way a config file does. */
-function ghostd_sqf_encode($v, int $depth = 0): string
+function ghostd_sqf_encode($v, int $depth = 0, bool $brace = true): string
 {
+    // BRACES OR BRACKETS - and it is not a matter of taste. A config file
+    // writes an array as {...}; an SQF FILE writes it as [...], and <unit>.pylons
+    // and <unit>.logistics are SQF files kept in a document. Writing braces into
+    // one of those makes the mod compile CODE instead of a table, and the crate
+    // or the preset menu is simply empty with nothing said (found 2026-09-09).
+    $open  = $brace ? '{' : '[';
+    $close = $brace ? '}' : ']';
     if (is_array($v)) {
         $flat = true;
         foreach ($v as $x) {
@@ -408,15 +415,15 @@ function ghostd_sqf_encode($v, int $depth = 0): string
         }
         $parts = [];
         foreach ($v as $x) {
-            $parts[] = ghostd_sqf_encode($x, $depth + 1);
+            $parts[] = ghostd_sqf_encode($x, $depth + 1, $brace);
         }
         // A row of plain values stays on its line; a list that holds lists is
         // broken up, so a loadout reads as one line per slot.
         if ($flat || $depth > 1) {
-            return '{' . implode(',', $parts) . '}';
+            return $open . implode(',', $parts) . $close;
         }
         $pad = str_repeat('    ', $depth + 1);
-        return "{\n" . $pad . implode(",\n" . $pad, $parts) . "\n" . str_repeat('    ', $depth) . '}';
+        return $open . "\n" . $pad . implode(",\n" . $pad, $parts) . "\n" . str_repeat('    ', $depth) . $close;
     }
     if (is_bool($v)) {
         return $v ? 'true' : 'false';
