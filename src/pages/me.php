@@ -136,6 +136,36 @@ rest is what you choose to share.</p>
   <div class="actions"><button type="submit">Save</button></div>
 </form>
 
+<h2>My PAC requests</h2>
+<?php
+  require_once __DIR__ . '/../tickets.php';
+  $mine = ghostd_my_tickets($uid);
+?>
+<?php if ($mine === []): ?>
+  <p class="dim">You have not raised any.
+  <a href="?page=tickets">Raise one</a> - leave, an award recommendation, a
+  request or a problem.</p>
+<?php else: ?>
+  <table class="grid">
+    <thead><tr><th>Id</th><th>Kind</th><th>Subject</th><th>State</th><th>Replies</th><th>Raised</th></tr></thead>
+    <tbody>
+    <?php foreach ($mine as $t): ?>
+      <?php $st = (string) ($t['status'] ?? 'open'); ?>
+      <tr>
+        <td><a href="?page=ticket&amp;id=<?= urlencode((string) ($t['id'] ?? '')) ?>"><code><?= h((string) ($t['id'] ?? '')) ?></code></a></td>
+        <td><?= h(GHOSTD_TICKET_KINDS[(string) ($t['kind'] ?? '')]['label'] ?? '') ?></td>
+        <td><a href="?page=ticket&amp;id=<?= urlencode((string) ($t['id'] ?? '')) ?>"><?= h((string) ($t['subject'] ?? '')) ?></a></td>
+        <td><span class="pill <?= $st === 'open' ? '' : ($st === 'declined' ? 'hot' : 'dimpill') ?>"><?= h(GHOSTD_TICKET_STATUSES[$st] ?? $st) ?></span></td>
+        <td><?= count($t['replies'] ?? []) ?></td>
+        <td class="dim"><?= h((string) ($t['createdAt'] ?? '')) ?></td>
+      </tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table>
+  <p class="dim">You see the public replies on your own requests. Admins may
+  also keep private notes, which you will not see.</p>
+<?php endif; ?>
+
 <h2>What only an admin can change</h2>
 <table class="kv">
   <tr><th>Name</th><td><?= cell($me['name'] ?? null) ?></td></tr>

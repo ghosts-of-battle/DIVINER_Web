@@ -14,6 +14,12 @@
  *
  * A MEMBER MAY RAISE AND REPLY, NOT DECIDE. Status changes are an admin's, and
  * that is enforced at the write, not by hiding a button.
+ *
+ * PUBLIC AND PRIVATE NOTES. An admin needs somewhere to write "spoke to their
+ * section commander, holding this until Tuesday" without the person reading
+ * it. So every reply carries a private flag: a member sees their own request
+ * and the public notes on it; an admin sees everything. The filtering happens
+ * in ghostd_ticket_for_reader, once, so no page can forget it.
  */
 
 declare(strict_types=1);
@@ -164,7 +170,7 @@ function ghostd_ticket_raise(string $kind, string $subject, string $body, string
  * conversation; a member closing it as "accepted" would be deciding their own
  * leave request.
  */
-function ghostd_ticket_reply(string $id, string $text, ?string $status = null): void
+function ghostd_ticket_reply(string $id, string $text, ?string $status = null, bool $private = false): void
 {
     $t = ghostd_ticket($id);
     if ($t === null) {
@@ -176,6 +182,9 @@ function ghostd_ticket_reply(string $id, string $text, ?string $status = null): 
     $text = trim($text);
     if ($text === '' && $status === null) {
         throw new RuntimeException('Nothing to add.');
+    }
+    if ($private && !ghostd_is_admin()) {
+        throw new RuntimeException('Only an admin can leave a private note.');
     }
     if ($status !== null) {
         if (!ghostd_is_admin()) {
@@ -191,11 +200,12 @@ function ghostd_ticket_reply(string $id, string $text, ?string $status = null): 
     $replies = is_array($t['replies'] ?? null) ? $t['replies'] : [];
     if ($text !== '' || $status !== null) {
         $replies[] = [
-            'at'     => $now,
-            'byUid'  => $uid,
-            'byName' => (string) ($_SESSION['ghostd_name'] ?? ($uid !== '' ? $uid : 'admin')),
-            'text'   => mb_substr($text, 0, 8000),
-            'status' => $status,
+            'at'      => $now,
+            'byUid'   => $uid,
+            'byName'  => (string) ($_SESSION['ghostd_name'] ?? ($uid !== '' ? $uid : 'admin')),
+            'text'    => mb_substr($text, 0, 8000),
+            'status'  => $status,
+            'private' => $private,
         ];
     }
 
@@ -216,4 +226,50 @@ function ghostd_ticket_reply(string $id, string $text, ?string $status = null): 
     } finally {
         ghostd_write_scope(false);
     }
+}
+
+/**
+ * A ticket as this reader may see it.
+ *
+ * ONE PLACE, ONE RULE. A member sees their own request and the public replies
+ * on it; an admin sees the lot. Every page renders what this returns rather
+ * than filtering for itself - a page that forgets is a page that leaks a
+ * private note to the person it is about.
+ */
+function ghostd_ticket_for_reader(array $t): array
+{
+    if (ghostd_is_admin()) {
+        return $t;
+    }
+    $out = $t;
+    $out['replies'] = array_values(array_filter(
+        is_array($t['replies'] ?? null) ? $t['replies'] : [],
+        static fn($r) => empty($r['private'])
+    ));
+    return $out;
+}
+
+/** Every request this person raised, newest first. Cheap enough for one page. */
+function ghostd_my_tickets(string $uid): array
+{
+    if ($uid === '') {
+        return [];
+    }
+    $out = [];
+    try {
+        $prefix = ghostd_ticket_prefix();
+        foreach (ghostd_keys() as $key) {
+            if (!str_starts_with($key, $prefix)) {
+                continue;
+            }
+            $doc = ghostd_get($key);
+            if (is_array($doc) && (string) ($doc['raisedBy'] ?? '') === $uid) {
+                $out[] = ghostd_ticket_for_reader($doc);
+            }
+        }
+    } catch (Throwable $e) {
+        return [];
+    }
+    usort($out, static fn($a, $b) => strcmp((string) ($b['createdAt'] ?? ''), (string) ($a['createdAt'] ?? '')));
+    return $out;
 }

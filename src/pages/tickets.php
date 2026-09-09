@@ -37,7 +37,8 @@ try {
 } catch (Throwable $e) {
     $dbErr = $e->getMessage();
 }
-$mine = array_values(array_filter($all, 'ghostd_ticket_visible'));
+$mine = array_values(array_map('ghostd_ticket_for_reader',
+    array_filter($all, 'ghostd_ticket_visible')));
 
 $filter = (string) ($_GET['show'] ?? 'open');
 $shown = array_values(array_filter($mine, static function ($t) use ($filter) {
@@ -55,17 +56,26 @@ try {
     // Raising one without naming anybody still works.
 }
 
-ghostd_head('PAC actions', 'tickets');
+// A player raises requests; an admin actions them. Same list, different job,
+// so it is named for whoever is looking at it.
+$isAdmin = ghostd_is_admin();
+ghostd_head($isAdmin ? 'PAC actions' : 'PAC requests', 'tickets');
 if ($msg !== null) { ghostd_flash('good', $msg); }
 if ($err !== null) { ghostd_flash('bad', $err); }
 if ($dbErr !== null) { ghostd_flash('bad', 'PAC actions could not be read: ' . $dbErr); }
 ?>
-<p class="note">Leave, award recommendations, requests and problems - anything
-that needs somebody to answer. Raise one here or in game; they are the same
-list either way.</p>
+<?php if ($isAdmin): ?>
+  <p class="note">Everything the unit has raised - leave, award
+  recommendations, requests and problems. Open one to reply, leave a private
+  note, or decide it.</p>
+<?php else: ?>
+  <p class="note">Leave, award recommendations, requests and problems -
+  anything that needs an admin to answer. Raise one here or in game; they are
+  the same list either way. You see your own and the replies on them.</p>
+<?php endif; ?>
 
 <details class="card" <?= $shown === [] ? 'open' : '' ?>>
-  <summary><strong>Raise a PAC action</strong></summary>
+  <summary><strong>Raise a PAC request</strong></summary>
   <form method="post" class="fields">
     <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
 
@@ -97,7 +107,7 @@ list either way.</p>
 </details>
 
 <h2>
-  <?= ghostd_is_admin() ? 'Everything raised' : 'Yours' ?>
+  <?= $isAdmin ? 'Everything raised' : 'Your requests' ?>
   <span class="dim"><?= count($shown) ?> of <?= count($mine) ?></span>
 </h2>
 <p class="dim">

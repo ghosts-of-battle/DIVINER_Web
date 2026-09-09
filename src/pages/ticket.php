@@ -21,7 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ghostd_ticket_reply(
             $id,
             (string) ($_POST['text'] ?? ''),
-            $status !== '' ? $status : null
+            $status !== '' ? $status : null,
+            isset($_POST['private'])
         );
         $msg = $status !== '' ? 'Marked ' . (GHOSTD_TICKET_STATUSES[$status] ?? $status) . '.' : 'Reply added.';
     } catch (Throwable $e) {
@@ -34,6 +35,11 @@ try {
     $t = ghostd_ticket($id);
 } catch (Throwable $e) {
     $err = $err ?? $e->getMessage();
+}
+
+// Filtered for whoever is reading before anything renders it.
+if ($t !== null) {
+    $t = ghostd_ticket_for_reader($t);
 }
 
 if ($t === null || !ghostd_ticket_visible($t)) {
@@ -85,6 +91,9 @@ if ($err !== null) { ghostd_flash('bad', $err); }
       <?php if (!empty($r['status'])): ?>
         <span class="pill dimpill">marked <?= h(GHOSTD_TICKET_STATUSES[(string) $r['status']] ?? (string) $r['status']) ?></span>
       <?php endif; ?>
+      <?php if (!empty($r['private'])): ?>
+        <span class="pill hot">private</span>
+      <?php endif; ?>
     </p>
     <?php $txt = (string) ($r['text'] ?? ''); ?>
     <?php if ($txt !== ''): ?><p><?= nl2br(h($txt)) ?></p><?php endif; ?>
@@ -99,6 +108,10 @@ if ($err !== null) { ghostd_flash('bad', $err); }
   <textarea id="text" name="text" rows="4" class="short"></textarea>
 
   <?php if (ghostd_is_admin()): ?>
+    <label class="inlinelabel">
+      <input type="checkbox" name="private" value="1">
+      Private note - only admins see this
+    </label>
     <label for="status">Change the state <span class="dim">optional</span></label>
     <select id="status" name="status">
       <option value="">leave as <?= h(GHOSTD_TICKET_STATUSES[$st] ?? $st) ?></option>
