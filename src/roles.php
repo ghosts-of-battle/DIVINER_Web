@@ -45,6 +45,89 @@ const GHOSTD_TILES = [
     'pac'     => 'The PAC tile',
 ];
 
+/**
+ * The traits the ENGINE itself knows, from getAllUnitTraits.
+ *
+ * WHY THE DISTINCTION MATTERS. setUnitTrait takes a third argument saying
+ * whether the name is a custom one; pass false for a name the engine does not
+ * have and the trait is silently dropped. These seven are the only names that
+ * take false. Anything else - a unit's own flag - needs custom set.
+ *
+ * Two of them are NUMBERS (audibleCoef, camouflageCoef, loadCoef take a
+ * coefficient); the rest are true/false.
+ */
+const GHOSTD_ENGINE_TRAITS = [
+    'audibleCoef'         => 'how much noise he makes - a number, 1 is normal',
+    'camouflageCoef'      => 'how easily he is seen - a number, 1 is normal',
+    'loadCoef'            => 'how much he can carry - a number, 1 is normal',
+    'medic'               => 'engine medic',
+    'engineer'            => 'engine engineer',
+    'explosiveSpecialist' => 'engine EOD',
+    'UAVHacker'           => 'may take over enemy UAVs',
+];
+
+/**
+ * The unit's OWN traits, from <unit>.traits - name => [label, kind, help].
+ *
+ * Everything not in GHOSTD_ENGINE_TRAITS needs setUnitTrait's custom flag set,
+ * and that is the whole reason this list exists: a role ticks a name off it and
+ * the flag is decided by which list the name came from, rather than by somebody
+ * remembering.
+ */
+function ghostd_custom_traits(): array
+{
+    $out = [];
+    try {
+        foreach (ghostd_template_items('traits') as $id => $t) {
+            $kind = strtolower(trim((string) ($t['kind'] ?? 'bool')));
+            $out[(string) $id] = [
+                'label' => trim((string) ($t['label'] ?? '')) ?: (string) $id,
+                'kind'  => $kind === 'number' ? 'number' : 'bool',
+                'help'  => trim((string) ($t['help'] ?? '')),
+            ];
+        }
+    } catch (Throwable $e) {
+        return [];
+    }
+    return $out;
+}
+
+/**
+ * The trait and variable names TAC//PAC has taken, which a role cannot set.
+ *
+ * THE SAME DERIVATION AS ghostD_pac_fnc_managedNames, and it has to stay the
+ * same: the mod SKIPS these when it applies a role, so a role that sets one is
+ * a role with a setting that does nothing and nothing in game says so. Six are
+ * built in; the rest come from whatever the unit's skills declare, because a
+ * skill setting "var:isRTO=true" has by that taken isRTO away from the roles.
+ */
+function ghostd_pac_owned(): array
+{
+    $names = ['medic', 'engineer', 'explosivespecialist',
+              'ace_medical_medicclass', 'ace_isengineer', 'ace_iseod'];
+    try {
+        $doc = ghostd_get(ghostd_config()['unit'] . '.skills');
+        foreach ((array) ($doc['items'] ?? []) as $s) {
+            foreach ((array) (is_array($s) ? ($s['effects'] ?? []) : []) as $e) {
+                $parts = explode(':', (string) $e, 2);
+                if (count($parts) < 2) {
+                    continue;
+                }
+                $kind = strtolower(trim($parts[0]));
+                $val  = trim($parts[1]);
+                if ($kind === 'trait') {
+                    $names[] = strtolower($val);
+                } elseif ($kind === 'var') {
+                    $names[] = strtolower(trim(explode('=', $val)[0]));
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        // The built-in six are still right without the document.
+    }
+    return array_values(array_unique($names));
+}
+
 /** Which parts of a role are edited together. Drives the sections on the page. */
 const GHOSTD_ROLE_SECTIONS = [
     'identity' => 'Identity',
@@ -55,6 +138,7 @@ const GHOSTD_ROLE_SECTIONS = [
     'vars'     => 'Custom variables',
     'loadout'  => 'Default loadout',
     'arsenal'  => 'Arsenal',
+    'remove'   => 'Remove',
 ];
 
 function ghostd_role_doc_id(string $id): string
@@ -107,7 +191,9 @@ function ghostd_role_rows($v, int $width): array
         }
         $r = [$name];
         for ($i = 1; $i < $width; $i++) {
-            $x = $row[$i] ?? '';
+            // A row written short means "the default", and for the flag in the
+            // third column that default is false - the engine's own traits.
+            $x = $row[$i] ?? ($i === 2 ? 'false' : '');
             // Numbers stay numbers - ace_medical_medicClass is 1, not "1", and
             // the mod's setVariable would put a string on the man.
             $r[] = is_int($x) || is_float($x) ? $x : (string) $x;
@@ -147,7 +233,11 @@ function ghostd_role(string $id): array
         'uids'            => $list('uids'),
         'nets'            => ghostd_role_rows($r['nets'] ?? [], 2),
         'tiles'           => ghostd_role_rows($r['tiles'] ?? [], 2),
-        'traits'          => ghostd_role_rows($r['traits'] ?? [], 2),
+        // THREE WIDE, not two. setUnitTrait's third argument says whether the
+        // name is a custom one, and dropping it made every custom trait a
+        // name the engine throws away without a word. Default "false", which
+        // is what the mission files write when they omit it.
+        'traits'          => ghostd_role_rows($r['traits'] ?? [], 3),
         'customVariables' => ghostd_role_rows($r['customVariables'] ?? [], 3),
         'defaultLoadout'  => is_array($r['defaultLoadout'] ?? null) ? $r['defaultLoadout'] : [],
         'arsenalWeapons'   => $list('arsenalWeapons'),

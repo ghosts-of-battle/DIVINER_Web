@@ -27,6 +27,40 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/templates.php';
 
+/**
+ * The sides a unit can be on, by the engine's own name.
+ *
+ * NOT FREE TEXT. A side the engine does not have is a side nothing can be
+ * created on, and the failure is at mission start with no message. These four
+ * are all there are; the labels are what a player calls them.
+ */
+const GHOSTD_SIDES = [
+    'WEST' => 'BLUFOR - WEST',
+    'EAST' => 'OPFOR - EAST',
+    'GUER' => 'INDEPENDENT - GUER',
+    'CIV'  => 'CIVILIAN - CIV',
+];
+
+/** Which parts of a squad are edited together - one section, one page. */
+const GHOSTD_SQUAD_SECTIONS = [
+    'identity' => 'Identity',
+    'slots'    => 'Slots',
+    'radio'    => 'Radio',
+    'arsenal'  => 'Arsenal',
+    'copy'     => 'Copy',
+    'remove'   => 'Remove',
+];
+
+/** The same for a platoon. */
+const GHOSTD_PLATOON_SECTIONS = [
+    'identity'  => 'Identity',
+    'squads'    => 'Squads',
+    'radio'     => 'Radio',
+    'arsenal'   => 'Arsenal',
+    'motorpool' => 'Motorpool',
+    'remove'    => 'Remove',
+];
+
 function ghostd_orbat_doc_id(string $variant = ''): string
 {
     $id = ghostd_config()['unit'] . '.orbat';
@@ -72,8 +106,10 @@ function ghostd_orbat(string $variant = ''): array
         $doc = null;
     }
     $arr = static fn($v) => is_array($v) ? array_values(array_filter($v, 'is_array')) : [];
+    $side = strtoupper((string) ($doc['side'] ?? ''));
     return [
         'faction'   => (string) ($doc['faction'] ?? ''),
+        'side'      => isset(GHOSTD_SIDES[$side]) ? $side : 'WEST',
         'platoons'  => $arr($doc['platoons'] ?? null),
         'groups'    => $arr($doc['groups'] ?? null),
         'radioNets' => $arr($doc['radioNets'] ?? null),

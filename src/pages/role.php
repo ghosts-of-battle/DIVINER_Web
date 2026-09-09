@@ -28,6 +28,15 @@ $unit = ghostd_config()['unit'];
 $id  = trim((string) ($_GET['id'] ?? ($_POST['id'] ?? '')));
 $new = ($id === '' || $id === '+');
 
+// ONE SECTION ON SCREEN AT A TIME. A role is eight different subjects and all
+// eight down one page is a page nobody reads to the bottom of - you scroll past
+// six things you did not come for. The section is part of the address, so a
+// save comes back to where it was made and a link can point at one.
+$sec = (string) ($_GET['s'] ?? ($_POST['s'] ?? 'identity'));
+if (!isset(GHOSTD_ROLE_SECTIONS[$sec])) {
+    $sec = 'identity';
+}
+
 $msg = null;
 $err = null;
 
@@ -62,6 +71,11 @@ try {
 }
 
 $arsenals = ghostd_template_variants('arsenal');
+
+// The names TAC//PAC's skills own. A role that sets one of these is a role with
+// a setting the mod skips, and nothing in game says so - which is exactly the
+// kind of thing an editor should refuse to let you do quietly.
+$pacOwned = ghostd_pac_owned();
 
 // ---- saving ----------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -163,9 +177,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $msg = count($on) . ' tiles saved.';
                 break;
 
+            // TICKED, NOT TYPED - and the custom flag comes from WHICH LIST the
+            // name is on, not from anybody remembering. That flag is
+            // setUnitTrait's third argument: wrong for a name the engine does
+            // not have and the trait is thrown away without a word.
             case 'traits':
-                ghostd_role_save($id, ['traits' => $rows('trait', 2)]);
-                $msg = 'Traits saved.';
+                $on   = (array) ($_POST['t_on'] ?? []);
+                $nums = (array) ($_POST['t_num'] ?? []);
+                $custom = ghostd_custom_traits();
+                $out = [];
+                foreach (array_merge(array_keys(GHOSTD_ENGINE_TRAITS), array_keys($custom)) as $t) {
+                    $isCustom = !isset(GHOSTD_ENGINE_TRAITS[$t]);
+                    $kind = $isCustom ? $custom[$t]['kind'] : (str_ends_with($t, 'Coef') ? 'number' : 'bool');
+                    if ($kind === 'number') {
+                        $v = trim((string) ($nums[$t] ?? ''));
+                        if ($v === '') {
+                            continue;            // not set is not the same as zero
+                        }
+                        $out[] = [$t, is_numeric($v) ? $v + 0 : $v, $isCustom ? 'true' : 'false'];
+                    } elseif (in_array($t, $on, true)) {
+                        $out[] = [$t, 'true', $isCustom ? 'true' : 'false'];
+                    }
+                }
+                ghostd_role_save($id, ['traits' => $out]);
+                $msg = count($out) . ' traits saved.';
                 break;
 
             case 'vars':
@@ -272,10 +307,11 @@ try {
 $csrf = ghostd_csrf_token();
 
 /** The header of one section, and the hidden fields every one of them posts. */
-$open = static function (string $what) use ($csrf, $id) {
+$open = static function (string $what) use ($csrf, $id, $sec) {
     echo '<form method="post">'
        . '<input type="hidden" name="csrf" value="' . h($csrf) . '">'
        . '<input type="hidden" name="id" value="' . h($id) . '">'
+       . '<input type="hidden" name="s" value="' . h($sec) . '">'
        . '<input type="hidden" name="what" value="' . h($what) . '">';
 };
 ?>
@@ -283,13 +319,15 @@ $open = static function (string $what) use ($csrf, $id) {
 <code><?= h(ghostd_role_doc_id($id)) ?></code> &middot;
 <?= $usedBy === [] ? 'used by nothing' : 'in ' . h(implode(', ', $usedBy)) ?></p>
 
-<nav class="sections onebar">
+<nav class="subrail">
   <?php foreach (GHOSTD_ROLE_SECTIONS as $k => $label): ?>
-    <a href="#<?= h($k) ?>"><?= h($label) ?></a>
+    <a class="<?= $sec === $k ? 'on' : '' ?>"
+       href="?page=role&amp;id=<?= urlencode($id) ?>&amp;s=<?= h($k) ?>"><?= h($label) ?></a>
   <?php endforeach; ?>
 </nav>
 
 <!-- ------------------------------------------------------------ identity -->
+<?php if ($sec === 'identity'): ?>
 <section class="tsection" id="identity">
   <h2>Identity</h2>
   <?php $open('identity'); ?>
@@ -308,8 +346,10 @@ $open = static function (string $what) use ($csrf, $id) {
     <div class="actions"><button type="submit">Save identity</button></div>
   </form>
 </section>
+<?php endif; ?>
 
 <!-- --------------------------------------------------------------- gates -->
+<?php if ($sec === 'gates'): ?>
 <section class="tsection" id="gates">
   <h2>Who may take it</h2>
   <p class="dim">All three are optional. Leave them empty and anybody may slot in.</p>
@@ -360,8 +400,10 @@ $open = static function (string $what) use ($csrf, $id) {
     <div class="actions"><button type="submit">Save who may take it</button></div>
   </form>
 </section>
+<?php endif; ?>
 
 <!-- ---------------------------------------------------------------- nets -->
+<?php if ($sec === 'nets'): ?>
 <section class="tsection" id="nets">
   <h2>Messaging nets</h2>
   <p class="dim">TAC//MSG. A net he is not on is a net he does not read - there is
@@ -405,8 +447,10 @@ $open = static function (string $what) use ($csrf, $id) {
   </form>
   <p class="dim"><a href="?page=configedit&amp;t=nets">Edit the net list</a> to add one that is not offered.</p>
 </section>
+<?php endif; ?>
 
 <!-- --------------------------------------------------------------- tiles -->
+<?php if ($sec === 'tiles'): ?>
 <section class="tsection" id="tiles">
   <h2>TAC//PAD tiles</h2>
   <p class="dim">A tile not ticked is not drawn at all, and the app behind it
@@ -431,41 +475,111 @@ $open = static function (string $what) use ($csrf, $id) {
     <div class="actions"><button type="submit">Save tiles</button></div>
   </form>
 </section>
+<?php endif; ?>
 
 <!-- -------------------------------------------------------------- traits -->
+<?php if ($sec === 'traits'): ?>
 <section class="tsection" id="traits">
   <h2>Traits</h2>
-  <p class="dim">Engine traits - <code>UAVHacker</code>, <code>audibleCoef</code>.
-  Anything TAC//PAC's skills own (medic, engineer, EOD, leader ...) is applied by
-  PAC afterwards and is ignored here, so set those as skills above.</p>
+  <p class="note"><strong>Three different things, and they are not mixed.</strong>
+  <em>Traits</em> are <code>setUnitTrait</code> - what is on this page.
+  <em>Custom variables</em> are <code>setVariable</code>, on their own page.
+  <em>Skills</em> are TAC//PAC's catalogue, under "Who may take it" - and PAC
+  applies those <strong>after</strong> the role, so anything a skill owns is
+  skipped here whatever you tick.</p>
+
+  <?php
+    $customTraits = ghostd_custom_traits();
+    // What the role has now, by name, so a tick knows whether it is on.
+    $has = [];
+    foreach ($r['traits'] as $row) {
+        $has[(string) $row[0]] = $row[1];
+    }
+    $isOn = static fn($t) => isset($has[$t])
+        && !in_array(strtolower((string) $has[$t]), ['false', '0', 'no', ''], true);
+  ?>
+
   <?php $open('traits'); ?>
-    <table class="grid">
-      <thead><tr><th>Trait</th><th>Value</th><th>Remove</th></tr></thead>
-      <tbody>
-      <?php $traitRows = $r['traits']; $traitRows[] = ['', 'true']; ?>
-      <?php foreach ($traitRows as $i => $row): ?>
-        <?php $isNew = $i >= count($r['traits']); ?>
-        <tr>
-          <td><input type="text" name="trait_name[<?= $i ?>]" value="<?= h((string) $row[0]) ?>"
-                     placeholder="<?= $isNew ? 'UAVHacker' : '' ?>" style="min-width:14rem"></td>
-          <td><input type="text" name="trait_v1[<?= $i ?>]" value="<?= h((string) $row[1]) ?>"
-                     placeholder="true" style="min-width:8rem"></td>
-          <td><?= $isNew ? '' : '<input type="checkbox" name="trait_remove[]" value="' . $i . '">' ?></td>
-        </tr>
+
+    <h3>The engine's own <span class="dim">every unit in Arma has these</span></h3>
+    <div class="checkgrid">
+      <?php foreach (GHOSTD_ENGINE_TRAITS as $t => $desc): ?>
+        <?php
+          $taken  = in_array(strtolower($t), $pacOwned, true);
+          $number = str_ends_with($t, 'Coef');
+        ?>
+        <label class="inlinelabel<?= $taken ? ' takenrow' : '' ?>">
+          <?php if ($number): ?>
+            <input type="number" step="0.01" name="t_num[<?= h($t) ?>]" style="width:5rem"
+                   value="<?= h(isset($has[$t]) ? (string) $has[$t] : '') ?>" <?= $taken ? 'disabled' : '' ?>>
+          <?php else: ?>
+            <input type="checkbox" name="t_on[]" value="<?= h($t) ?>"
+                   <?= $isOn($t) ? 'checked' : '' ?> <?= $taken ? 'disabled' : '' ?>>
+          <?php endif; ?>
+          <span><strong><?= h($t) ?></strong>
+            <span class="dim"><?= $taken ? 'PAC owns this - a skill sets it' : h($desc) ?></span></span>
+        </label>
       <?php endforeach; ?>
-      </tbody>
-    </table>
+    </div>
+
+    <h3>This unit's own <span class="dim"><?= count($customTraits) ?></span></h3>
+    <?php if ($customTraits === []): ?>
+      <p class="note readonly">None defined yet. Add them under
+      <a href="?page=orbat&amp;s=common">ORBAT &rarr; Common</a>, so every role
+      can tick the same names rather than each one typing its own.</p>
+    <?php else: ?>
+      <div class="checkgrid">
+        <?php foreach ($customTraits as $t => $meta): ?>
+          <?php $taken = in_array(strtolower($t), $pacOwned, true); ?>
+          <label class="inlinelabel<?= $taken ? ' takenrow' : '' ?>">
+            <?php if ($meta['kind'] === 'number'): ?>
+              <input type="number" step="0.01" name="t_num[<?= h($t) ?>]" style="width:5rem"
+                     value="<?= h(isset($has[$t]) ? (string) $has[$t] : '') ?>" <?= $taken ? 'disabled' : '' ?>>
+            <?php else: ?>
+              <input type="checkbox" name="t_on[]" value="<?= h($t) ?>"
+                     <?= $isOn($t) ? 'checked' : '' ?> <?= $taken ? 'disabled' : '' ?>>
+            <?php endif; ?>
+            <span><strong><?= h($meta['label']) ?></strong>
+              <code><?= h($t) ?></code>
+              <span class="dim"><?= $taken ? 'PAC owns this - a skill sets it' : h($meta['help']) ?></span></span>
+          </label>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+
     <div class="actions"><button type="submit">Save traits</button></div>
   </form>
-</section>
 
-<!-- ---------------------------------------------------------------- vars -->
+  <?php
+    // A trait the role carries that is on neither list is one nobody can see
+    // here, so it would be silently dropped by the next save. Say so.
+    $stray = [];
+    foreach ($r['traits'] as $row) {
+        $t = (string) $row[0];
+        if (!isset(GHOSTD_ENGINE_TRAITS[$t]) && !isset($customTraits[$t])) {
+            $stray[] = $t;
+        }
+    }
+  ?>
+  <?php if ($stray !== []): ?>
+    <p class="flash bad">This role carries traits that are on neither list:
+    <?= h(implode(', ', $stray)) ?>. <strong>Saving this page drops them.</strong>
+    Add them under <a href="?page=orbat&amp;s=common">ORBAT &rarr; Common</a> first
+    if you want to keep them.</p>
+  <?php endif; ?>
+</section>
+<?php endif; ?>
+
+<?php if ($sec === 'vars'): ?>
 <section class="tsection" id="vars">
   <h2>Custom variables</h2>
   <p class="dim">Put on the man with <code>setVariable</code> when he slots in -
-  <code>draWhitelisted</code>, <code>isISR</code>,
-  <code>ace_medical_medicClass</code>. <strong>Global</strong> means every
-  machine sees it; leave it on unless you know it is local.</p>
+  <code>draWhitelisted</code>, <code>isISR</code>, <code>isJFO</code>.
+  <strong>Global</strong> means every machine sees it; leave it on unless you
+  know it is local.</p>
+  <p class="dim">PAC currently owns
+  <?php foreach ($pacOwned as $n): ?><code><?= h($n) ?></code> <?php endforeach; ?>
+  - a role setting any of those is skipped, because a skill sets them instead.</p>
   <?php $open('vars'); ?>
     <table class="grid">
       <thead><tr><th>Variable</th><th>Value</th><th>Global</th><th>Remove</th></tr></thead>
@@ -474,8 +588,13 @@ $open = static function (string $what) use ($csrf, $id) {
       <?php foreach ($varRows as $i => $row): ?>
         <?php $isNew = $i >= count($r['customVariables']); ?>
         <tr>
-          <td><input type="text" name="var_name[<?= $i ?>]" value="<?= h((string) $row[0]) ?>"
-                     placeholder="<?= $isNew ? 'draWhitelisted' : '' ?>" style="min-width:16rem"></td>
+          <td>
+            <input type="text" name="var_name[<?= $i ?>]" value="<?= h((string) $row[0]) ?>"
+                   placeholder="<?= $isNew ? 'draWhitelisted' : '' ?>" style="min-width:16rem">
+            <?php if ((string) $row[0] !== '' && in_array(strtolower((string) $row[0]), $pacOwned, true)): ?>
+              <div class="bad">PAC owns this - the role skips it. Set it as a skill instead.</div>
+            <?php endif; ?>
+          </td>
           <td><input type="text" name="var_v1[<?= $i ?>]" value="<?= h((string) $row[1]) ?>"
                      placeholder="true" style="min-width:8rem"></td>
           <td>
@@ -492,8 +611,10 @@ $open = static function (string $what) use ($csrf, $id) {
     <div class="actions"><button type="submit">Save custom variables</button></div>
   </form>
 </section>
+<?php endif; ?>
 
 <!-- ------------------------------------------------------------- loadout -->
+<?php if ($sec === 'loadout'): ?>
 <section class="tsection" id="loadout">
   <h2>Default loadout</h2>
   <p class="dim">What he spawns in. This is the array a config file writes -
@@ -519,8 +640,10 @@ $open = static function (string $what) use ($csrf, $id) {
   <p class="dim">Braces or brackets, either is read. Nothing is written unless
   the whole thing parses, so a bad paste cannot destroy what is there.</p>
 </section>
+<?php endif; ?>
 
 <!-- ------------------------------------------------------------- arsenal -->
+<?php if ($sec === 'arsenal'): ?>
 <section class="tsection" id="arsenal">
   <h2>Arsenal</h2>
   <p class="note">Four layers, narrowest last: the <a href="?page=configedit&amp;t=arsenal">common
@@ -561,8 +684,10 @@ $open = static function (string $what) use ($csrf, $id) {
     <div class="actions"><button type="submit">Save arsenal</button></div>
   </form>
 </section>
+<?php endif; ?>
 
-<section class="tsection">
+<?php if ($sec === 'remove'): ?>
+<section class="tsection" id="remove">
   <h2>Remove</h2>
   <form method="post" class="danger">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
@@ -576,5 +701,6 @@ $open = static function (string $what) use ($csrf, $id) {
     <button type="submit" class="hot">Delete <?= h($id) ?></button>
   </form>
 </section>
+<?php endif; ?>
 <?php
 ghostd_foot();

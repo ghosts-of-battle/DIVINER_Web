@@ -46,6 +46,25 @@ function ghostd_count_one(string $key, array $t, string $variant): ?int
 
 $unit = ghostd_config()['unit'];
 
+// WHICH VERSION IS IN USE. A unit keeps several common arsenals - a bare-bones
+// one and a set named for the camo an operation is in - and until this was
+// wired the camo sets were documents nobody read.
+$msg = null;
+$err = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    ghostd_csrf_check();
+    try {
+        $k = (string) ($_POST['setting'] ?? '');
+        if (!in_array($k, ['currentArsenal', 'currentOrbat'], true)) {
+            throw new RuntimeException('Not a setting this page sets.');
+        }
+        ghostd_setting_save($k, trim((string) ($_POST['value'] ?? '')));
+        $msg = 'Saved. The mission reads it at the next start.';
+    } catch (Throwable $e) {
+        $err = $e->getMessage();
+    }
+}
+
 // The ORBAT is a template type too - it just has its own page rather than the
 // shared editor, so it is listed the same way and linked elsewhere.
 $orbatCounts = [];
@@ -69,6 +88,8 @@ try {
 }
 
 ghostd_head('Config templates', 'config');
+if ($msg !== null) { ghostd_flash('good', $msg); }
+if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
 <p class="note">What a mission used to ship in its <code>config\</code> folder,
 kept in the database instead. <strong>One set per unit</strong> - every mission
@@ -105,6 +126,26 @@ the common one unless something names another.</p>
     </table>
     <p class="dim"><a href="?page=configedit&amp;t=<?= urlencode($key) ?>">Open
     <?= h(strtolower($t['label'])) ?></a> to add a version.</p>
+
+    <?php if ($key === 'arsenal'): ?>
+      <?php $inUse = ghostd_setting('currentArsenal'); ?>
+      <form method="post" class="inline">
+        <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+        <input type="hidden" name="setting" value="currentArsenal">
+        <label for="currentArsenal">In use</label>
+        <select id="currentArsenal" name="value">
+          <option value="">Common - everything in the common document</option>
+          <?php foreach (ghostd_template_variants('arsenal') as $v): ?>
+            <option value="<?= h($v) ?>" <?= $inUse === $v ? 'selected' : '' ?>><?= h($v) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <button type="submit">Use it</button>
+      </form>
+      <p class="dim"><strong>This REPLACES the common arsenal</strong>, it does
+      not add to it - the point of a camo set is that a man cannot draw the
+      other four. A platoon's, a squad's and a role's own arsenals still stack
+      on top. Read at the next mission start.</p>
+    <?php endif; ?>
   </section>
 <?php endforeach; ?>
 

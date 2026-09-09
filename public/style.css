@@ -757,3 +757,8 @@ label.stacked textarea { width: 100%; }
   padding-bottom: var(--s1);
 }
 .tsection form + p.dim { margin-top: var(--s2); }
+
+/* A trait TAC//PAC's skills own. Shown, so nobody wonders where it went, but
+   not editable - the role would not apply it anyway. */
+.takenrow { opacity: .55; }
+.takenrow input { cursor: not-allowed; }

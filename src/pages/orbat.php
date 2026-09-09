@@ -26,15 +26,19 @@ $cfg  = ghostd_config();
 $unit = $cfg['unit'];
 
 const GHOSTD_ORBAT_TABS = [
+    'common'   => 'Common',
     'radio'    => 'Radio',
     'roles'    => 'Roles',
     'squads'   => 'Squads',
     'platoons' => 'Platoons',
 ];
 
-$tab = (string) ($_GET['s'] ?? ($_POST['s'] ?? 'radio'));
+// COMMON FIRST, because it is what the order of battle IS - who this unit is
+// and which side it fights on - before any of its parts. The four after it are
+// in the order they have to be filled in.
+$tab = (string) ($_GET['s'] ?? ($_POST['s'] ?? 'common'));
 if (!isset(GHOSTD_ORBAT_TABS[$tab])) {
-    $tab = 'radio';
+    $tab = 'common';
 }
 
 // A tab's own sub-tabs, drawn in the SAME bar as the tabs themselves. Two
@@ -132,22 +136,6 @@ if ($err !== null) { ghostd_flash('bad', $err); }
     <?php endforeach; ?>
   </nav>
 <?php endif; ?>
-<p class="dim">Fill them in that order: nets before squads can sit on one,
-roles before a squad can hold them, squads before a platoon can list them.
-Editing <strong><?= $variant === '' ? 'the common ORBAT' : h($variant) ?></strong>.</p>
-
-<form method="post" class="inline factionbar">
-  <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
-  <input type="hidden" name="v" value="<?= h($variant) ?>">
-  <input type="hidden" name="s" value="<?= h($tab) ?>">
-  <input type="hidden" name="what" value="faction">
-  <label for="faction">Faction</label>
-  <input type="text" id="faction" name="faction" value="<?= h($faction) ?>"
-         placeholder="what this order of battle calls itself">
-  <button type="submit">Save</button>
-  <span class="dim">Shown wherever the unit is named in game.</span>
-</form>
-
 <?php require __DIR__ . '/orbat_' . $tab . '.php'; ?>
 <?php
 ghostd_foot();

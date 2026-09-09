@@ -135,6 +135,29 @@ const GHOSTD_TEMPLATES = [
         'global'  => 'missionConfig_skillBlock',
         'wrap'    => 'private _unit = _this; ',
     ],
+    // THE UNIT'S OWN TRAITS. The engine has seven names; everything else a
+    // role puts on a man with setUnitTrait needs its third argument set, and a
+    // name typed with that flag wrong is thrown away without a word. Listing
+    // them here turns the role editor's trait box into a set of checkboxes and
+    // takes the flag out of anybody's hands.
+    'traits' => [
+        'label'   => 'Custom traits',
+        'doc'     => 'traits',
+        'shape'   => 'items',
+        'replaces' => 'nothing - this is new',
+        'blurb'   => 'The names this unit invented, as opposed to the seven the engine already has. A role assigns these by ticking them, and the custom flag setUnitTrait needs is set for you.',
+        'idHelp'  => 'The name exactly as the mod reads it - draWhitelisted, isRTO. No spaces.',
+        'idPattern' => '/^[A-Za-z_][A-Za-z0-9_]{0,63}$/',
+        'fields'  => [
+            'label' => ['label' => 'Shown as', 'kind' => 'text',
+                        'help' => 'What it is called in the role editor. "DRA whitelisted".'],
+            'kind'  => ['label' => 'Kind', 'kind' => 'text',
+                        'help' => 'bool for a yes/no, number for a value. Anything else is read as bool.'],
+            'help'  => ['label' => 'What it does', 'kind' => 'text',
+                        'help' => 'One line, read by whoever is deciding whether a role should have it.'],
+        ],
+        'ordered' => true,
+    ],
     'nets' => [
         'label'   => 'Radio nets',
         'doc'     => 'nets',
@@ -388,7 +411,12 @@ function ghostd_template_lists_save(string $key, array $lists, string $variant =
             static fn($x) => $x !== ''
         )));
     }
-    if ($clean === []) {
+    // AN EMPTY VARIANT IS A REAL THING; AN EMPTY COMMON IS NOT. A per-element
+    // arsenal that starts empty is how a mission says "this element has nothing
+    // of its own yet" - the framework ships five of them. The COMMON arsenal is
+    // what everybody draws from, so emptying that is a server full of people
+    // with nothing to pull, and it stays refused.
+    if ($clean === [] && $variant === '') {
         throw new RuntimeException('Every list is empty. The mission reads this at boot - an empty arsenal is a server full of people with nothing to draw.');
     }
     ghostd_put(ghostd_template_doc_id($key, $variant), [
@@ -594,6 +622,45 @@ function ghostd_platoon_variant(string $platoonId): string
 function ghostd_squad_variant(string $squadName): string
 {
     return 'sqd_' . ghostd_slug($squadName);
+}
+
+/**
+ * A setting out of <unit>.settings, which is where the mod keeps them.
+ *
+ * The two that matter here name WHICH VERSION IS IN USE: currentArsenal picks
+ * the common arsenal (the bare-bones one, or the camo set an operation is in)
+ * and currentOrbat picks the order of battle. Both are read at mission start.
+ */
+function ghostd_setting(string $key, string $default = ''): string
+{
+    try {
+        $doc = ghostd_get(ghostd_config()['unit'] . '.settings');
+        $v = ($doc['items'] ?? [])[$key] ?? $default;
+        return is_scalar($v) ? (string) $v : $default;
+    } catch (Throwable $e) {
+        return $default;
+    }
+}
+
+function ghostd_setting_save(string $key, string $value): void
+{
+    $id = ghostd_config()['unit'] . '.settings';
+    $doc = ghostd_get($id);
+    $doc = is_array($doc) ? $doc : [];
+    unset($doc['_id']);
+    $items = is_array($doc['items'] ?? null) ? $doc['items'] : [];
+    // unitId, serverId and sync say where the database is and which server this
+    // is; a website cannot tell a server either of those, and the mod ignores
+    // them from here anyway.
+    if (in_array($key, ['unitId', 'serverId', 'sync'], true)) {
+        throw new RuntimeException('That setting belongs to the server, not the database.');
+    }
+    $items[$key] = $value;
+    $doc['section']   = 'settings';
+    $doc['items']     = $items;
+    $doc['from']      = 'DIVINER_Web';
+    $doc['updatedAt'] = gmdate('Y-m-d H:i:s');
+    ghostd_put($id, $doc);
 }
 
 /** Does a variant document exist? Used to show "set up" against a link. */

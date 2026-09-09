@@ -96,11 +96,49 @@ switch ($what) {
         });
         break;
 
+    // Who the unit is: the name over the role screen, and the side it fights
+    // on. One save - they are one answer.
     case 'faction':
         $editOrbat(static function (array &$doc) use (&$msg) {
             $doc['faction'] = trim((string) ($_POST['faction'] ?? ''));
-            $msg = 'Faction name saved.';
+            $side = strtoupper(trim((string) ($_POST['side'] ?? '')));
+            // A side the engine does not have is a side nothing can be created
+            // on, so an unknown one is simply not written.
+            if (isset(GHOSTD_SIDES[$side])) {
+                $doc['side'] = $side;
+            }
+            $msg = 'Faction and side saved.';
         });
+        break;
+
+    // ---- the unit's own trait names ---------------------------------------
+    // NOT PART OF THE ORBAT DOCUMENT. A trait name does not change when the
+    // order of battle does, so it is one set per unit - <unit>.traits - even
+    // though it is edited on the ORBAT's Common tab, which is where somebody
+    // looking for it will be.
+    case 'traits':
+        $items = [];
+        $order = 0;
+        foreach ((array) ($_POST['t_id'] ?? []) as $i => $tid) {
+            $tid = trim((string) $tid);
+            if ($tid === '' || in_array((string) $i, (array) ($_POST['t_remove'] ?? []), true)) {
+                continue;
+            }
+            if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/', $tid)) {
+                throw new RuntimeException('"' . $tid . '" is not a trait name - it is read by '
+                    . 'setUnitTrait, so it is letters, digits and underscore with no spaces.');
+            }
+            $order += 10;
+            $items[$tid] = [
+                'id'    => $tid,
+                'order' => $order,
+                'label' => trim((string) ($_POST['t_label'][$i] ?? '')) ?: $tid,
+                'kind'  => ((string) ($_POST['t_kind'][$i] ?? 'bool')) === 'number' ? 'number' : 'bool',
+                'help'  => trim((string) ($_POST['t_help'][$i] ?? '')),
+            ];
+        }
+        ghostd_template_save('traits', $items);
+        $msg = count($items) . ' custom traits saved.';
         break;
 
     // ---- the ORBAT's own net list -----------------------------------------

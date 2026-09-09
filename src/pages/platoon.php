@@ -28,6 +28,13 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
 $pid = (string) ($_GET['id'] ?? ($_POST['id'] ?? ''));
 $new = ($pid === '' || $pid === '+');
 
+// ONE SECTION ON SCREEN AT A TIME - the section is part of the address, so a
+// save comes back to where it was made and a link can point at one.
+$sec = (string) ($_GET['sec'] ?? ($_POST['sec'] ?? 'identity'));
+if (!isset(GHOSTD_PLATOON_SECTIONS[$sec])) {
+    $sec = 'identity';
+}
+
 $msg = null;
 $err = null;
 
@@ -225,11 +232,12 @@ $want = (int) ($_GET['n'] ?? max(1, count($p['squads'])));
 $want = max(1, min(20, $want));
 
 $csrf = ghostd_csrf_token();
-$open = static function (string $what) use ($csrf, $pid, $variant) {
+$open = static function (string $what) use ($sec, $csrf, $pid, $variant) {
     echo '<form method="post">'
        . '<input type="hidden" name="csrf" value="' . h($csrf) . '">'
        . '<input type="hidden" name="id" value="' . h($pid) . '">'
        . '<input type="hidden" name="v" value="' . h($variant) . '">'
+       . '<input type="hidden" name="sec" value="' . h($sec) . '">'
        . '<input type="hidden" name="what" value="' . h($what) . '">';
 };
 
@@ -242,15 +250,15 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
 <code><?= h(ghostd_orbat_doc_id($variant)) ?></code> &middot;
 <?= count($p['squads']) ?> squads</p>
 
-<nav class="sections onebar">
-  <a href="#identity">Identity</a>
-  <a href="#squads">Squads</a>
-  <a href="#radio">Radio</a>
-  <a href="#arsenal">Arsenal</a>
-  <a href="#motorpool">Motorpool</a>
+<nav class="subrail">
+  <?php foreach (GHOSTD_PLATOON_SECTIONS as $k => $label): ?>
+    <a class="<?= $sec === $k ? 'on' : '' ?>"
+       href="?page=platoon&amp;id=<?= urlencode($pid) ?>&amp;sec=<?= h($k) ?><?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>"><?= h($label) ?></a>
+  <?php endforeach; ?>
 </nav>
 
 <!-- ------------------------------------------------------------ identity -->
+<?php if ($sec === 'identity'): ?>
 <section class="tsection" id="identity">
   <h2>Identity</h2>
   <?php $open('identity'); ?>
@@ -277,8 +285,10 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
   </form>
   <p class="dim"><a href="?page=configedit&amp;t=nets">Edit the net list</a> to add one that is not offered.</p>
 </section>
+<?php endif; ?>
 
 <!-- -------------------------------------------------------------- squads -->
+<?php if ($sec === 'squads'): ?>
 <section class="tsection" id="squads">
   <h2>Squads <span class="dim"><?= count($p['squads']) ?></span></h2>
   <p class="dim">Only squads that exist can be picked. A squad no platoon lists
@@ -332,8 +342,10 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
     <div class="actions"><button type="submit">Save squads</button></div>
   </form>
 </section>
+<?php endif; ?>
 
 <!-- --------------------------------------------------------------- radio -->
+<?php if ($sec === 'radio'): ?>
 <section class="tsection" id="radio">
   <h2>Radio</h2>
   <p class="dim">The long-range channel everybody in this platoon is put on -
@@ -362,8 +374,10 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
   <p class="dim">Squad channels are short range and belong to the squad - set
   those on the squad's own page.</p>
 </section>
+<?php endif; ?>
 
 <!-- ------------------------------------------------------------- arsenal -->
+<?php if ($sec === 'arsenal'): ?>
 <section class="tsection" id="arsenal">
   <h2>Arsenal</h2>
   <p class="note">Everyone in this platoon draws from it, on top of the common
@@ -381,8 +395,10 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
     <a class="btnlink" href="?page=configedit&amp;t=arsenal">Common arsenal</a>
   </p>
 </section>
+<?php endif; ?>
 
 <!-- ----------------------------------------------------------- motorpool -->
+<?php if ($sec === 'motorpool'): ?>
 <section class="tsection" id="motorpool">
   <h2>Motorpool</h2>
   <p class="note">The vehicles this platoon may draw. Same arrangement -
@@ -399,8 +415,10 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
     <a class="btnlink" href="?page=configedit&amp;t=motorpool">Common motorpool</a>
   </p>
 </section>
+<?php endif; ?>
 
-<section class="tsection">
+<?php if ($sec === 'remove'): ?>
+<section class="tsection" id="remove">
   <h2>Remove</h2>
   <form method="post" class="danger">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
@@ -413,5 +431,6 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
     <button type="submit" class="hot">Delete <?= h($pid) ?></button>
   </form>
 </section>
+<?php endif; ?>
 <?php
 ghostd_foot();

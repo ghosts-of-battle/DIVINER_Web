@@ -276,7 +276,11 @@ function ghostd_http_post(string $url, array $fields): ?string
             CURLOPT_SSL_VERIFYHOST => 2,
         ]);
         $body = curl_exec($ch);
-        curl_close($ch);
+        // NOT curl_close. Since PHP 8.0 a handle is an object that frees
+        // itself, and 8.5 deprecates the call - which put a notice on every
+        // page that looks up a Steam name. Letting $ch fall out of scope is
+        // the whole of what closing it ever did.
+        unset($ch);
         return is_string($body) ? $body : null;
     }
 

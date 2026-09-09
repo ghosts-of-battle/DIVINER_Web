@@ -31,6 +31,13 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
 $name = (string) ($_GET['sq'] ?? ($_POST['sq'] ?? ''));
 $new  = ($name === '' || $name === '+');
 
+// ONE SECTION ON SCREEN AT A TIME - the section is part of the address, so a
+// save comes back to where it was made and a link can point at one.
+$sec = (string) ($_GET['sec'] ?? ($_POST['sec'] ?? 'identity'));
+if (!isset(GHOSTD_SQUAD_SECTIONS[$sec])) {
+    $sec = 'identity';
+}
+
 $msg = null;
 $err = null;
 
@@ -279,11 +286,12 @@ $arsenalVar = ghostd_squad_variant($name);
 $arsenalHas = ghostd_variant_summary('arsenal', $arsenalVar);
 
 $csrf = ghostd_csrf_token();
-$open = static function (string $what) use ($csrf, $name, $variant) {
+$open = static function (string $what) use ($sec, $csrf, $name, $variant) {
     echo '<form method="post">'
        . '<input type="hidden" name="csrf" value="' . h($csrf) . '">'
        . '<input type="hidden" name="sq" value="' . h($name) . '">'
        . '<input type="hidden" name="v" value="' . h($variant) . '">'
+       . '<input type="hidden" name="sec" value="' . h($sec) . '">'
        . '<input type="hidden" name="what" value="' . h($what) . '">';
 };
 
@@ -299,14 +307,15 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
       ? '<span class="bad">no platoon lists it - it will not appear in the group menu</span>'
       : 'in ' . h(implode(', ', $inPlatoon)) ?></p>
 
-<nav class="sections onebar">
-  <a href="#identity">Identity</a>
-  <a href="#slots">Slots</a>
-  <a href="#radio">Radio</a>
-  <a href="#arsenal">Arsenal</a>
+<nav class="subrail">
+  <?php foreach (GHOSTD_SQUAD_SECTIONS as $k => $label): ?>
+    <a class="<?= $sec === $k ? 'on' : '' ?>"
+       href="?page=squad&amp;sq=<?= urlencode($name) ?>&amp;sec=<?= h($k) ?><?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>"><?= h($label) ?></a>
+  <?php endforeach; ?>
 </nav>
 
 <!-- ------------------------------------------------------------ identity -->
+<?php if ($sec === 'identity'): ?>
 <section class="tsection" id="identity">
   <h2>Identity</h2>
   <?php $open('identity'); ?>
@@ -319,8 +328,10 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
     <div class="actions"><button type="submit">Save identity</button></div>
   </form>
 </section>
+<?php endif; ?>
 
 <!-- --------------------------------------------------------------- slots -->
+<?php if ($sec === 'slots'): ?>
 <section class="tsection" id="slots">
   <h2>Slots <span class="dim"><?= count($sq['roles']) ?> filled</span></h2>
   <p class="dim">In order - slot 1 is the squad leader's, and the game fills
@@ -374,8 +385,10 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
     <div class="actions"><button type="submit">Save slots</button></div>
   </form>
 </section>
+<?php endif; ?>
 
 <!-- --------------------------------------------------------------- radio -->
+<?php if ($sec === 'radio'): ?>
 <section class="tsection" id="radio">
   <h2>Radio</h2>
   <p class="dim">Written to <code><?= h(ghostd_radio_doc_id()) ?></code>, which is
@@ -393,8 +406,10 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
     <div class="actions"><button type="submit">Save channels</button></div>
   </form>
 </section>
+<?php endif; ?>
 
 <!-- ------------------------------------------------------------- arsenal -->
+<?php if ($sec === 'arsenal'): ?>
 <section class="tsection" id="arsenal">
   <h2>Arsenal</h2>
   <p class="note">Everyone in this squad draws from it, on top of the common
@@ -413,9 +428,11 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
     <a class="btnlink" href="?page=configedit&amp;t=arsenal">Common arsenal</a>
   </p>
 </section>
+<?php endif; ?>
 
 <!-- ---------------------------------------------------------------- copy -->
-<section class="tsection">
+<?php if ($sec === 'copy'): ?>
+<section class="tsection" id="copy">
   <h2>Copy</h2>
   <p class="dim">Takes its slots, its condition and its channels. Four rifle
   squads differ by a digit; this is how you make the other three.</p>
@@ -427,8 +444,10 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
     <div class="actions"><button type="submit">Copy <?= h($name) ?></button></div>
   </form>
 </section>
+<?php endif; ?>
 
-<section class="tsection">
+<?php if ($sec === 'remove'): ?>
+<section class="tsection" id="remove">
   <h2>Remove</h2>
   <form method="post" class="danger">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
@@ -440,5 +459,6 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
     <button type="submit" class="hot">Delete <?= h($name) ?></button>
   </form>
 </section>
+<?php endif; ?>
 <?php
 ghostd_foot();
