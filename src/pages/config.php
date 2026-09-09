@@ -83,44 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['t'] ?? '') === 'system') {
     require_once __DIR__ . '/../system.php';
     try {
         switch ((string) ($_POST['what'] ?? '')) {
-            case 'opord':
-                $helpWas = [];
-                foreach (ghostd_opord_rows() as $w) {
-                    $helpWas[$w['section'] . '.' . $w['field']] = $w['help'];
-                }
-                $rows = [];
-                foreach ((array) ($_POST['o_field'] ?? []) as $i => $fid) {
-                    $fid = trim((string) $fid);
-                    $sec = trim((string) ($_POST['o_section'][$i] ?? ''));
-                    if ($fid === '' || $sec === ''
-                        || in_array((string) $i, (array) ($_POST['o_remove'] ?? []), true)) {
-                        continue;
-                    }
-                    if (!preg_match('/^[A-Za-z][A-Za-z0-9_]*$/', $fid)
-                        || !preg_match('/^[A-Za-z][A-Za-z0-9_]*$/', $sec)) {
-                        throw new RuntimeException('"' . $sec . '.' . $fid . '" is not usable - a '
-                            . 'section and a field are letters, digits and underscore, starting with '
-                            . 'a letter. They are what a report template points at.');
-                    }
-                    $rows[] = [
-                        'section'      => $sec,
-                        'sectionTitle' => ucfirst($sec),
-                        'sectionHint'  => '',
-                        'field'        => $fid,
-                        'label'        => trim((string) ($_POST['o_label'][$i] ?? '')) ?: $fid,
-                        'kind'         => (string) ($_POST['o_kind'][$i] ?? 'x'),
-                        // The help text a field carries is kept as it was -
-                        // the editor stopped showing it rather than losing it.
-                        'help'         => (string) ($helpWas[$sec . '.' . $fid] ?? ''),
-                    ];
-                }
-                if ($rows === []) {
-                    throw new RuntimeException('An order with no fields is not an order. Leave at least one.');
-                }
-                ghostd_opord_rows_save($rows);
-                $msg = count($rows) . ' fields saved. Orders already written keep what is in them.';
-                break;
-
+            // The operation order is edited a section at a time - see
+            // src/pages/opord_section.php, which owns that save.
             case 'ticketkinds':
                 $items = [];
                 foreach ((array) ($_POST['k_id'] ?? []) as $i => $kid) {

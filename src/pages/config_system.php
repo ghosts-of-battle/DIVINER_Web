@@ -10,61 +10,50 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../system.php';
 
-$rows  = ghostd_opord_rows();
-$kinds = ghostd_ticket_kinds();
-?>
-<h2>Operation order <span class="dim"><?= count($rows) ?> fields</span></h2>
-<p class="dim">One row per field on the <a href="?page=opords">Orders</a> page.
-Clearing a field removes it. Renaming one breaks any report template pointing at
-<code>section.field</code>.</p>
+$sections = ghostd_opord_sections();
+$kinds    = ghostd_ticket_kinds();
 
-<form method="post">
-  <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
-  <input type="hidden" name="t" value="system">
-  <input type="hidden" name="what" value="opord">
+$kindLabels = ['t' => 'one line', 'x' => 'paragraph', 'a' => 'a list'];
+$fieldCount = 0;
+foreach ($sections as $meta) { $fieldCount += count((array) ($meta['fields'] ?? [])); }
+?>
+<h2>Operation order <span class="dim"><?= count($sections) ?> sections,
+  <?= $fieldCount ?> fields</span></h2>
+<p class="dim">A card per section of the order on the
+<a href="?page=opords">Orders</a> page. A report template points at
+<code>section.field</code>, so renaming one breaks it.</p>
+
+<p class="actions"><a href="?page=opord_section" class="btnlink">+ New section</a></p>
+
+<?php foreach ($sections as $sid => $meta): ?>
+<details class="card">
+  <summary>
+    <strong><?= h((string) ($meta['title'] ?? $sid)) ?></strong>
+    <code><?= h((string) $sid) ?></code>
+    <span class="pill dimpill"><?= count((array) ($meta['fields'] ?? [])) ?> fields</span>
+    <a class="edit" href="?page=opord_section&amp;id=<?= urlencode((string) $sid) ?>">edit</a>
+  </summary>
+
+  <?php if (($meta['hint'] ?? '') !== ''): ?>
+    <p class="dim"><?= h((string) $meta['hint']) ?></p>
+  <?php endif; ?>
 
   <table class="grid">
-    <thead>
-      <tr><th style="width:20%">Section</th><th style="width:20%">Field</th>
-          <th style="width:35%">Label</th><th style="width:17%">Kind</th>
-          <th style="width:8%">Del</th></tr>
-    </thead>
+    <thead><tr><th style="width:24%">Field</th><th style="width:38%">Label</th>
+        <th style="width:16%">Kind</th><th style="width:22%">Key</th></tr></thead>
     <tbody>
-    <?php $i = 0; foreach ($rows as $r): ?>
+    <?php foreach ((array) ($meta['fields'] ?? []) as $fid => $fm): ?>
       <tr>
-        <td><input type="text" name="o_section[<?= $i ?>]" value="<?= h($r['section']) ?>"></td>
-        <td><input type="text" name="o_field[<?= $i ?>]" value="<?= h($r['field']) ?>"></td>
-        <td><input type="text" name="o_label[<?= $i ?>]" value="<?= h($r['label']) ?>"></td>
-        <td>
-          <select name="o_kind[<?= $i ?>]">
-            <?php foreach (['t' => 'one line', 'x' => 'paragraph', 'a' => 'a list'] as $k => $kl): ?>
-              <option value="<?= h($k) ?>" <?= $r['kind'] === $k ? 'selected' : '' ?>><?= h($kl) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </td>
-        <td><input type="checkbox" name="o_remove[]" value="<?= $i ?>"></td>
+        <td><code><?= h((string) $fid) ?></code></td>
+        <td><?= h((string) ($fm['label'] ?? $fid)) ?></td>
+        <td class="dim"><?= h($kindLabels[(string) ($fm['kind'] ?? 'x')] ?? 'paragraph') ?></td>
+        <td class="dim"><code><?= h($sid . '.' . $fid) ?></code></td>
       </tr>
-    <?php $i++; endforeach; ?>
-    <?php for ($k = 0; $k < 2; $k++): $n = $i + $k; ?>
-      <tr>
-        <td><input type="text" name="o_section[<?= $n ?>]" placeholder="execution"></td>
-        <td><input type="text" name="o_field[<?= $n ?>]" placeholder="scheme"></td>
-        <td><input type="text" name="o_label[<?= $n ?>]" placeholder="Scheme of manoeuvre"></td>
-        <td>
-          <select name="o_kind[<?= $n ?>]">
-            <option value="t">one line</option>
-            <option value="x" selected>paragraph</option>
-            <option value="a">a list</option>
-          </select>
-        </td>
-        <td></td>
-      </tr>
-    <?php endfor; ?>
+    <?php endforeach; ?>
     </tbody>
   </table>
-
-  <div class="actions"><button type="submit">Save</button></div>
-</form>
+</details>
+<?php endforeach; ?>
 
 <h2>PAC requests <span class="dim"><?= count($kinds) ?> kinds</span></h2>
 <p class="dim">What a player may raise on the
