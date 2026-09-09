@@ -64,6 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $row[$f] = array_values(array_filter(array_map('trim', explode(',', $v)),
                             static fn($x) => $x !== ''));
                         break;
+                    case 'choice':
+                        // A value the field does not offer is not stored - the
+                        // first option is what the mod would read anyway.
+                        $opts = array_keys((array) ($fm['options'] ?? []));
+                        $row[$f] = in_array(trim($v), $opts, true) ? trim($v) : ($opts[0] ?? '');
+                        break;
                     default:
                         $row[$f] = trim($v);
                 }
@@ -168,6 +174,16 @@ if ($sec === 'promotion') {
 }
 $thresholds = $sec === 'ranks' ? ghostd_rank_thresholds() : [];
 
+// WHICH SKILL SETS WHICH TRAIT. A name a skill owns is applied by PAC and
+// skipped on the role, so it is said here rather than left to be discovered.
+$owners = $sec === 'traits' ? ghostd_trait_owners() : [];
+$dlist  = [];
+foreach ($meta['fields'] as $f => $fm) {
+    if (($fm['datalist'] ?? '') === 'traitEffects') {
+        $dlist['traitEffects'] = ghostd_effect_options();
+    }
+}
+
 ghostd_head($meta['label'], 'records');
 if ($msg !== null) { ghostd_flash('good', $msg); }
 if ($err !== null) { ghostd_flash('bad', $err); }
@@ -195,6 +211,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
         <th style="width:<?= $fldW ?>%"><?= h($fm['label']) ?></th>
       <?php endforeach; ?>
       <?php if ($sec === 'ranks'): ?><th style="width:12%">Points required</th><?php endif; ?>
+      <?php if ($sec === 'traits'): ?><th style="width:16%">Set by a skill</th><?php endif; ?>
       <th style="width:<?= $delW ?>%">Del</th></tr>
     </thead>
     <tbody id="rows">
@@ -223,12 +240,25 @@ if ($err !== null) { ghostd_flash('bad', $err); }
                 <input type="file" name="r_up_<?= h($f) ?>[<?= $i ?>]" accept="image/*">
               </div>
             </td>
+          <?php elseif ($fm['kind'] === 'choice'): ?>
+            <td><select name="r_<?= h($f) ?>[<?= $i ?>]"
+                        <?= isset($fm['help']) ? 'title="' . h($fm['help']) . '"' : '' ?>>
+              <?php foreach ((array) ($fm['options'] ?? []) as $ov => $ol): ?>
+                <option value="<?= h((string) $ov) ?>" <?= (string) $v === (string) $ov ? 'selected' : '' ?>><?= h($ol) ?></option>
+              <?php endforeach; ?>
+            </select></td>
           <?php else: ?>
             <td><input type="<?= $fm['kind'] === 'number' ? 'number' : 'text' ?>"
                        name="r_<?= h($f) ?>[<?= $i ?>]" value="<?= h((string) $v) ?>"
+                       <?= isset($fm['datalist']) ? 'list="dl_' . h($fm['datalist']) . '"' : '' ?>
                        <?= isset($fm['help']) ? 'title="' . h($fm['help']) . '"' : '' ?>></td>
           <?php endif; ?>
         <?php endforeach; ?>
+        <?php if ($sec === 'traits'): ?>
+          <td class="dim"><?= isset($owners[strtolower((string) $id)])
+                ? h(implode(', ', $owners[strtolower((string) $id)])) . ' - a role cannot also set it'
+                : 'nobody - a role may set it' ?></td>
+        <?php endif; ?>
         <?php if ($sec === 'ranks'): ?>
           <td><input type="number" step="1" name="r_points[<?= $i ?>]"
                      value="<?= h((string) ($thresholds[(string) $id] ?? '')) ?>"
@@ -240,9 +270,17 @@ if ($err !== null) { ghostd_flash('bad', $err); }
       <tr>
         <td><input type="text" name="r_id[<?= $i ?>]" placeholder="new"></td>
         <?php foreach ($meta['fields'] as $f => $fm): ?>
-          <td><input type="<?= $fm['kind'] === 'number' ? 'number' : 'text' ?>"
-                     name="r_<?= h($f) ?>[<?= $i ?>]"
-                     placeholder="<?= h((string) ($fm['help'] ?? $fm['label'])) ?>"></td>
+          <?php if ($fm['kind'] === 'choice'): ?>
+            <td><select name="r_<?= h($f) ?>[<?= $i ?>]">
+              <?php foreach ((array) ($fm['options'] ?? []) as $ov => $ol): ?>
+                <option value="<?= h((string) $ov) ?>"><?= h($ol) ?></option>
+              <?php endforeach; ?>
+            </select></td>
+          <?php else: ?>
+            <td><input type="<?= $fm['kind'] === 'number' ? 'number' : 'text' ?>"
+                       name="r_<?= h($f) ?>[<?= $i ?>]"
+                       placeholder="<?= h((string) ($fm['help'] ?? $fm['label'])) ?>"></td>
+          <?php endif; ?>
         <?php endforeach; ?>
         <?php if ($sec === 'ranks'): ?><td><input type="number" name="r_points[<?= $i ?>]"></td><?php endif; ?>
         <td></td>
@@ -254,9 +292,17 @@ if ($err !== null) { ghostd_flash('bad', $err); }
     <tr>
       <td><input type="text" name="r_id[__I__]" placeholder="new"></td>
       <?php foreach ($meta['fields'] as $f => $fm): ?>
-        <td><input type="<?= $fm['kind'] === 'number' ? 'number' : 'text' ?>"
-                   name="r_<?= h($f) ?>[__I__]"
-                   placeholder="<?= h((string) ($fm['help'] ?? $fm['label'])) ?>"></td>
+        <?php if ($fm['kind'] === 'choice'): ?>
+          <td><select name="r_<?= h($f) ?>[__I__]">
+            <?php foreach ((array) ($fm['options'] ?? []) as $ov => $ol): ?>
+              <option value="<?= h((string) $ov) ?>"><?= h($ol) ?></option>
+            <?php endforeach; ?>
+          </select></td>
+        <?php else: ?>
+          <td><input type="<?= $fm['kind'] === 'number' ? 'number' : 'text' ?>"
+                     name="r_<?= h($f) ?>[__I__]"
+                     placeholder="<?= h((string) ($fm['help'] ?? $fm['label'])) ?>"></td>
+        <?php endif; ?>
       <?php endforeach; ?>
       <?php if ($sec === 'ranks'): ?><td><input type="number" name="r_points[__I__]"></td><?php endif; ?>
       <td></td>
@@ -278,5 +324,11 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 
   <div class="actions"><button type="submit">Save <?= h(strtolower($meta['label'])) ?></button></div>
 </form>
+
+<?php foreach ($dlist as $name => $values): ?>
+  <datalist id="dl_<?= h((string) $name) ?>">
+    <?php foreach ($values as $v): ?><option value="<?= h((string) $v) ?>"></option><?php endforeach; ?>
+  </datalist>
+<?php endforeach; ?>
 <?php
 ghostd_foot();

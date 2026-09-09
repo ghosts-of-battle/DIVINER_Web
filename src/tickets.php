@@ -30,13 +30,11 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 
-/** What somebody can raise, and what each one is for. */
-const GHOSTD_TICKET_KINDS = [
-    'leave'   => ['label' => 'Leave of absence', 'hint' => 'Time away from operations - dates, and roughly why.'],
-    'award'   => ['label' => 'Award recommendation', 'hint' => 'Somebody else deserves recognition. Say who, for what, and when it happened.'],
-    'request' => ['label' => 'Request', 'hint' => 'A transfer, a role, a piece of kit, a course.'],
-    'issue'   => ['label' => 'Problem', 'hint' => 'Something wrong with the server, the roster, or a mission.'],
-];
+/**
+ * WHAT SOMEBODY CAN RAISE IS A DOCUMENT - <unit>.system.ticketKinds, read by
+ * ghostd_ticket_kinds() and edited on Templates > System. There is no list
+ * here to drift from it (2026-09-09).
+ */
 
 const GHOSTD_TICKET_STATUSES = [
     'open'     => 'Open',

@@ -137,18 +137,30 @@ browser, so a LAN box works.
 
 | Page | What |
 |---|---|
-| **Dashboard** | counts, the unit's ids, and every document grouped the way the mod files them |
-| **Roster** | the store's players, sorted by name. Edits go one field at a time |
-| **Report deck** | the templates document drawn as cards - lines, field keys, options |
-| **Documents** | every document, filterable, each openable as JSON |
+| **Dashboard** | counts, the unit's ids, who is due a promotion, and every document grouped the way the mod files them |
+| **Roster** | the store's players, sorted by name |
+| **Player** | one record: rank, status, squad and role; skills, training, awards and notes, written the way the game's admin page writes them |
+| **Applications** | who applied, and the questions they answered |
+| **PAC actions** | the requests players raised |
+| **Orders** | the operation orders, section by section |
+| **Configs** | the unit's own records - ranks, skills, awards, statuses, promotion, training, admins |
+| **Templates** | what a mission's `config\` folder held: the welcome screen, arsenals, motorpool, cosmetics, the vehicle spawner, logistics crates, pylon presets, custom traits, messaging nets - plus the **Report deck** and **System** (the operation order's shape, the request kinds and the colour schemes) |
+| **ORBAT** | the orders of battle, communications, roles, squads and platoons |
+| **Mongo docs** | every document, filterable, each openable as JSON |
+| **Backup** | the nightly copy of the database, read only, admins only |
+| **Branding** | the site's own name, colours and pictures - the one thing that is web only |
+
+Every page here has its opposite number in the game's TAC//PAC, and both write
+the same documents, with four exceptions still to be built in game: the
+logistics crates, the pylon presets, the report deck and the operation orders.
 
 ## What it will not do
 
-- **It does not validate against the structure.** Typing `sergent` into a rank
-  will be stored. The game's admin page checks ids against the structure; this
-  does not. Use it for corrections you are sure of.
-- **It does not edit skills, awards, notes, training or loadouts.** Those have
-  shapes the game owns and validates.
+- **It does not validate against the structure everywhere.** Typing `sergent`
+  into a free-text rank field will be stored. Where a list exists - a squad, a
+  role, a skill, an award, a course - the page offers it and checks it.
+- **It does not restore a backup.** The backup page hands you the document; it
+  never writes to Mongo.
 - **It is not a live console.** The game server rewrites the store whole when
   an admin presses SAVE and at mission end, so an edit made mid-mission is
   lost. Edit between sessions.

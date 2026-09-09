@@ -197,17 +197,10 @@ if ($p === null) {
     return;
 }
 
-$labels = static function (string $section): array {
-    $doc = ghostd_get(ghostd_config()['unit'] . '.' . $section);
-    $items = (is_array($doc['items'] ?? null)) ? $doc['items'] : [];
-    $out = [];
-    foreach ($items as $id => $it) {
-        $out[(string) $id] = is_array($it) ? (string) ($it['name'] ?? $it['title'] ?? $id) : (string) $id;
-    }
-    return $out;
-};
-$rankNames   = $labels('ranks');
-$statusNames = $labels('statuses');
+// One implementation of "id => name for a section" - ghostd_record_labels in
+// src/players.php. This page had its own copy of it.
+$rankNames   = ghostd_record_labels('ranks');
+$statusNames = ghostd_record_labels('statuses');
 
 // WHAT A FIELD MAY BE. Typing a group or a role by hand is how a roster ends
 // up naming a squad that does not exist - and nothing says so until somebody

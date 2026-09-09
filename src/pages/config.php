@@ -40,20 +40,15 @@ function ghostd_count_one(string $key, array $t, string $variant): ?int
 
 $unit = ghostd_config()['unit'];
 
-// WHICH TAB. Every template type, then the ORBAT, then the inventory.
+// WHICH TAB. Every template type, in the order the registry lists them.
 $tabs = [];
 foreach (GHOSTD_TEMPLATES as $k => $t) {
-    // The messaging nets are edited on the ORBAT page, beside the radio - a net
-    // is what a role reads and what a platoon commands on. Two places to edit
-    // one list is one too many.
-    // Both of these are edited on the ORBAT page: the messaging nets beside
-    // the radio, the custom traits on its Details tab. Two places to edit one
-    // list is one too many.
-    // Three live elsewhere: the messaging nets beside the radio on the ORBAT
-    // page, the custom traits on its Details tab, and the arsenals on a page of
-    // their own - there are more of those than of anything else and they are
-    // what people edit most.
-    if ($k === 'nets' || $k === 'traits' || $k === 'arsenal') {
+    // The messaging nets are edited on the ORBAT page, beside the radio: a net
+    // is what a role reads and what a platoon commands on, and two places to
+    // edit one list is one too many. Everything else - the arsenals included -
+    // is a tab here (2026-09-09: the arsenals had a page of their own, it went
+    // away, and this skip was what made them unreachable).
+    if ($k === 'nets') {
         continue;
     }
     $tabs[$k] = $t['label'];
@@ -93,12 +88,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['t'] ?? '') === 'system') {
             // The request kinds are edited one at a time - see
             // src/pages/ticket_kind.php, which owns that save.
             case 'resetopord':
-                ghostd_system_reset('opord');
+                ghostd_system_delete('opord');
                 $msg = 'The order is back to the shape it ships with.';
                 break;
 
             case 'resetkinds':
-                ghostd_system_reset('ticketKinds');
+                ghostd_system_delete('ticketKinds');
                 $msg = 'The request kinds are back to the ones it ships with.';
                 break;
 

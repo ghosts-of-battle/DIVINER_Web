@@ -769,8 +769,6 @@ label.stacked textarea { width: 100%; }
 
 /* A trait TAC//PAC's skills own. Shown, so nobody wonders where it went, but
    not editable - the role would not apply it anyway. */
-.takenrow { opacity: .55; }
-.takenrow input { cursor: not-allowed; }
 
 /* A Steam id that goes to its profile. Kept monospace because it is still an
    id - the link is a way to find out whose, not a change of what it is. */

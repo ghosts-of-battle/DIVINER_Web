@@ -277,33 +277,10 @@ switch ($what) {
     // order of battle does, so it is one set per unit - <unit>.traits - even
     // though it is edited on the ORBAT's Common tab, which is where somebody
     // looking for it will be.
-    case 'traits':
-        $items = [];
-        $order = 0;
-        foreach ((array) ($_POST['t_id'] ?? []) as $i => $tid) {
-            $tid = trim((string) $tid);
-            if ($tid === '' || in_array((string) $i, (array) ($_POST['t_remove'] ?? []), true)) {
-                continue;
-            }
-            if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/', $tid)) {
-                throw new RuntimeException('"' . $tid . '" is not a trait name - it is read by '
-                    . 'setUnitTrait, so it is letters, digits and underscore with no spaces.');
-            }
-            $order += 10;
-            $items[$tid] = [
-                'id'    => $tid,
-                'order' => $order,
-                'label' => trim((string) ($_POST['t_label'][$i] ?? '')) ?: $tid,
-                'kind'  => ((string) ($_POST['t_kind'][$i] ?? 'bool')) === 'number' ? 'number' : 'bool',
-                'where' => ((string) ($_POST['t_where'][$i] ?? 'variable')) === 'trait' ? 'trait' : 'variable',
-                'help'  => trim((string) ($_POST['t_help'][$i] ?? '')),
-            ];
-        }
-        ghostd_template_save('traits', $items);
-        $msg = count($items) . ' custom traits saved.';
-        break;
+    // CUSTOM TRAITS MOVED TO CONFIGS (user, 2026-09-09: "ar not traits part of
+    // the config"). One set for the whole unit, edited beside the skills that
+    // set them - see src/pages/record.php, section "traits".
 
-    // ---- the ORBAT's own net list -----------------------------------------
     case 'nets':
         $editOrbat(static function (array &$doc) use ($lines, &$msg) {
             $out = [];

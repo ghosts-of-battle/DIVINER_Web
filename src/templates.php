@@ -16,7 +16,9 @@
  *   'items'  <unit>.<doc> = {section, items:{id: {...fields}}} - the shape the
  *            mod already uses for nets, ranks, skills, statuses and the rest.
  *   'lists'  named lists of classnames - the arsenal shape. Not built yet.
- *   'code'   a block of SQF - logistics, skill. Not built yet.
+ *   'code'   a block of SQF the mod compiles - logistics and pylons.
+ *            Both have their own editor now (a crate list, a preset list);
+ *            configedit_code.php is the fallback for any other code template.
  */
 
 declare(strict_types=1);
@@ -136,26 +138,6 @@ const GHOSTD_TEMPLATES = [
     // flag wrong is thrown away without a word. Listing them turns the role
     // editor's boxes into checkboxes and takes the flag out of anybody's hands.
     // Edited on the ORBAT page's Roles tab, beside the roles that assign them.
-    'traits' => [
-        'label'   => 'Custom traits',
-        'doc'     => 'traits',
-        'shape'   => 'items',
-        'replaces' => 'nothing - this is new',
-        'blurb'   => 'The names this unit invented - the ones a role puts on a man that the engine has never heard of. A role assigns them by ticking, and whether each is a setVariable or a setUnitTrait is decided here rather than by whoever is editing the role.',
-        'idHelp'  => 'The name exactly as the mod reads it - draWhitelisted, isRTO. No spaces.',
-        'idPattern' => '/^[A-Za-z_][A-Za-z0-9_]{0,63}$/',
-        'fields'  => [
-            'label' => ['label' => 'Shown as', 'kind' => 'text',
-                        'help' => 'What it is called in the role editor. "DRA whitelisted".'],
-            'kind'  => ['label' => 'Kind', 'kind' => 'text',
-                        'help' => 'bool for a yes/no, number for a value. Anything else is read as bool.'],
-            'where' => ['label' => 'Set as', 'kind' => 'text',
-                        'help' => 'variable for setVariable (draWhitelisted, isISR - most of them), trait for setUnitTrait. They are two different things on the man and two different lists on a role.'],
-            'help'  => ['label' => 'What it does', 'kind' => 'text',
-                        'help' => 'One line, read by whoever is deciding whether a role should have it.'],
-        ],
-        'ordered' => true,
-    ],
     'nets' => [
         'label'   => 'Messaging nets',
         'doc'     => 'nets',

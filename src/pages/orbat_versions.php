@@ -79,6 +79,29 @@ the default below when it names none.</p>
   <div class="actions"><button type="submit">Make that one the default</button></div>
 </form>
 
+<?php $others = array_values(array_filter($rows,
+        static fn($r) => $r['id'] !== '' && $r['id'] !== $default)); ?>
+<h2>Delete</h2>
+<?php if ($others === []): ?>
+  <p class="dim">Only the default is left, and deleting that would leave a
+  mission with no order of battle. Make another one first.</p>
+<?php else: ?>
+  <form method="post" class="inline danger"
+        onsubmit="return confirm('Delete that order of battle? Its platoons and squads are kept - they live in the platoons.');">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <input type="hidden" name="s" value="versions">
+    <input type="hidden" name="what" value="deleteorbat">
+    <label for="delv">Order of battle</label>
+    <select id="delv" name="v">
+      <?php foreach ($others as $r): ?>
+        <option value="<?= h($r['id']) ?>"><?= h($r['doc']) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <button type="submit" class="hot">Delete it</button>
+    <span class="dim">The default is not offered - tick another one first.</span>
+  </form>
+<?php endif; ?>
+
 <h2>New</h2>
 <form method="post" class="inline">
   <input type="hidden" name="csrf" value="<?= h($csrf) ?>">

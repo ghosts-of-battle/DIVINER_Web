@@ -56,7 +56,11 @@ if ($tab !== 'one' && !isset(GHOSTD_ORBAT_TABS[$tab])) {
 const GHOSTD_ORBAT_SUBTABS = [
     // The messaging nets sit with the radio: a net is what a man READS and a
     // channel is what he TALKS on, and the two are set up together.
-    'radio' => ['nets' => 'Messaging', 'acre' => 'ACRE', 'tfar' => 'TFAR'],
+    // MESSAGING IS MESSAGING. Shared nets - which squads sit on one net across
+    // a platoon boundary, matched to an MR channel - is a radio arrangement and
+    // had no business on the messaging screen (user, 2026-09-09).
+    'radio' => ['nets' => 'Messaging', 'shared' => 'Shared nets',
+                'acre' => 'ACRE', 'tfar' => 'TFAR'],
 ];
 $subTabs = GHOSTD_ORBAT_SUBTABS[$tab] ?? [];
 $sub = (string) ($_GET['r'] ?? ($_POST['r'] ?? ''));

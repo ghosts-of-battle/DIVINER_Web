@@ -26,69 +26,15 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 
 /**
- * Every section, in the order they are written and read.
+ * THE SHAPE OF AN ORDER IS A DOCUMENT, not a list in here.
+ *
+ * <unit>.system.opord says which sections an order has and what fields each
+ * holds; ghostd_opord_sections() reads it and there is no copy to fall back to
+ * (2026-09-09 - the same rule the colour schemes follow). It is edited on
+ * Templates > System, a section at a time.
+ *
  * kind: t = text line, x = paragraph, a = list (one per line)
  */
-const GHOSTD_OPORD_SECTIONS = [
-    'header' => [
-        'title' => 'Header',
-        'hint'  => 'What this order is and who may read it.',
-        'fields' => [
-            'title'        => ['label' => 'Title', 'kind' => 't', 'help' => 'OPERATION IRON VEIL'],
-            'date'         => ['label' => 'Date-time group', 'kind' => 't', 'help' => 'When it is set, in whatever form the unit uses.'],
-            'campaign'     => ['label' => 'Campaign', 'kind' => 't', 'help' => 'The larger series this belongs to, if any.'],
-            'release'      => ['label' => 'Release', 'kind' => 't', 'help' => 'Draft, final, or a version.'],
-            'distribution' => ['label' => 'Distribution', 'kind' => 't', 'help' => 'Who this goes to.'],
-            'mapImage'     => ['label' => 'Map image', 'kind' => 't', 'help' => 'A path INSIDE the game - a mission file like "media\\\\opord_map.paa", or a mod path like "\\\\z\\\\ghostD\\\\addons\\\\...". Arma cannot load a web address, and it wants .paa or .jpg. Upload the file to the mission or mod yourself; this only records where it is.'],
-            'markers'      => ['label' => 'Map markers', 'kind' => 'a', 'help' => 'Marker names to show, one per line.'],
-        ],
-    ],
-    'situation' => [
-        'title' => 'Situation',
-        'hint'  => 'What is going on before anybody moves.',
-        'fields' => [
-            'overview'      => ['label' => 'Overview', 'kind' => 'x', 'help' => 'The picture in a paragraph.'],
-            'enemy'         => ['label' => 'Enemy forces', 'kind' => 'x', 'help' => 'Composition, disposition, strength, and what they are likely to do.'],
-            'enemyFactions' => ['label' => 'Enemy factions', 'kind' => 'a', 'help' => 'One per line.'],
-            'friendly'      => ['label' => 'Friendly forces', 'kind' => 'x', 'help' => 'Who else is out there and what they are doing.'],
-            'civilTerrain'  => ['label' => 'Civilians and terrain', 'kind' => 'x', 'help' => 'Ground, weather, population - anything that shapes the plan.'],
-        ],
-    ],
-    'mission' => [
-        'title' => 'Mission',
-        'hint'  => 'The one sentence everybody has to be able to repeat, and how it is done.',
-        'fields' => [
-            'mission'   => ['label' => 'Mission', 'kind' => 'x', 'help' => 'Who, what, when, where and why - in one statement.'],
-            'execution' => ['label' => 'Execution', 'kind' => 'x', 'help' => 'Intent, scheme of manoeuvre, and tasks by element.'],
-        ],
-    ],
-    'adminLogistics' => [
-        'title' => 'Admin and logistics',
-        'hint'  => 'What the plan needs to keep running.',
-        'fields' => [
-            'admin'              => ['label' => 'Administration', 'kind' => 'x', 'help' => 'Casualties, prisoners, timings.'],
-            'logistics'          => ['label' => 'Logistics', 'kind' => 'x', 'help' => 'Ammunition, fuel, transport, resupply.'],
-            'special'            => ['label' => 'Special instructions', 'kind' => 'x', 'help' => ''],
-            'armaConsiderations' => ['label' => 'Arma considerations', 'kind' => 'x', 'help' => 'Mods, respawn rules, Zeus, anything about the game rather than the fiction.'],
-        ],
-    ],
-    'commandSignal' => [
-        'title' => 'Command and signal',
-        'hint'  => 'Who is in charge, and how everyone talks.',
-        'fields' => [
-            'command' => ['label' => 'Command', 'kind' => 'x', 'help' => 'Chain of command, succession.'],
-            'signal'  => ['label' => 'Signal', 'kind' => 'x', 'help' => 'Nets, frequencies, callsigns, code words.'],
-        ],
-    ],
-    'roe' => [
-        'title' => 'Rules of engagement',
-        'hint'  => 'What may be engaged, and what may not.',
-        'fields' => [
-            'roeText'        => ['label' => 'Rules of engagement', 'kind' => 'x', 'help' => ''],
-            'clarifications' => ['label' => 'Clarifications', 'kind' => 'a', 'help' => 'One per line.'],
-        ],
-    ],
-];
 
 function ghostd_opord_doc_id(string $id): string
 {

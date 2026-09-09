@@ -94,7 +94,8 @@ function ghostd_custom_traits(): array
 {
     $out = [];
     try {
-        foreach (ghostd_template_items('traits') as $id => $t) {
+        require_once __DIR__ . '/records.php';
+        foreach (ghostd_record_items('traits') as $id => $t) {
             $kind = strtolower(trim((string) ($t['kind'] ?? 'bool')));
             // WHERE IT GOES ON THE MAN. setVariable for most of them - a unit
             // flag like draWhitelisted - and setUnitTrait for the few that are

@@ -42,10 +42,10 @@ function ghostd_opord_sections(): array
     } catch (Throwable $e) {
         $doc = null;
     }
+    // THE DOCUMENT IS THE LIST. <unit>.system.opord says what an order holds;
+    // there is no second copy in PHP to drift from it. An empty document is an
+    // order with no fields, which the editor says plainly and can fix.
     $rows = is_array($doc['fields'] ?? null) ? $doc['fields'] : [];
-    if ($rows === []) {
-        return GHOSTD_OPORD_SECTIONS;
-    }
 
     $out = [];
     foreach ($rows as $r) {
@@ -76,7 +76,7 @@ function ghostd_opord_sections(): array
             'help'  => trim((string) ($r['help'] ?? '')),
         ];
     }
-    return $out === [] ? GHOSTD_OPORD_SECTIONS : $out;
+    return $out;
 }
 
 /** The same shape, flattened for the editor. */
@@ -118,10 +118,8 @@ function ghostd_ticket_kinds(): array
     } catch (Throwable $e) {
         $doc = null;
     }
+    // Same rule: <unit>.system.ticketKinds is the list.
     $items = is_array($doc['items'] ?? null) ? $doc['items'] : [];
-    if ($items === []) {
-        return GHOSTD_TICKET_KINDS;
-    }
 
     $out = [];
     foreach ($items as $id => $it) {
@@ -133,7 +131,7 @@ function ghostd_ticket_kinds(): array
             'hint'  => trim((string) ($it['hint'] ?? '')),
         ];
     }
-    return $out === [] ? GHOSTD_TICKET_KINDS : $out;
+    return $out;
 }
 
 function ghostd_ticket_kinds_save(array $items): void
@@ -151,8 +149,14 @@ function ghostd_ticket_kinds_save(array $items): void
     ]);
 }
 
-/** Put one back to how it ships, by removing the document. */
-function ghostd_system_reset(string $what): void
+/**
+ * Delete one of the two system documents.
+ *
+ * It used to mean "put it back to how it ships" - there was a copy of both in
+ * PHP to fall back to. There is not any more (2026-09-09: the document is the
+ * list), so this empties the thing and the editor is how it is filled in again.
+ */
+function ghostd_system_delete(string $what): void
 {
     require_once __DIR__ . '/roles.php';       // ghostd_doc_delete lives there
     ghostd_doc_delete(ghostd_system_doc_id($what));

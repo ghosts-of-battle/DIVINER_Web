@@ -535,23 +535,33 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
 
   <?php $open('traits'); ?>
 
+    <?php $engineLeft = array_filter(array_keys(GHOSTD_ENGINE_TRAITS),
+            static fn($t) => !in_array(strtolower($t), $pacOwned, true)); ?>
     <h3>The engine's own <span class="dim">every unit in Arma has these</span></h3>
+    <?php if ($engineLeft === []): ?>
+      <p class="dim">All four are set by skills.</p>
+    <?php endif; ?>
     <div class="checkgrid">
       <?php foreach (GHOSTD_ENGINE_TRAITS as $t => $desc): ?>
         <?php
-          $taken  = in_array(strtolower($t), $pacOwned, true);
+          // A NAME A SKILL SETS IS NOT OFFERED HERE. PAC applies it after the
+          // role and the role's copy is skipped, so a box for it is a box that
+          // does nothing (user, 2026-09-09: the label saying so was "just extra
+          // confusing words"). Where each name is set is on the Configs page,
+          // Custom traits, in the "Set by a skill" column.
+          if (in_array(strtolower($t), $pacOwned, true)) { continue; }
           $number = str_ends_with($t, 'Coef');
         ?>
-        <label class="inlinelabel<?= $taken ? ' takenrow' : '' ?>">
+        <label class="inlinelabel">
           <?php if ($number): ?>
             <input type="number" step="0.01" name="t_num[<?= h($t) ?>]"
-                   value="<?= h(isset($has[$t]) ? (string) $has[$t] : '') ?>" <?= $taken ? 'disabled' : '' ?>>
+                   value="<?= h(isset($has[$t]) ? (string) $has[$t] : '') ?>">
           <?php else: ?>
             <input type="checkbox" name="t_on[]" value="<?= h($t) ?>"
-                   <?= $isOn($t) ? 'checked' : '' ?> <?= $taken ? 'disabled' : '' ?>>
+                   <?= $isOn($t) ? 'checked' : '' ?>>
           <?php endif; ?>
           <span><strong><?= h($t) ?></strong>
-            <span class="dim"><?= $taken ? 'PAC owns this - a skill sets it' : h($desc) ?></span></span>
+            <span class="dim"><?= h($desc) ?></span></span>
         </label>
       <?php endforeach; ?>
     </div>
@@ -564,18 +574,18 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
     <?php else: ?>
       <div class="checkgrid">
         <?php foreach ($customTraits as $t => $meta): ?>
-          <?php $taken = in_array(strtolower($t), $pacOwned, true); ?>
-          <label class="inlinelabel<?= $taken ? ' takenrow' : '' ?>">
+          <?php if (in_array(strtolower($t), $pacOwned, true)) { continue; } ?>
+          <label class="inlinelabel">
             <?php if ($meta['kind'] === 'number'): ?>
               <input type="number" step="0.01" name="t_num[<?= h($t) ?>]"
-                     value="<?= h(isset($has[$t]) ? (string) $has[$t] : '') ?>" <?= $taken ? 'disabled' : '' ?>>
+                     value="<?= h(isset($has[$t]) ? (string) $has[$t] : '') ?>">
             <?php else: ?>
               <input type="checkbox" name="t_on[]" value="<?= h($t) ?>"
-                     <?= $isOn($t) ? 'checked' : '' ?> <?= $taken ? 'disabled' : '' ?>>
+                     <?= $isOn($t) ? 'checked' : '' ?>>
             <?php endif; ?>
             <span><strong><?= h($meta['label']) ?></strong>
               <code><?= h($t) ?></code>
-              <span class="dim"><?= $taken ? 'PAC owns this - a skill sets it' : h($meta['help']) ?></span></span>
+              <span class="dim"><?= h($meta['help']) ?></span></span>
           </label>
         <?php endforeach; ?>
       </div>
@@ -628,18 +638,18 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
     <?php $open('vars'); ?>
       <div class="checkgrid">
         <?php foreach ($cat as $vn => $meta): ?>
-          <?php $taken = in_array(strtolower($vn), $pacOwned, true); ?>
-          <label class="inlinelabel<?= $taken ? ' takenrow' : '' ?>">
+          <?php if (in_array(strtolower($vn), $pacOwned, true)) { continue; } ?>
+          <label class="inlinelabel">
             <?php if ($meta['kind'] === 'number'): ?>
               <input type="number" step="1" name="v_num[<?= h($vn) ?>]"
-                     value="<?= h(isset($has[$vn]) ? (string) $has[$vn] : '') ?>" <?= $taken ? 'disabled' : '' ?>>
+                     value="<?= h(isset($has[$vn]) ? (string) $has[$vn] : '') ?>">
             <?php else: ?>
               <input type="checkbox" name="v_on[]" value="<?= h($vn) ?>"
-                     <?= $isOn($vn) ? 'checked' : '' ?> <?= $taken ? 'disabled' : '' ?>>
+                     <?= $isOn($vn) ? 'checked' : '' ?>>
             <?php endif; ?>
             <span><strong><?= h($meta['label']) ?></strong>
               <?php if ($meta['label'] !== $vn): ?><code><?= h($vn) ?></code><?php endif; ?>
-              <span class="dim"><?= $taken ? 'PAC owns this - a skill sets it' : h($meta['help']) ?></span></span>
+              <span class="dim"><?= h($meta['help']) ?></span></span>
           </label>
         <?php endforeach; ?>
       </div>

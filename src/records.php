@@ -45,7 +45,8 @@ const GHOSTD_RECORDS = [
             'name'    => ['label' => 'Name', 'kind' => 'text'],
             'abbrev'  => ['label' => 'Abbrev', 'kind' => 'text', 'help' => '2-4 letters for the squad panel'],
             'effects' => ['label' => 'Effects', 'kind' => 'list',
-                          'help' => 'comma separated: medic:2, engineer:1, eod:1, trait:isJFO, var:name=value'],
+                          'datalist' => 'traitEffects',
+                          'help' => 'comma separated: medic:2, engineer:1, eod:1, trait:isJFO, var:name=value - the trait and var names come from Custom traits'],
             'color'   => ['label' => 'Color', 'kind' => 'text', 'help' => 'R,G,B 0-255 - empty is the ink color'],
         ],
     ],
@@ -86,6 +87,24 @@ const GHOSTD_RECORDS = [
             'name'        => ['label' => 'Name', 'kind' => 'text'],
             'category'    => ['label' => 'Category', 'kind' => 'text', 'help' => 'Medical, Leadership, Fires...'],
             'description' => ['label' => 'Description', 'kind' => 'text'],
+        ],
+    ],
+    // THE UNIT'S OWN TRAIT NAMES. One set for the whole unit, no versions, and
+    // a role picks names off it - which is a config, not part of an order of
+    // battle (user, 2026-09-09: "ar not traits part of the config").
+    'traits' => [
+        'label'     => 'Custom traits',
+        'blurb'     => 'The names this unit invented, as opposed to the four the engine has. A role assigns them by ticking and the setUnitTrait custom flag is set from this list - the argument that silently throws a trait away when it is wrong.',
+        'idHelp'    => 'the name the mod reads - draWhitelisted, isRTO. No spaces',
+        'idPattern' => '/^[A-Za-z_][A-Za-z0-9_]{0,63}$/',
+        'fields'    => [
+            'label' => ['label' => 'Shown as', 'kind' => 'text', 'help' => 'what the role editor calls it - DRA whitelisted'],
+            'where' => ['label' => 'Set as', 'kind' => 'choice',
+                        'options' => ['variable' => 'a variable - setVariable', 'trait' => 'a trait - setUnitTrait'],
+                        'help' => 'two different things on the man, and getting it wrong is silent'],
+            'kind'  => ['label' => 'Kind', 'kind' => 'choice',
+                        'options' => ['bool' => 'yes / no', 'number' => 'a number']],
+            'help'  => ['label' => 'What it does', 'kind' => 'text', 'help' => 'one line, read by whoever decides whether a role should have it'],
         ],
     ],
     'admins' => [
@@ -213,4 +232,44 @@ function ghostd_record_image_put(string $key, ?string $mime, string $bytes = '')
             ['mime' => $mime, 'data' => base64_encode($bytes), 'at' => gmdate('Y-m-d H:i:s')]);
     }
     ghostd_record_images(true);
+}
+
+// ---- where the two lists meet ---------------------------------------------
+// A SKILL SETS A CUSTOM TRAIT, and the name has to be the same name. The
+// effects box offers what Custom traits holds so nobody invents a second
+// spelling of isJFO (user, 2026-09-09: "in the config there ar skills those tie
+// in to Custom traits so clean it up only one place"), and the traits page says
+// which skill owns each name - a name a skill sets is applied by PAC and
+// skipped on the role, so the role editor greys it out.
+
+/** The values the skills' EFFECTS box offers. */
+function ghostd_effect_options(): array
+{
+    $out = ['medic:1', 'medic:2', 'engineer:1', 'eod:1'];
+    foreach (ghostd_record_items('traits') as $id => $t) {
+        $where = strtolower(trim((string) ($t['where'] ?? 'variable')));
+        $out[] = ($where === 'trait' ? 'trait:' : 'var:') . $id;
+    }
+    return $out;
+}
+
+/** Custom trait name => the skills that set it. */
+function ghostd_trait_owners(): array
+{
+    $out = [];
+    foreach (ghostd_record_items('skills') as $sid => $s) {
+        foreach ((array) ($s['effects'] ?? []) as $e) {
+            $parts = explode(':', (string) $e, 2);
+            if (count($parts) < 2) {
+                continue;
+            }
+            $kind = strtolower(trim($parts[0]));
+            if (!in_array($kind, ['trait', 'var'], true)) {
+                continue;
+            }
+            $name = trim(explode('=', trim($parts[1]))[0]);
+            $out[strtolower($name)][] = (string) ($s['name'] ?? $sid);
+        }
+    }
+    return $out;
 }

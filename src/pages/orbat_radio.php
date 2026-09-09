@@ -28,21 +28,22 @@ const GHOSTD_TFAR_SLOTS = 8;
 // $sub - which of ACRE and TFAR - is chosen by orbat.php, because the sub-tabs
 // are drawn up in the page's one menu bar rather than a second bar down here.
 $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
+
+// THE NETS TAC//MSG OFFERS. Not channels - a net is a mailbox a man reads, a
+// channel is what he keys up on. Read once here rather than inside the
+// Messaging block: the Shared nets screen needs the same list, and reading it
+// there is how that screen came to throw when it was moved off Messaging.
+$netItems = [];
+try {
+    $netItems = ghostd_template_items('nets');
+} catch (Throwable $e) {
+    $netItems = [];
+}
 ?>
 
 <?php if ($sub === 'nets'): ?>
 
   <?php
-    // THE NETS TAC//MSG OFFERS. Not channels - a net is a mailbox a man reads,
-    // a channel is what he keys up on. They are set up together because a
-    // platoon's net and its MR channel carry the same name, and a role's list
-    // of nets is picked from exactly these.
-    $netItems = [];
-    try {
-        $netItems = ghostd_template_items('nets');
-    } catch (Throwable $e) {
-        $netItems = [];
-    }
     // Which roles read each one, which is the useful question about a net.
     $netUsers = [];
     try {
@@ -125,6 +126,10 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
   <p class="dim">Kept in <code><?= h(ghostd_template_doc_id('nets')) ?></code>.
   A role reads a net only if its own list names it - that IS the privacy rule.</p>
 
+<?php endif; ?>
+
+<?php if ($sub === 'shared'): ?>
+
   <h2>Shared nets <span class="dim"><?= count($radioNets) ?></span></h2>
   <p class="dim">Squads that share a net across a platoon boundary. The net must
   be a name from the list above, and an MR channel of the same name.</p>
@@ -166,6 +171,7 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
 
     <div class="actions"><button type="submit">Save shared nets</button></div>
   </form>
+
 
 <?php endif; ?>
 
@@ -274,7 +280,9 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
     <div class="actions"><button type="submit">Save ACRE settings</button></div>
   </form>
 
-<?php else: ?>
+<?php endif; ?>
+
+<?php if ($sub === 'tfar'): ?>
 
   <?php
     $sw = array_values((array) ($radio['tfarSrFreqs'] ?? []));
