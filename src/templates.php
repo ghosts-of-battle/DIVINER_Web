@@ -107,7 +107,7 @@ const GHOSTD_TEMPLATES = [
         'doc'     => 'logistics',
         'shape'   => 'code',
         'replaces' => 'config_logistics.sqf',
-        'blurb'   => 'The logistics table, as SQF. The mission used to compile this file; the unit can keep it here instead.',
+        'blurb'   => 'What each crate holds. One card per crate, one line per item.',
         'global'  => 'missionConfig_logistics',
     ],
     'pylons' => [
@@ -115,7 +115,7 @@ const GHOSTD_TEMPLATES = [
         'doc'     => 'pylons',
         'shape'   => 'code',
         'replaces' => 'config_pylons.sqf',
-        'blurb'   => 'Pylon loadouts, as SQF.',
+        'blurb'   => 'What hangs off each aircraft. One card per vehicle, a preset per loadout.',
         'global'  => 'missionConfig_pylons',
     ],
     // 'skill' WAS HERE. The AI skill block is twenty-two CBA sliders now
