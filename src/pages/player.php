@@ -29,12 +29,135 @@ if (!preg_match('/^\d{5,20}$/', $uid)) {
     return;
 }
 
+require_once __DIR__ . '/../players.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ghostd_csrf_check();
 
     $store = ghostd_get($storeId);
     if ($store === null || !isset($store['players'][$uid])) {
         $err = 'No such player in the store.';
+    } elseif (($_POST['what'] ?? '') !== '') {
+        // THE LIST FIELDS - the same writes the game's admin page makes, with
+        // the same shapes and the same log rows. See src/players.php.
+        try {
+            $rec  = (array) $store['players'][$uid];
+            $now  = gmdate('Y-m-d H:i');
+            [$byUid, $byName] = ghostd_actor();
+
+            switch ((string) $_POST['what']) {
+                case 'skills': {
+                    $known = ghostd_record_labels('skills');
+                    $want  = [];
+                    foreach ((array) ($_POST['skills'] ?? []) as $sid) {
+                        $sid = trim((string) $sid);
+                        if ($sid !== '' && isset($known[$sid])) {
+                            $want[] = $sid;
+                        }
+                    }
+                    sort($want);
+
+                    // A skill granted for the FIRST time is a qualification,
+                    // dated - the game's rule, kept here.
+                    $had   = array_map('strval', (array) ($rec['skillIds'] ?? []));
+                    $quals = (array) ($rec['qualifications'] ?? []);
+                    foreach ($want as $sid) {
+                        if (in_array($sid, $had, true)) {
+                            continue;
+                        }
+                        $seen = false;
+                        foreach ($quals as $q) {
+                            if ((string) ((array) $q)[0] === $sid) { $seen = true; break; }
+                        }
+                        if (!$seen) {
+                            $quals[] = [$sid, $known[$sid], substr($now, 0, 10)];
+                        }
+                    }
+                    ghostd_set_path($storeId, 'players.' . $uid . '.qualifications', $quals);
+                    ghostd_player_write($store, $uid, 'skillIds', $want, 'skills',
+                        'skills ' . implode(', ', array_map(static fn($x) => $known[$x] ?? $x, $want)));
+                    $msg = count($want) . ' skills set.';
+                    break;
+                }
+
+                case 'awardadd': {
+                    $known = ghostd_record_labels('awards');
+                    $aid   = trim((string) ($_POST['award'] ?? ''));
+                    if (!isset($known[$aid])) {
+                        throw new RuntimeException('Pick an award.');
+                    }
+                    $awards   = (array) ($rec['awards'] ?? []);
+                    $awards[] = [$aid, $now, $byName, trim((string) ($_POST['citation'] ?? ''))];
+                    ghostd_player_write($store, $uid, 'awards', $awards, 'awardAdd',
+                        'awarded ' . $known[$aid]);
+                    $msg = $known[$aid] . ' awarded.';
+                    break;
+                }
+
+                case 'awardremove': {
+                    $awards = array_values((array) ($rec['awards'] ?? []));
+                    $i      = (int) ($_POST['i'] ?? -1);
+                    if (!isset($awards[$i])) {
+                        throw new RuntimeException('That award is not on the record.');
+                    }
+                    $gone = (array) $awards[$i];
+                    unset($awards[$i]);
+                    ghostd_player_write($store, $uid, 'awards', array_values($awards), 'awardRemove',
+                        'removed ' . (ghostd_record_labels('awards')[(string) $gone[0]] ?? (string) $gone[0]));
+                    $msg = 'Award removed.';
+                    break;
+                }
+
+                case 'trainingadd': {
+                    $courses = ghostd_record_labels('trainings');
+                    $course  = trim((string) ($_POST['course'] ?? ''));
+                    if ($course !== '' && !isset($courses[$course])) {
+                        throw new RuntimeException('There is no course called "' . $course . '".');
+                    }
+                    [$when, $text] = ghostd_dated_text((string) ($_POST['text'] ?? ''), $now);
+                    if ($course === '' && $text === '') {
+                        throw new RuntimeException('A course, a note, or both - not neither.');
+                    }
+                    $training   = (array) ($rec['training'] ?? []);
+                    $training[] = [$when, $byName, $text, $course];
+                    ghostd_player_write($store, $uid, 'training', $training, 'trainingAdd',
+                        trim($when . ' ' . ($courses[$course] ?? '') . ($text !== '' ? ' - ' . $text : '')));
+                    $msg = 'Training added.';
+                    break;
+                }
+
+                case 'trainingremove': {
+                    $training = array_values((array) ($rec['training'] ?? []));
+                    $i        = (int) ($_POST['i'] ?? -1);
+                    if (!isset($training[$i])) {
+                        throw new RuntimeException('That training entry is not on the record.');
+                    }
+                    $gone = (array) $training[$i];
+                    unset($training[$i]);
+                    ghostd_player_write($store, $uid, 'training', array_values($training),
+                        'trainingRemove', trim((string) ($gone[0] ?? '') . ' ' . (string) ($gone[2] ?? '')));
+                    $msg = 'Training entry removed.';
+                    break;
+                }
+
+                case 'noteadd': {
+                    $text = trim((string) ($_POST['text'] ?? ''));
+                    if ($text === '') {
+                        throw new RuntimeException('An empty note says nothing.');
+                    }
+                    $notes   = (array) ($rec['notes'] ?? []);
+                    $notes[] = [$now, $byName, $text];
+                    ghostd_player_write($store, $uid, 'notes', $notes, 'noteAdd', $text);
+                    $msg = 'Note added.';
+                    break;
+                }
+
+                default:
+                    throw new RuntimeException('Unknown action.');
+            }
+        } catch (Throwable $e) {
+            $err = $e->getMessage();
+        }
     } else {
         // ONE SAVE FOR THE SECTION, not one per line - a page of eight fields
         // with eight buttons is eight round trips to change somebody's rank and
@@ -175,17 +298,151 @@ and save to see that squad's instead.
 <?= h($mySquad) ?> has no slots in that ORBAT, so every role is offered.
 <?php endif; ?></p>
 
-<h2>What the game owns</h2>
-<p class="dim">Skills, awards, notes, training and loadouts are set on the
-game's admin page, which validates them against the structure. They are shown
-here so you can see them, not change them.</p>
+<?php
+  $skillNames  = ghostd_record_labels('skills');
+  $awardNames  = ghostd_record_labels('awards');
+  $courseNames = ghostd_record_labels('trainings');
+  $has         = array_map('strval', (array) ($p['skillIds'] ?? []));
+?>
+
+<h2>Skills</h2>
+<p class="dim">The same list the PAC's admin page sets. Granting one for the
+first time writes a dated qualification that stays on the record.</p>
+<form method="post">
+  <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+  <input type="hidden" name="uid" value="<?= h($uid) ?>">
+  <input type="hidden" name="what" value="skills">
+  <div class="fieldrow">
+  <?php foreach ($skillNames as $sid => $sname): ?>
+    <label class="inlinelabel">
+      <input type="checkbox" name="skills[]" value="<?= h((string) $sid) ?>"
+             <?= in_array((string) $sid, $has, true) ? 'checked' : '' ?>>
+      <?= h($sname) ?>
+    </label>
+  <?php endforeach; ?>
+  </div>
+  <?php if ($skillNames === []): ?>
+    <p class="dim">No skills in <code><?= h($unit ?? ghostd_config()['unit']) ?>.skills</code> yet.</p>
+  <?php endif; ?>
+  <div class="actions"><button type="submit">Save skills</button></div>
+</form>
+
+<h2>Qualifications <span class="dim"><?= count((array) ($p['qualifications'] ?? [])) ?></span></h2>
+<p class="dim">When each skill was first held. Written by the grant above; not
+edited by hand.</p>
+<table class="grid">
+  <thead><tr><th style="width:40%">Skill</th><th style="width:60%">Since</th></tr></thead>
+  <tbody>
+  <?php foreach ((array) ($p['qualifications'] ?? []) as $q): $q = (array) $q; ?>
+    <tr><td><?= h((string) ($q[1] ?? $q[0] ?? '')) ?></td>
+        <td class="dim"><?= h((string) ($q[2] ?? '')) ?></td></tr>
+  <?php endforeach; ?>
+  </tbody>
+</table>
+
+<h2>Training <span class="dim"><?= count((array) ($p['training'] ?? [])) ?></span></h2>
+<table class="grid">
+  <thead><tr><th style="width:16%">When</th><th style="width:24%">Course</th>
+      <th style="width:44%">Note</th><th style="width:16%">By</th></tr></thead>
+  <tbody>
+  <?php foreach (array_values((array) ($p['training'] ?? [])) as $ti => $t): $t = (array) $t; ?>
+    <tr>
+      <td class="dim"><?= h((string) ($t[0] ?? '')) ?></td>
+      <td><?= h($courseNames[(string) ($t[3] ?? '')] ?? (string) ($t[3] ?? '')) ?></td>
+      <td><?= h((string) ($t[2] ?? '')) ?></td>
+      <td class="dim"><?= h((string) ($t[1] ?? '')) ?>
+        <form method="post" class="inline">
+          <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+          <input type="hidden" name="uid" value="<?= h($uid) ?>">
+          <input type="hidden" name="what" value="trainingremove">
+          <input type="hidden" name="i" value="<?= (int) $ti ?>">
+          <button type="submit" class="hot">remove</button>
+        </form>
+      </td>
+    </tr>
+  <?php endforeach; ?>
+  </tbody>
+</table>
+
+<form method="post" class="inline">
+  <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+  <input type="hidden" name="uid" value="<?= h($uid) ?>">
+  <input type="hidden" name="what" value="trainingadd">
+  <label for="course">Course</label>
+  <select id="course" name="course">
+    <option value="">- none -</option>
+    <?php foreach ($courseNames as $cid => $cname): ?>
+      <option value="<?= h((string) $cid) ?>"><?= h($cname) ?></option>
+    <?php endforeach; ?>
+  </select>
+  <input type="text" name="text" placeholder="note - lead with 2026-08-01 to back-date it">
+  <button type="submit">Add training</button>
+</form>
+
+<h2>Awards <span class="dim"><?= count((array) ($p['awards'] ?? [])) ?></span></h2>
+<table class="grid">
+  <thead><tr><th style="width:26%">Award</th><th style="width:18%">When</th>
+      <th style="width:36%">Citation</th><th style="width:20%">By</th></tr></thead>
+  <tbody>
+  <?php foreach (array_values((array) ($p['awards'] ?? [])) as $ai => $a): $a = (array) $a; ?>
+    <tr>
+      <td><?= h($awardNames[(string) ($a[0] ?? '')] ?? (string) ($a[0] ?? '')) ?></td>
+      <td class="dim"><?= h((string) ($a[1] ?? '')) ?></td>
+      <td><?= h((string) ($a[3] ?? '')) ?></td>
+      <td class="dim"><?= h((string) ($a[2] ?? '')) ?>
+        <form method="post" class="inline">
+          <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+          <input type="hidden" name="uid" value="<?= h($uid) ?>">
+          <input type="hidden" name="what" value="awardremove">
+          <input type="hidden" name="i" value="<?= (int) $ai ?>">
+          <button type="submit" class="hot">remove</button>
+        </form>
+      </td>
+    </tr>
+  <?php endforeach; ?>
+  </tbody>
+</table>
+
+<form method="post" class="inline">
+  <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+  <input type="hidden" name="uid" value="<?= h($uid) ?>">
+  <input type="hidden" name="what" value="awardadd">
+  <label for="award">Award</label>
+  <select id="award" name="award">
+    <?php foreach ($awardNames as $aid => $aname): ?>
+      <option value="<?= h((string) $aid) ?>"><?= h($aname) ?></option>
+    <?php endforeach; ?>
+  </select>
+  <input type="text" name="citation" placeholder="citation, may be empty">
+  <button type="submit">Award it</button>
+</form>
+
+<h2>Notes <span class="dim"><?= count((array) ($p['notes'] ?? [])) ?></span></h2>
+<table class="grid">
+  <thead><tr><th style="width:18%">When</th><th style="width:18%">By</th>
+      <th style="width:64%">Note</th></tr></thead>
+  <tbody>
+  <?php foreach ((array) ($p['notes'] ?? []) as $n): $n = (array) $n; ?>
+    <tr><td class="dim"><?= h((string) ($n[0] ?? '')) ?></td>
+        <td class="dim"><?= h((string) ($n[1] ?? '')) ?></td>
+        <td><?= h((string) ($n[2] ?? '')) ?></td></tr>
+  <?php endforeach; ?>
+  </tbody>
+</table>
+
+<form method="post" class="inline">
+  <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+  <input type="hidden" name="uid" value="<?= h($uid) ?>">
+  <input type="hidden" name="what" value="noteadd">
+  <label for="note">Note</label>
+  <input type="text" id="note" name="text" placeholder="what happened">
+  <button type="submit">Add note</button>
+</form>
+
+<h2>The rest</h2>
 <table class="kv">
-  <tr><th>Skills</th><td><?= cell($p['skillIds'] ?? null) ?></td></tr>
-  <tr><th>Qualifications</th><td><?= is_array($p['qualifications'] ?? null) ? count($p['qualifications']) : 0 ?></td></tr>
-  <tr><th>Awards</th><td><?= is_array($p['awards'] ?? null) ? count($p['awards']) : 0 ?></td></tr>
-  <tr><th>Training</th><td><?= is_array($p['training'] ?? null) ? count($p['training']) : 0 ?></td></tr>
-  <tr><th>Notes</th><td><?= is_array($p['notes'] ?? null) ? count($p['notes']) : 0 ?></td></tr>
   <tr><th>Admin actions</th><td><?= is_array($p['adminActions'] ?? null) ? count($p['adminActions']) : 0 ?></td></tr>
+  <tr><th>Loadouts</th><td><?= is_array($p['loadouts'] ?? null) ? count($p['loadouts']) : 0 ?></td></tr>
   <tr><th>Promoted</th><td><?= h((string) ($p['promotedAt'] ?? '')) ?></td></tr>
   <tr><th>Last updated</th><td><?= h(when($p['updatedAt'] ?? null)) ?></td></tr>
   <tr><th>Server</th><td><?= cell($p['serverId'] ?? null) ?></td></tr>
