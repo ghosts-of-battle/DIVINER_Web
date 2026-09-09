@@ -1,0 +1,6 @@
+# Secrets. The example is tracked; the real one never is.
+src/config.local.php
+
+# Local scratch
+*.log
+.DS_Store

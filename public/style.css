@@ -1,0 +1,160 @@
+/* TAC//PAC manager - one stylesheet, no framework, no build step. */
+
+:root {
+  --ground: #0f1113;
+  --panel:  #171a1d;
+  --line:   #2a2f34;
+  --ink:    #d8dee3;
+  --dim:    #8b959d;
+  --accent: #7fb069;
+  --hot:    #d44444;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 14px/1.5 ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+}
+
+.bar {
+  display: flex; align-items: center; gap: 1.5rem;
+  padding: .6rem 1rem;
+  background: var(--panel);
+  border-bottom: 2px solid var(--line);
+  flex-wrap: wrap;
+}
+.brand { font-weight: 700; letter-spacing: .08em; }
+.bar nav { display: flex; gap: 1rem; flex: 1; flex-wrap: wrap; }
+.bar nav a { color: var(--dim); text-decoration: none; padding: .2rem 0; }
+.bar nav a:hover { color: var(--ink); }
+.bar nav a.on { color: var(--accent); border-bottom: 2px solid var(--accent); }
+.bar nav a.right { margin-left: auto; }
+
+main { padding: 1rem; max-width: 1200px; }
+h1 { font-size: 1.2rem; letter-spacing: .08em; text-transform: uppercase; margin: .4rem 0 1rem; }
+h2 { font-size: 1rem; letter-spacing: .06em; text-transform: uppercase;
+     margin: 1.6rem 0 .6rem; color: var(--accent); }
+h3 { font-size: .85rem; letter-spacing: .05em; text-transform: uppercase; color: var(--dim); }
+
+a { color: var(--accent); }
+code { color: var(--ink); background: #0a0c0d; padding: .05em .35em; border-radius: 2px; }
+pre  { background: #0a0c0d; padding: .8rem; overflow-x: auto; border: 1px solid var(--line); }
+.dim { color: var(--dim); }
+
+.tiles { display: flex; gap: .8rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.tile {
+  background: var(--panel); border: 1px solid var(--line);
+  padding: .8rem 1.2rem; min-width: 9rem; color: var(--dim);
+  text-transform: uppercase; font-size: .72rem; letter-spacing: .06em;
+}
+.tile .n { display: block; font-size: 1.8rem; color: var(--ink); letter-spacing: 0; }
+
+table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--dim); font-weight: 400; text-transform: uppercase; font-size: .72rem; letter-spacing: .05em; }
+table.kv th { width: 12rem; }
+table.grid tbody tr:hover { background: var(--panel); }
+
+/* Wide tables scroll inside themselves rather than pushing the page sideways. */
+table.grid { display: block; overflow-x: auto; white-space: nowrap; }
+table.grid td, table.grid th { white-space: normal; }
+
+ul.cols { columns: 3 14rem; list-style: none; padding: 0; }
+ul.cols li { margin-bottom: .25rem; break-inside: avoid; }
+
+.card {
+  background: var(--panel); border: 1px solid var(--line);
+  padding: .8rem 1rem; margin-bottom: .6rem;
+}
+.card.narrow { max-width: 22rem; }
+.card summary { cursor: pointer; }
+.card summary strong { margin-right: .5rem; }
+
+.pill {
+  display: inline-block; padding: 0 .45em; margin-left: .4rem;
+  border: 1px solid var(--accent); color: var(--accent);
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
+}
+.pill.dimpill { border-color: var(--line); color: var(--dim); }
+.pill.hot { border-color: var(--hot); color: var(--hot); }
+
+.fieldrow { margin: .15rem 0; }
+.fields { display: grid; gap: .3rem; margin-top: .6rem; }
+
+form.inline { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; margin: 0 0 .3rem; }
+form.inline label { min-width: 8rem; color: var(--dim); font-size: .78rem; }
+
+input[type=text], input[type=password], textarea {
+  background: #0a0c0d; color: var(--ink); border: 1px solid var(--line);
+  padding: .35rem .5rem; font: inherit; min-width: 12rem;
+}
+input[type=text]:focus, input[type=password]:focus, textarea:focus {
+  outline: none; border-color: var(--accent);
+}
+textarea { width: 100%; min-height: 24rem; }
+
+button {
+  background: transparent; color: var(--accent); border: 1px solid var(--accent);
+  padding: .35rem .9rem; font: inherit; cursor: pointer; text-transform: uppercase;
+  letter-spacing: .05em; font-size: .75rem;
+}
+button:hover { background: var(--accent); color: var(--ground); }
+
+.actions { display: flex; gap: 1rem; align-items: center; margin-top: .8rem; }
+.confirm { display: block; margin-top: .6rem; color: var(--hot); }
+
+.flash { padding: .5rem .8rem; border-left: 3px solid var(--line); background: var(--panel); }
+.flash.good { border-color: var(--accent); }
+.flash.bad  { border-color: var(--hot); color: #f0b8b8; }
+
+.note {
+  border-left: 3px solid var(--line); background: var(--panel);
+  padding: .5rem .8rem; color: var(--dim);
+}
+
+footer { padding: 1rem; color: var(--dim); font-size: .75rem; }
+
+label { display: block; margin: .5rem 0 .2rem; }
+
+/* ---- template editor ---------------------------------------------------- */
+
+fieldset.line {
+  border: 1px solid var(--line); background: var(--panel);
+  padding: .6rem .9rem; margin-bottom: .8rem;
+}
+fieldset.line legend { color: var(--accent); font-size: .78rem; letter-spacing: .05em; padding: 0 .4rem; }
+fieldset.line legend .key { color: var(--dim); }
+
+.fieldbox {
+  display: flex; gap: .4rem; align-items: flex-start; flex-wrap: wrap;
+  padding: .4rem 0; border-top: 1px solid var(--line);
+}
+.fieldbox .pill { margin-left: 0; align-self: center; }
+.fieldbox input[type=text] { flex: 1 1 10rem; min-width: 7rem; }
+.fieldbox textarea { flex: 2 1 18rem; min-height: 3.2rem; }
+
+select {
+  background: #0a0c0d; color: var(--ink); border: 1px solid var(--line);
+  padding: .35rem .4rem; font: inherit;
+}
+select:focus { outline: none; border-color: var(--accent); }
+
+.fields label .dim { font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+button.hot { color: var(--hot); border-color: var(--hot); }
+button.hot:hover { background: var(--hot); color: var(--ground); }
+form.danger { margin-top: 1.5rem; }
+
+a.btnlink {
+  display: inline-block; border: 1px solid var(--accent); color: var(--accent);
+  padding: .35rem .9rem; text-decoration: none; text-transform: uppercase;
+  letter-spacing: .05em; font-size: .75rem;
+}
+a.btnlink:hover { background: var(--accent); color: var(--ground); }
+
+.card summary a.edit { float: right; font-size: .75rem; }
+
+#addline { margin-bottom: 1rem; }
