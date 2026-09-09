@@ -44,7 +44,9 @@ $tab = (string) ($_GET['s'] ?? ($_POST['s'] ?? 'versions'));
 // 'common' was a tab called "Details" - the faction and the side are on the
 // order of battle they belong to now, and the custom traits are with the roles
 // that assign them. An old link lands on the orders of battle.
-if (!isset(GHOSTD_ORBAT_TABS[$tab])) {
+// "one" is the editor for a SINGLE order of battle, opened from the list. It
+// is not a tab of its own - the bar keeps Orders of battle lit while it is up.
+if ($tab !== 'one' && !isset(GHOSTD_ORBAT_TABS[$tab])) {
     $tab = 'versions';
 }
 
@@ -124,13 +126,15 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 <nav class="sections onebar">
   <?php foreach (GHOSTD_ORBAT_TABS as $k => $label): ?>
     <a href="?page=orbat&amp;s=<?= h($k) ?><?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>"
-       class="<?= $tab === $k ? 'on' : '' ?>"><?= h($label) ?></a>
+       class="<?= ($tab === $k || ($tab === 'one' && $k === 'versions')) ? 'on' : '' ?>"><?= h($label) ?></a>
   <?php endforeach; ?>
 
 
-  <?php if ($variants !== []): // a version group with one version is a tab that does nothing ?>
-    <span class="tabsep">version</span>
-    <a href="?page=orbat&amp;s=<?= h($tab) ?>" class="<?= $variant === '' ? 'on' : '' ?>">Common</a>
+  <?php // The orders of battle are chosen on their own tab; this strip says
+        // which one the tab in front of you is editing.
+        if ($variants !== [] && !in_array($tab, ['versions', 'one'], true)): ?>
+    <span class="tabsep">order of battle</span>
+    <a href="?page=orbat&amp;s=<?= h($tab) ?>" class="<?= $variant === '' ? 'on' : '' ?>"><?= h($unit) ?>.orbat</a>
     <?php foreach ($variants as $v): ?>
       <a href="?page=orbat&amp;s=<?= h($tab) ?>&amp;v=<?= urlencode($v) ?>"
          class="<?= $variant === $v ? 'on' : '' ?>"><?= h($v) ?></a>

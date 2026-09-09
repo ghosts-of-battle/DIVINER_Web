@@ -137,7 +137,7 @@ switch ($what) {
             throw new RuntimeException('There is no order of battle called "' . $want . '".');
         }
         ghostd_setting_save('currentOrbat', $want);
-        $msg = ($want === '' ? 'The common order of battle' : $want) . ' is live.';
+        $msg = ($want === '' ? ghostd_orbat_doc_id('') : $want) . ' is the default.';
         break;
 
     case 'neworbat':
@@ -158,21 +158,25 @@ switch ($what) {
             $doc['platoons']  = $src['platoons'];
             $doc['radioNets'] = $src['radioNets'];
         });
-        $msg = 'Copied ' . ($from === '' ? 'the common ORBAT' : $from) . ' to ' . $to
-             . '. It is not live until you tick it.';
+        $msg = 'Copied ' . ghostd_orbat_doc_id($from) . ' to ' . $to
+             . '. It is not the default until you tick it.';
         break;
 
     case 'deleteorbat':
         if ($variant === '') {
-            throw new RuntimeException('The common order of battle cannot be deleted - it is what '
-                . 'everything falls back to.');
+            throw new RuntimeException(ghostd_orbat_doc_id('') . ' cannot be deleted - it is what a '
+                . 'mission falls back to when it names no order of battle.');
         }
         if ($variant === ghostd_default_orbat_id()) {
-            throw new RuntimeException('"' . $variant . '" is the live one. Make another live first, '
-                . 'or the next mission would start with no order of battle.');
+            throw new RuntimeException('"' . $variant . '" is the default. Make another one the '
+                . 'default first, or the next mission would start with no order of battle.');
         }
         ghostd_doc_delete(ghostd_orbat_doc_id($variant));
         $msg = $variant . ' deleted.';
+        // Back to the list: the page it was deleted from is now about nothing.
+        $variant = '';
+        $docId   = $unit . '.orbat';
+        $tab     = 'versions';
         break;
 
     // WHICH PLATOONS ARE IN THIS ORDER OF BATTLE. A platoon is written once, on

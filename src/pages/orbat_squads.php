@@ -91,7 +91,7 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
             : '<span class="dim">not set</span>' ?></td></tr>
       <tr><th>Arsenal</th><td>
         <?php $has = ghostd_variant_summary('arsenal', $sv); ?>
-        <?= $has === '' ? '<span class="dim">common only</span>' : h($has) ?>
+        <?= $has === '' ? '<span class="dim">no arsenal of its own</span>' : h($has) ?>
         &middot; <a href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($sv) ?>"><?= $has === '' ? 'create' : 'open' ?></a>
       </td></tr>
     </table>
