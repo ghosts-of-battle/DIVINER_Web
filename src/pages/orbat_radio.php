@@ -54,22 +54,33 @@ $assigned = ghostd_orbat(ghostd_default_orbat_id());
 $assignedNow = $sub === 'nets' ? $assigned['nets'] : $assigned['radio'];
 ?>
 <?php
-  // WHICH ORDERS OF BATTLE RUN WHICH, so a template that nothing runs is
-  // obvious and one that three orbats run cannot be deleted by surprise.
+  // Which orders of battle run this one, so a template nothing runs is obvious
+  // and one that is in use cannot be deleted by surprise.
   $runners = [];
   foreach (ghostd_orbat_variants() as $ov) {
     $o = ghostd_orbat($ov);
     $runners[(string) ($fam === 'nets' ? $o['nets'] : $o['radio'])][] = $ov === '' ? 'Default' : $ov;
   }
   $famLabel = ['nets' => 'Messaging', 'radio' => $sub === 'tfar' ? 'TFAR' : 'ACRE'][$fam];
-  $rows = array_merge([''], $vlist);
+  $byOpen   = $runners[$cur] ?? [];
 ?>
-<h2><?= h($famLabel) ?> templates <span class="dim"><?= count($rows) ?></span></h2>
-<p class="dim">A template is a whole document. An order of battle names the one
-it runs - that is set <a href="?page=orbat&amp;s=one<?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>">on
-the order of battle</a>, not here. Open one to edit it.</p>
+<p class="vbar">
+  <strong>Template</strong>
+  <?php foreach (array_merge([''], $vlist) as $vv): ?>
+    <?php if ($cur === $vv): ?>
+      <span class="on"><?= $vv === '' ? 'Default' : h($vv) ?></span>
+    <?php else: ?>
+      <a href="?page=orbat&amp;s=radio&amp;r=<?= urlencode($sub) ?><?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>&amp;<?= h($param) ?>=<?= urlencode($vv) ?>"><?= $vv === '' ? 'Default' : h($vv) ?></a>
+    <?php endif; ?>
+  <?php endforeach; ?>
+  <?php if ($cur !== '' && $byOpen === []): ?>
+    <button type="submit" form="tpldel" name="tpl" value="<?= h($cur) ?>" class="hot"
+            onclick="return confirm('Delete the <?= h($famLabel) ?> template <?= h($cur) ?>? A copy is kept in the backup collection.');">Delete</button>
+  <?php endif; ?>
+  <span class="dim">&middot; <?= $byOpen === [] ? 'no order of battle runs this one' : 'run by ' . h(implode(', ', $byOpen)) ?>,
+  set <a href="?page=orbat&amp;s=one<?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>">on the order of battle</a>.</span>
+</p>
 
-<?php // Per-row Delete, posting to the page's own save. ?>
 <form method="post" id="tpldel">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
   <input type="hidden" name="what" value="tpldel">
@@ -79,66 +90,15 @@ the order of battle</a>, not here. Open one to edit it.</p>
   <?php if ($variant !== ''): ?><input type="hidden" name="v" value="<?= h($variant) ?>"><?php endif; ?>
 </form>
 
-<table class="grid">
-  <thead>
-    <tr><th style="width:22%">Template</th><th style="width:26%">Mongo doc</th>
-        <th style="width:14%">Holds</th><th style="width:22%">Run by</th>
-        <th style="width:16%"></th></tr>
-  </thead>
-  <tbody>
-  <?php foreach ($rows as $vv): ?>
-    <?php
-      $docId = $fam === 'nets' ? ghostd_template_doc_id('nets', $vv) : ghostd_radio_doc_id($vv);
-      try {
-        $holds = $fam === 'nets'
-          ? count(ghostd_template_items('nets', $vv))
-          : array_sum(array_map('count', array_values(ghostd_radio_items($vv))));
-      } catch (Throwable $e) { $holds = null; }
-      $by = $runners[$vv] ?? [];
-      $isOpen = ($cur === $vv);
-    ?>
-    <tr<?= $isOpen ? ' class="on"' : '' ?>>
-      <td><?= $vv === ''
-            ? '<strong>Default</strong>'
-            : '<code>' . h($vv) . '</code>' ?>
-          <?= $isOpen ? ' <span class="key">open</span>' : '' ?></td>
-      <td class="dim"><code><?= h($docId) ?></code></td>
-      <td><?= $holds === null ? '<span class="dim">unreadable</span>' : (int) $holds ?></td>
-      <td><?= $by === []
-            ? '<span class="dim">nothing runs it</span>'
-            : h(implode(', ', $by)) ?></td>
-      <td class="rowacts">
-        <a class="btnlink" href="?page=orbat&amp;s=radio&amp;r=<?= urlencode($sub) ?><?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>&amp;<?= h($param) ?>=<?= urlencode($vv) ?>">Open</a>
-        <?php // NO DELETE ON THE DEFAULT - it is what an order of battle gets
-              // when it names none - and none on one an orbat still runs. ?>
-        <?php if ($vv !== '' && $by === []): ?>
-          <button type="submit" form="tpldel" name="tpl" value="<?= h($vv) ?>" class="hot"
-                  onclick="return confirm('Delete the <?= h($famLabel) ?> template <?= h($vv) ?>? <?= (int) $holds ?> entries go with it. A copy is kept in the backup collection.');">Delete</button>
-        <?php elseif ($vv !== ''): ?>
-          <span class="dim" title="<?= h(implode(', ', $by)) ?> still runs it">in use</span>
-        <?php endif; ?>
-      </td>
-    </tr>
-  <?php endforeach; ?>
-
-    <?php // NEW IS A ROW, not a second bar. Type a name and press it. ?>
-    <tr>
-      <td colspan="2">
-        <form method="get" class="inline" id="tplnew">
-          <input type="hidden" name="page" value="orbat">
-          <input type="hidden" name="s" value="radio">
-          <input type="hidden" name="r" value="<?= h($sub) ?>">
-          <?php if ($variant !== ''): ?><input type="hidden" name="v" value="<?= h($variant) ?>"><?php endif; ?>
-          <input type="text" name="<?= h($param) ?>" placeholder="NightOps"
-                 pattern="[A-Za-z][A-Za-z0-9_]*" required>
-        </form>
-      </td>
-      <td colspan="2" class="dim">Opens empty; saving anything on it creates the
-        document.</td>
-      <td class="rowacts"><button type="submit" form="tplnew">New template</button></td>
-    </tr>
-  </tbody>
-</table>
+<form method="get" class="inline">
+  <input type="hidden" name="page" value="orbat">
+  <input type="hidden" name="s" value="radio">
+  <input type="hidden" name="r" value="<?= h($sub) ?>">
+  <?php if ($variant !== ''): ?><input type="hidden" name="v" value="<?= h($variant) ?>"><?php endif; ?>
+  <input type="text" name="<?= h($param) ?>" required pattern="[A-Za-z][A-Za-z0-9_]*" placeholder="NightOps">
+  <button type="submit">New template</button>
+  <span class="dim">Opens empty; saving it creates it.</span>
+</form>
 
 <?php if ($sub === 'nets'): ?>
 
