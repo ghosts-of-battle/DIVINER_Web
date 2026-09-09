@@ -56,11 +56,12 @@ if ($tab !== 'one' && !isset(GHOSTD_ORBAT_TABS[$tab])) {
 const GHOSTD_ORBAT_SUBTABS = [
     // The messaging nets sit with the radio: a net is what a man READS and a
     // channel is what he TALKS on, and the two are set up together.
-    // MESSAGING IS MESSAGING. Shared nets - which squads sit on one net across
-    // a platoon boundary, matched to an MR channel - is a radio arrangement and
-    // had no business on the messaging screen (user, 2026-09-09).
-    'radio' => ['nets' => 'Messaging', 'shared' => 'Shared nets',
-                'acre' => 'ACRE', 'tfar' => 'TFAR'],
+    // MESSAGING, THEN THE TWO RADIOS. There is no third thing: "shared nets"
+    // was a table pairing squads across a platoon boundary onto one net, and it
+    // is gone (user, 2026-09-09: "no fucking shared nets ... acre and tfar tab
+    // only for fucking radios"). A squad's channel is in the ACRE and TFAR
+    // tables, keyed by the squad.
+    'radio' => ['nets' => 'Messaging', 'acre' => 'ACRE', 'tfar' => 'TFAR'],
 ];
 $subTabs = GHOSTD_ORBAT_SUBTABS[$tab] ?? [];
 $sub = (string) ($_GET['r'] ?? ($_POST['r'] ?? ''));
@@ -72,6 +73,15 @@ if (!isset($subTabs[$sub])) {
 $variant = trim((string) ($_GET['v'] ?? ($_POST['v'] ?? '')));
 if ($variant !== '' && !ghostd_variant_ok($variant)) {
     $variant = '';
+}
+
+// NO VERSION NAMED MEANS THE DEFAULT ONE, not the unnamed document. A unit
+// whose orders of battle are all named - which is every unit that has ticked
+// one - has no <unit>.orbat at all, and reading it gave a page with no squads
+// and broken platoons (2026-09-09: "squads are missing plts are broken", right
+// after GHOST.orbat became GHOST.orbat.vanilla).
+if ($variant === '') {
+    $variant = ghostd_default_orbat_id();
 }
 $docId   = $unit . '.orbat' . ($variant !== '' ? '.' . $variant : '');
 $radioId = $unit . '.radio';
@@ -115,7 +125,6 @@ try {
 
 $platoons  = is_array($o['platoons'] ?? null) ? $o['platoons'] : [];
 $groups    = is_array($o['groups'] ?? null) ? $o['groups'] : [];
-$radioNets = is_array($o['radioNets'] ?? null) ? $o['radioNets'] : [];
 $faction   = (string) ($o['faction'] ?? '');
 
 $csrf = ghostd_csrf_token();

@@ -20,8 +20,27 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/branding.php';
 
+// ---- the mod's own six ----------------------------------------------------
+// THE SIX THE MOD SHIPS, and they are NOT editable - here or in game (user,
+// 2026-09-09: "6 default colors schemes that can not be edited for game and
+// web"). They are hard-coded in ghostD_tacpad_fnc_theme and drawn as preset
+// cards on the TAC//PAD's settings screen; this is the same six so the site
+// paints with them too. They are deliberately NOT in <unit>.schemes: putting
+// them there would show every one of them twice in game.
+//
+// If a scheme is ever changed in the mod, it changes here - the file to look
+// at is addons/tacpad/functions/fnc_theme.sqf.
+const GHOSTD_MOD_SCHEMES = [
+    'light'      => ['name' => 'FIELD GREY',  'ground' => '#f3f2f2', 'ink' => '#201e1d', 'accent' => '#ec3013'],
+    'olive'      => ['name' => 'OLIVE',       'ground' => '#e8e7e2', 'ink' => '#16281d', 'accent' => '#b5cc4a'],
+    'sand'       => ['name' => 'SAND',        'ground' => '#efece4', 'ink' => '#2b2119', 'accent' => '#d99427'],
+    'dark'       => ['name' => 'NIGHT / RED', 'ground' => '#141514', 'ink' => '#e6e5e2', 'accent' => '#ff563c'],
+    'nightOlive' => ['name' => 'NIGHT OLIVE', 'ground' => '#101411', 'ink' => '#d9e0d4', 'accent' => '#9cb43c'],
+    'nightSand'  => ['name' => 'NIGHT SAND',  'ground' => '#161310', 'ink' => '#e5e0d6', 'accent' => '#c78221'],
+];
+
 /**
- * The unit's schemes, as [id => [name, ground, ink, accent]].
+ * The unit's schemes, as [id => [name, ground, ink, accent, locked]].
  *
  * Empty when the unit has none - the caller then uses the site's presets.
  */
@@ -32,7 +51,13 @@ function ghostd_schemes(): array
         return $cache;
     }
 
+    // The mod's six first, so a unit's own scheme of the same id would sit on
+    // top of it rather than the other way round.
     $cache = [];
+    foreach (GHOSTD_MOD_SCHEMES as $id => $s) {
+        $cache[(string) $id] = $s + ['locked' => true];
+    }
+
     try {
         $doc = ghostd_get(ghostd_config()['unit'] . '.schemes');
     } catch (Throwable $e) {
@@ -56,6 +81,7 @@ function ghostd_schemes(): array
             'ground' => $ground,
             'ink'    => $ink,
             'accent' => $accent,
+            'locked' => false,
         ];
     }
     return $cache;

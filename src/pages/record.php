@@ -36,6 +36,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $was     = ghostd_record_items($sec);
         $pattern = (string) ($meta['idPattern'] ?? '/^[A-Za-z0-9_]+$/');
 
+        // ONE ROW, ONE BUTTON (user, 2026-09-09: "for any place there needs to
+        // be a delete just a fucking button with an are you sure pop up"). The
+        // tick-and-save column is gone; this is the button posting into the
+        // same page.
+        if (($_POST['what'] ?? '') === 'delete') {
+            $gone = trim((string) ($_POST['id'] ?? ''));
+            $all  = ghostd_record_items($sec);
+            if ($gone === '' || !isset($all[$gone])) {
+                throw new RuntimeException('No such row.');
+            }
+            unset($all[$gone]);
+            ghostd_record_save($sec, $all);
+            if ($sec === 'ranks') {
+                $th = ghostd_rank_thresholds();
+                unset($th[$gone]);
+                ghostd_rank_thresholds_save($th);
+            }
+            $msg = $gone . ' deleted.';
+            $items = ghostd_record_items($sec);
+            goto drawn;
+        }
+
         $items  = [];
         $remove = (array) ($_POST['r_remove'] ?? []);
         foreach ((array) ($_POST['r_id'] ?? []) as $i => $id) {
@@ -160,6 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $msg = count($items) . ' saved.';
+        drawn:
     } catch (Throwable $e) {
         $err = $e->getMessage();
     }
@@ -194,6 +217,12 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 <h2><?= h($meta['label']) ?> <span class="dim"><?= count($items) ?></span></h2>
 <p class="dim"><?= $meta['blurb'] ?> Clearing an id removes it.</p>
 
+<form method="post" id="rowdel">
+  <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+  <input type="hidden" name="s" value="<?= h($sec) ?>">
+  <input type="hidden" name="what" value="delete">
+</form>
+
 <form method="post" enctype="multipart/form-data">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
   <input type="hidden" name="s" value="<?= h($sec) ?>">
@@ -212,7 +241,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
       <?php endforeach; ?>
       <?php if ($sec === 'ranks'): ?><th style="width:12%">Points required</th><?php endif; ?>
       <?php if ($sec === 'traits'): ?><th style="width:16%">Set by a skill</th><?php endif; ?>
-      <th style="width:<?= $delW ?>%">Del</th></tr>
+      <th style="width:<?= $delW ?>%"></th></tr>
     </thead>
     <tbody id="rows">
     <?php $i = 0; foreach ($items as $id => $it): ?>
@@ -264,7 +293,8 @@ if ($err !== null) { ghostd_flash('bad', $err); }
                      value="<?= h((string) ($thresholds[(string) $id] ?? '')) ?>"
                      title="points a man needs before he can hold this rank"></td>
         <?php endif; ?>
-        <td><input type="checkbox" name="r_remove[]" value="<?= $i ?>"></td>
+        <td><button type="submit" form="rowdel" name="id" value="<?= h((string) $id) ?>" class="hot"
+                    onclick="return confirm('Delete <?= h((string) $id) ?>?');">Delete</button></td>
       </tr>
     <?php $i++; endforeach; ?>
       <tr>

@@ -18,6 +18,12 @@ $default = ghostd_default_orbat_id();
 $rows = [];
 foreach (array_merge([''], ghostd_orbat_variants()) as $v) {
     $o = ghostd_orbat((string) $v);
+    // The unnamed document is offered only when it is actually there. On a unit
+    // whose orders of battle are all named it is not, and listing it put an
+    // empty row with 0 platoons in the table (2026-09-09).
+    if ((string) $v === '' && !$o['exists']) {
+        continue;
+    }
     $slots = 0;
     foreach ($o['groups'] as $g) { $slots += count((array) ($g[1] ?? [])); }
     $rows[] = [
@@ -70,6 +76,13 @@ the default below when it names none.</p>
         <td>
           <?php $vq = $r['id'] !== '' ? '&amp;v=' . urlencode($r['id']) : ''; ?>
           <a class="btnlink" href="?page=orbat&amp;s=one<?= $vq ?>">Edit</a>
+          <?php // The delete belongs to the form below the table: a form inside
+                // a form is not HTML, and this is the row you want it on. ?>
+          <button type="submit" form="orbatdel" name="v" value="<?= h($r['id']) ?>" class="hot"
+                  onclick="return confirm('Delete <?= h($r['doc']) ?>?<?= $r['id'] === $default
+                      ? ' It is the default - the tick goes to whatever is left.' : '' ?>
+
+Its platoons and squads are kept.');">Delete</button>
         </td>
       </tr>
     <?php endforeach; ?>
@@ -79,28 +92,11 @@ the default below when it names none.</p>
   <div class="actions"><button type="submit">Make that one the default</button></div>
 </form>
 
-<?php $others = array_values(array_filter($rows,
-        static fn($r) => $r['id'] !== '' && $r['id'] !== $default)); ?>
-<h2>Delete</h2>
-<?php if ($others === []): ?>
-  <p class="dim">Only the default is left, and deleting that would leave a
-  mission with no order of battle. Make another one first.</p>
-<?php else: ?>
-  <form method="post" class="inline danger"
-        onsubmit="return confirm('Delete that order of battle? Its platoons and squads are kept - they live in the platoons.');">
-    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
-    <input type="hidden" name="s" value="versions">
-    <input type="hidden" name="what" value="deleteorbat">
-    <label for="delv">Order of battle</label>
-    <select id="delv" name="v">
-      <?php foreach ($others as $r): ?>
-        <option value="<?= h($r['id']) ?>"><?= h($r['doc']) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <button type="submit" class="hot">Delete it</button>
-    <span class="dim">The default is not offered - tick another one first.</span>
-  </form>
-<?php endif; ?>
+<form method="post" id="orbatdel">
+  <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+  <input type="hidden" name="s" value="versions">
+  <input type="hidden" name="what" value="deleteorbat">
+</form>
 
 <h2>New</h2>
 <form method="post" class="inline">

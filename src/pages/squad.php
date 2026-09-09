@@ -93,14 +93,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         }
                         $doc['platoons'] = $ps;
-
-                        $nets = is_array($doc['radioNets'] ?? null) ? $doc['radioNets'] : [];
-                        foreach ($nets as $ni => $n) {
-                            foreach ((array) ($n[2] ?? []) as $si => $sq) {
-                                if ((string) $sq === $name) { $nets[$ni][2][$si] = $to; }
-                            }
-                        }
-                        $doc['radioNets'] = $nets;
                     }
                     $doc['groups'] = $groups;
                 });

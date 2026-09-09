@@ -10,7 +10,6 @@
  * THE SHAPES ARE THE MOD'S, positional and unchanged:
  *   groups     [name, [roleId, ...], showWhen]
  *   platoons   [id, name, callsign, net, [squadName, ...]]
- *   radioNets  [id, name, [squadName, ...]]
  * and in <unit>.radio:
  *   srSquadChannel    [squadName, acreChannel]
  *   tfarNets          [squadName, shortRange, longRange]
@@ -193,7 +192,6 @@ function ghostd_orbat(string $variant = ''): array
         'side'      => isset(GHOSTD_SIDES[$side]) ? $side : 'WEST',
         'platoons'  => $arr($doc['platoons'] ?? null),
         'groups'    => $arr($doc['groups'] ?? null),
-        'radioNets' => $arr($doc['radioNets'] ?? null),
         // The engine's numeric coefficients, one set for everybody in this
         // order of battle - see GHOSTD_TRAIT_COEFS.
         'coefs'     => is_array($doc['coefs'] ?? null) ? $doc['coefs'] : [],
@@ -339,6 +337,23 @@ function ghostd_channel_set(array &$items, string $list, string $key, ?array $va
 function ghostd_platoon_pool(string $prefer = ''): array
 {
     $pool = [];
+
+    // THE POOL DOCUMENT FIRST. A platoon written here survives being unticked
+    // from every order of battle (2026-09-09: "no way to remove platoons form
+    // an orbat" - unticking DID remove it, and because a platoon only existed
+    // inside an ORBAT, removing it was deleting it). The ORBAT holds the
+    // SELECTION; this holds the platoons themselves.
+    try {
+        $doc = ghostd_get(ghostd_config()['unit'] . '.platoons');
+        foreach ((array) ($doc['items'] ?? []) as $pid => $p) {
+            if (is_array($p) && (string) $pid !== '') {
+                $pool[(string) $pid] = array_values($p);
+            }
+        }
+    } catch (Throwable $e) {
+        // No pool document yet - the orders of battle below are the pool.
+    }
+
     foreach (array_merge([''], ghostd_orbat_variants()) as $v) {
         foreach (ghostd_orbat((string) $v)['platoons'] as $p) {
             $pid = (string) ($p[0] ?? '');
@@ -352,6 +367,30 @@ function ghostd_platoon_pool(string $prefer = ''): array
     }
     ksort($pool);
     return $pool;
+}
+
+/**
+ * Put one platoon in the pool, so it outlives being unticked.
+ *
+ * Called wherever a platoon is written. The row is the ORBAT's own shape -
+ * [id, name, callsign, net, [squads]] - because that is what everything reads.
+ */
+function ghostd_platoon_pool_put(array $row): void
+{
+    $pid = (string) ($row[0] ?? '');
+    if ($pid === '') {
+        return;
+    }
+    ghostd_set_path(ghostd_config()['unit'] . '.platoons', 'items.' . $pid, array_values($row));
+}
+
+/** Take one out of the pool - the platoon itself, not a selection. */
+function ghostd_platoon_pool_delete(string $pid): void
+{
+    if ($pid === '') {
+        return;
+    }
+    ghostd_unset_path(ghostd_config()['unit'] . '.platoons', 'items.' . $pid);
 }
 
 /** A squad's row in the ORBAT, or null. */

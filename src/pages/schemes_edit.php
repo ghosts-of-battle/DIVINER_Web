@@ -25,6 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id === '' || in_array((string) $i, (array) ($_POST['s_remove'] ?? []), true)) {
                 continue;
             }
+            if (isset(GHOSTD_MOD_SCHEMES[$id])) {
+                throw new RuntimeException('"' . $id . '" is one of the six the mod ships and is '
+                    . 'not editable here - they live in ghostD_tacpad_fnc_theme. Give yours another id.');
+            }
             if (!preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $id)) {
                 throw new RuntimeException('"' . $id . '" is not a scheme id - letters, digits and '
                     . 'underscore, starting with a letter.');
@@ -58,7 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $schemes = ghostd_schemes();
 
 ?>
-<h2>Color schemes <span class="dim"><?= count($schemes) ?></span></h2>
+<?php $mine = array_filter($schemes, static fn($s) => empty($s['locked'])); ?>
+<h2>Color schemes <span class="dim"><?= count($mine) ?> of this unit's,
+  <?= count(GHOSTD_MOD_SCHEMES) ?> the mod's</span></h2>
 <p class="dim"><code><?= h($docId) ?></code> - the same document the TAC//PAD is
 painted from in game, and this site with it. Clearing an id removes it.</p>
 <?php if ($msg !== null) { ghostd_flash('good', $msg); } ?>
@@ -75,15 +81,31 @@ painted from in game, and this site with it. Clearing an id removes it.</p>
     </thead>
     <tbody id="schemes">
     <?php $i = 0; foreach ($schemes as $id => $s): ?>
-      <tr>
-        <td><input type="text" name="s_id[<?= $i ?>]" value="<?= h((string) $id) ?>"></td>
-        <td><input type="text" name="s_name[<?= $i ?>]" value="<?= h($s['name']) ?>"></td>
-        <td><input type="color" name="s_ground[<?= $i ?>]" value="<?= h($s['ground']) ?>"></td>
-        <td><input type="color" name="s_ink[<?= $i ?>]" value="<?= h($s['ink']) ?>"></td>
-        <td><input type="color" name="s_accent[<?= $i ?>]" value="<?= h($s['accent']) ?>"></td>
-        <td><input type="checkbox" name="s_remove[]" value="<?= $i ?>"></td>
-      </tr>
-    <?php $i++; endforeach; ?>
+      <?php if (!empty($s['locked'])): ?>
+        <?php // THE MOD'S OWN SIX. Shown because the site paints with them and
+              // you should be able to see what they are; not editable, because
+              // they live in ghostD_tacpad_fnc_theme and a change here would be
+              // a lie. ?>
+        <tr>
+          <td><code><?= h((string) $id) ?></code></td>
+          <td><?= h($s['name']) ?> <span class="dim">the mod's own</span></td>
+          <td><input type="color" value="<?= h($s['ground']) ?>" disabled></td>
+          <td><input type="color" value="<?= h($s['ink']) ?>" disabled></td>
+          <td><input type="color" value="<?= h($s['accent']) ?>" disabled></td>
+          <td class="dim">-</td>
+        </tr>
+      <?php else: ?>
+        <tr>
+          <td><input type="text" name="s_id[<?= $i ?>]" value="<?= h((string) $id) ?>"></td>
+          <td><input type="text" name="s_name[<?= $i ?>]" value="<?= h($s['name']) ?>"></td>
+          <td><input type="color" name="s_ground[<?= $i ?>]" value="<?= h($s['ground']) ?>"></td>
+          <td><input type="color" name="s_ink[<?= $i ?>]" value="<?= h($s['ink']) ?>"></td>
+          <td><input type="color" name="s_accent[<?= $i ?>]" value="<?= h($s['accent']) ?>"></td>
+          <td><input type="checkbox" name="s_remove[]" value="<?= $i ?>"></td>
+        </tr>
+        <?php $i++; ?>
+      <?php endif; ?>
+    <?php endforeach; ?>
     <?php // ONE spare row, so the page works with no JavaScript. ?>
       <tr>
         <td><input type="text" name="s_id[<?= $i ?>]" placeholder="GFR_Winter"></td>

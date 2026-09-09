@@ -128,53 +128,6 @@ try {
 
 <?php endif; ?>
 
-<?php if ($sub === 'shared'): ?>
-
-  <h2>Shared nets <span class="dim"><?= count($radioNets) ?></span></h2>
-  <p class="dim">Squads that share a net across a platoon boundary. The net must
-  be a name from the list above, and an MR channel of the same name.</p>
-
-  <form method="post">
-    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
-    <input type="hidden" name="v" value="<?= h($variant) ?>">
-    <input type="hidden" name="s" value="radio">
-    <input type="hidden" name="r" value="nets">
-    <input type="hidden" name="what" value="nets">
-
-    <?php $rows = $radioNets; $rows[] = ['', '', []]; ?>
-    <?php foreach ($rows as $i => $n): ?>
-      <?php $isNew = $i >= count($radioNets); ?>
-      <fieldset class="line">
-        <legend><?= $isNew ? '<span class="key">new</span>' : h((string) ($n[1] ?: $n[0])) ?></legend>
-        <div class="fieldbox">
-          <input type="text" name="n_id[<?= $i ?>]" value="<?= h((string) ($n[0] ?? '')) ?>"
-                 placeholder="Ground1">
-          <select name="n_name[<?= $i ?>]">
-            <option value="">- pick the net -</option>
-            <?php foreach (array_keys($netItems) as $nid): ?>
-              <option value="<?= h((string) $nid) ?>"
-                <?= (string) ($n[1] ?? '') === (string) $nid ? 'selected' : '' ?>><?= h((string) $nid) ?></option>
-            <?php endforeach; ?>
-            <?php if (($n[1] ?? '') !== '' && !isset($netItems[(string) $n[1]])): ?>
-              <option value="<?= h((string) $n[1]) ?>" selected><?= h((string) $n[1]) ?> - no such net</option>
-            <?php endif; ?>
-          </select>
-          <?php if (!$isNew): ?>
-            <label class="inlinelabel"><input type="checkbox" name="n_remove[]" value="<?= $i ?>"> remove</label>
-          <?php endif; ?>
-        </div>
-        <textarea name="n_squads[<?= $i ?>]" rows="2" class="short"
-                  placeholder="one squad name per line"><?= h(implode("
-", (array) ($n[2] ?? []))) ?></textarea>
-      </fieldset>
-    <?php endforeach; ?>
-
-    <div class="actions"><button type="submit">Save shared nets</button></div>
-  </form>
-
-
-<?php endif; ?>
-
 <?php if ($sub === 'acre'): ?>
 
   <?php

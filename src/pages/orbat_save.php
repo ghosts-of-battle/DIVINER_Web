@@ -177,23 +177,30 @@ switch ($what) {
             $doc['side']      = $src['side'];
             $doc['groups']    = [];
             $doc['platoons']  = [];
-            $doc['radioNets'] = [];
         });
         $msg = $to . ' created. Pick its platoons, then tick it as the default when it is ready.';
         break;
 
+    // DELETE MEANS DELETE (user, 2026-09-09: "no delete on the orbat, the word
+    // delete does not fucking do anything"). It used to refuse the default and
+    // refuse the unnamed one, which on a unit with a single order of battle
+    // meant the button was never offered at all. The two things it must not do
+    // are leave the tick pointing at a document that is gone, and delete
+    // something without saying what happened - so it does neither.
     case 'deleteorbat':
-        if ($variant === '') {
-            throw new RuntimeException(ghostd_orbat_doc_id('') . ' cannot be deleted - it is what a '
-                . 'mission falls back to when it names no order of battle.');
-        }
+        $was = ghostd_orbat_doc_id($variant);
+        ghostd_doc_delete($was);
+
+        $msg = $was . ' deleted.';
         if ($variant === ghostd_default_orbat_id()) {
-            throw new RuntimeException('"' . $variant . '" is the default. Make another one the '
-                . 'default first, or the next mission would start with no order of battle.');
+            $left = ghostd_orbat_variants();
+            $next = $left === [] ? '' : (string) $left[0];
+            ghostd_setting_save('currentOrbat', $next);
+            $msg .= $next === ''
+                ? ' There is no order of battle left: a mission falls back to its own config until one is made.'
+                : ' ' . $next . ' is the default now.';
         }
-        ghostd_doc_delete(ghostd_orbat_doc_id($variant));
-        $msg = $variant . ' deleted.';
-        // Back to the list: the page it was deleted from is now about nothing.
+        // Back to the list: the page it was deleted from is about nothing now.
         $variant = '';
         $docId   = $unit . '.orbat';
         $tab     = 'versions';
@@ -281,21 +288,6 @@ switch ($what) {
     // the config"). One set for the whole unit, edited beside the skills that
     // set them - see src/pages/record.php, section "traits".
 
-    case 'nets':
-        $editOrbat(static function (array &$doc) use ($lines, &$msg) {
-            $out = [];
-            foreach ((array) ($_POST['n_id'] ?? []) as $i => $nid) {
-                $nid = trim((string) $nid);
-                if ($nid === '' || in_array((string) $i, (array) ($_POST['n_remove'] ?? []), true)) {
-                    continue;
-                }
-                $out[] = [$nid, trim((string) ($_POST['n_name'][$i] ?? '')),
-                          $lines((string) ($_POST['n_squads'][$i] ?? ''))];
-            }
-            $doc['radioNets'] = $out;
-            $msg = count($out) . ' radio nets saved.';
-        });
-        break;
 
     default:
         throw new RuntimeException('Nothing said which part to save.');
