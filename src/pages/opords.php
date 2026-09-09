@@ -5,6 +5,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../system.php';
+
 require_once __DIR__ . '/../opords.php';
 
 $msg = null;
@@ -83,7 +85,7 @@ setting decides which one the compose cards fill from.</p>
     <?php
       $o = ghostd_opord($oid);
       $done = 0; $total = 0;
-      foreach (GHOSTD_OPORD_SECTIONS as $sec => $meta) {
+      foreach (ghostd_opord_sections() as $sec => $meta) {
           foreach ($meta['fields'] as $f => $fm) {
               $total++;
               $v = $o[$sec][$f] ?? '';

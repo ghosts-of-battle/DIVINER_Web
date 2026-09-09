@@ -9,8 +9,11 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../system.php';
+
 require_once __DIR__ . '/../opords.php';
 
+$opordSections = ghostd_opord_sections();
 $id  = strtolower(trim((string) ($_GET['id'] ?? ($_POST['id'] ?? ''))));
 $msg = null;
 $err = null;
@@ -21,15 +24,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $current = ghostd_opord($id);
         $sec = (string) ($_POST['section'] ?? '');
 
-        if (!isset(GHOSTD_OPORD_SECTIONS[$sec])) {
+        if (!isset($opordSections[$sec])) {
             throw new RuntimeException('Unknown section.');
         }
-        foreach (GHOSTD_OPORD_SECTIONS[$sec]['fields'] as $f => $fm) {
+        foreach ($opordSections[$sec]['fields'] as $f => $fm) {
             $raw = (string) ($_POST['f_' . $f] ?? '');
             $current[$sec][$f] = $fm['kind'] === 'a' ? ghostd_lines($raw) : trim($raw);
         }
         ghostd_opord_save($id, $current);
-        $msg = GHOSTD_OPORD_SECTIONS[$sec]['title'] . ' saved.';
+        $msg = $opordSections[$sec]['title'] . ' saved.';
     } catch (Throwable $e) {
         $err = $e->getMessage();
     }
@@ -59,7 +62,7 @@ fields out of it by <code>section.field</code> - so
 <code>situation.enemy</code> written here is what fills that box on a compose
 card in game.</p>
 
-<?php foreach (GHOSTD_OPORD_SECTIONS as $sec => $meta): ?>
+<?php foreach ($opordSections as $sec => $meta): ?>
   <?php
     $filled = 0;
     foreach ($meta['fields'] as $f => $fm) {

@@ -29,12 +29,9 @@ $unit = $cfg['unit'];
 
 const GHOSTD_ORBAT_TABS = [
     'versions' => 'Orders of battle',
-    // NOT "Common". A VERSION is called Common - the unnamed one - and a tab
-    // with the same name reads as "edit the common ORBAT" when it is really
-    // "the details of whichever ORBAT you are editing". The key stays 'common'
-    // because links and saves use it; only the word changes.
-    'common'   => 'Details',
-    'radio'    => 'Radio',
+    // COMMUNICATIONS, not "Radio": it holds the messaging nets as well, and a
+    // net is what a man reads while a channel is what he keys up on.
+    'radio'    => 'Communications',
     'roles'    => 'Roles',
     'squads'   => 'Squads',
     'platoons' => 'Platoons',
@@ -44,6 +41,9 @@ const GHOSTD_ORBAT_TABS = [
 // and which side it fights on - before any of its parts. The four after it are
 // in the order they have to be filled in.
 $tab = (string) ($_GET['s'] ?? ($_POST['s'] ?? 'versions'));
+// 'common' was a tab called "Details" - the faction and the side are on the
+// order of battle they belong to now, and the custom traits are with the roles
+// that assign them. An old link lands on the orders of battle.
 if (!isset(GHOSTD_ORBAT_TABS[$tab])) {
     $tab = 'versions';
 }
@@ -52,7 +52,9 @@ if (!isset(GHOSTD_ORBAT_TABS[$tab])) {
 // stacked bars read as two menus and invite the question which one you are in;
 // there is only one menu here, so there is one bar.
 const GHOSTD_ORBAT_SUBTABS = [
-    'radio' => ['acre' => 'ACRE', 'tfar' => 'TFAR'],
+    // The messaging nets sit with the radio: a net is what a man READS and a
+    // channel is what he TALKS on, and the two are set up together.
+    'radio' => ['nets' => 'Messaging', 'acre' => 'ACRE', 'tfar' => 'TFAR'],
 ];
 $subTabs = GHOSTD_ORBAT_SUBTABS[$tab] ?? [];
 $sub = (string) ($_GET['r'] ?? ($_POST['r'] ?? ''));

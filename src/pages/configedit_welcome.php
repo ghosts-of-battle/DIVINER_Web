@@ -88,7 +88,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
       <div class="fieldbox">
         <label class="inlinelabel">size
           <input type="number" name="size[<?= $row ?>]" step="0.05" min="0.4" max="3"
-                 value="<?= h((string) $l['size']) ?>" style="min-width:5rem">
+                 value="<?= h((string) $l['size']) ?>">
         </label>
         <label class="inlinelabel">colour
           <input type="color" name="colour[<?= $row ?>]" value="<?= h(ghostd_rgb_to_hex($l['colour'])) ?>">

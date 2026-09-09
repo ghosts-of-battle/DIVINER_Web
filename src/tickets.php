@@ -24,6 +24,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/system.php';
+
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
@@ -122,7 +124,7 @@ function ghostd_ticket_raise(string $kind, string $subject, string $body, string
     if ($uid === '') {
         throw new RuntimeException('Sign in through Steam to raise a PAC action.');
     }
-    if (!isset(GHOSTD_TICKET_KINDS[$kind])) {
+    if (!isset(ghostd_ticket_kinds()[$kind])) {
         throw new RuntimeException('Pick what kind of action this is.');
     }
     $subject = trim($subject);

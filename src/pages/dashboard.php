@@ -139,7 +139,7 @@ foreach (array_slice(array_reverse($log), 0, 8) as $l) {
     <tbody>
     <?php foreach ($attention as $a): ?>
       <tr>
-        <td style="width:22rem"><strong><?= h($a[0]) ?></strong></td>
+        <td><strong><?= h($a[0]) ?></strong></td>
         <td class="dim"><?= h($a[2]) ?></td>
         <td><a class="btnlink" href="<?= h($a[1]) ?>">Open</a></td>
       </tr>
@@ -173,7 +173,7 @@ foreach (array_slice(array_reverse($log), 0, 8) as $l) {
 <table class="kv">
   <tr><th>Faction</th>
       <td><?= cell($orbat['faction'] ?? null) ?>
-      <span class="dim">- <a href="?page=orbat">set on the ORBAT page</a>, above the tabs</span></td></tr>
+      <span class="dim">- <a href="?page=orbat&amp;s=versions">set on the ORBAT page</a></span></td></tr>
   <tr><th>Platoons</th><td><?= count((array) ($orbat['platoons'] ?? [])) ?></td></tr>
   <tr><th>Squads</th><td><?= count((array) ($orbat['groups'] ?? [])) ?></td></tr>
   <tr><th>Radio nets</th><td><?= count((array) ($orbat['radioNets'] ?? [])) ?></td></tr>

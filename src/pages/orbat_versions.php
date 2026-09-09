@@ -20,6 +20,11 @@ declare(strict_types=1);
 
 $default = ghostd_default_orbat_id();
 
+// Every platoon the unit has, and which of them the ORBAT being edited holds.
+$pool = ghostd_platoon_pool($variant);
+$inThis = [];
+foreach ($platoons as $p) { $inThis[(string) ($p[0] ?? '')] = true; }
+
 // Every version, the common one first. The common one is not a document that
 // has to exist - it is the absence of a name - so it is always offered.
 $rows = [];
@@ -35,16 +40,17 @@ foreach (array_merge([''], ghostd_orbat_variants()) as $v) {
         'platoons' => count($o['platoons']),
         'squads'   => count($o['groups']),
         'slots'    => $slots,
+        'nets'     => $o['nets'],
+        'radio'    => $o['radio'],
     ];
 }
 ?>
 <h2>Orders of battle <span class="dim"><?= count($rows) ?></span></h2>
-<p class="note">One of these is <strong>live</strong>. Missions load it at
-start, and the roster's group and role dropdowns come from it - so ticking a
-different one changes what everybody can be slotted into.</p>
-<p class="dim"><strong>Edit</strong> opens that order of battle's squads, and
-every tab from then on stays on it - the bar above shows which. <em>Details</em>
-is its faction, its side and what it holds.</p>
+<p class="note"><strong>The mission config picks the order of battle</strong>
+it runs, with <code>currentOrbat</code> in its <code>CfgGFA_PAC</code>. One of
+these is the <strong>default</strong> - what a mission gets when it names none -
+and that is the only thing set here. The roster's group and role lists follow
+the default.</p>
 
 <form method="post">
   <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
@@ -54,8 +60,8 @@ is its faction, its side and what it holds.</p>
 
   <table class="grid">
     <thead>
-      <tr><th style="width:5rem">Live</th><th>Version</th><th>Faction</th><th>Side</th>
-          <th>Platoons</th><th>Squads</th><th>Slots</th><th></th></tr>
+      <tr><th>Default</th><th>Order of battle</th><th>Faction</th>
+          <th>Platoons</th><th>Squads</th><th>Comms</th><th></th></tr>
     </thead>
     <tbody>
     <?php foreach ($rows as $r): ?>
@@ -64,32 +70,114 @@ is its faction, its side and what it holds.</p>
         <td>
           <label class="inlinelabel">
             <input type="radio" name="default" value="<?= h($r['id']) ?>" <?= $isDefault ? 'checked' : '' ?>>
-            <?= $isDefault ? '<strong>live</strong>' : '' ?>
+            <?= $isDefault ? '<strong>default</strong>' : '' ?>
           </label>
         </td>
         <td><?= $r['id'] === ''
               ? '<strong>Common</strong>'
               : '<code>' . h($r['id']) . '</code>' ?>
             <?= $r['exists'] ? '' : ' <span class="dim">nothing saved yet</span>' ?></td>
-        <td><?= h($r['faction']) ?></td>
-        <td class="dim"><?= h($r['side']) ?></td>
+        <td><?= h($r['faction']) ?> <span class="dim"><?= h($r['side']) ?></span></td>
         <td><?= $r['platoons'] ?></td>
-        <td><?= $r['squads'] ?></td>
-        <td><?= $r['slots'] ?></td>
+        <td><?= $r['squads'] ?> <span class="dim"><?= $r['slots'] ?> slots</span></td>
+        <td class="dim"><?= h(($r['nets'] !== '' ? $r['nets'] : 'default')
+              . ' / ' . ($r['radio'] !== '' ? $r['radio'] : 'default')) ?></td>
         <td>
           <?php $vq = $r['id'] !== '' ? '&amp;v=' . urlencode($r['id']) : ''; ?>
-          <a class="btnlink" href="?page=orbat&amp;s=squads<?= $vq ?>">Edit</a>
-          <a class="dim" href="?page=orbat&amp;s=common<?= $vq ?>">details</a>
+          <a class="btnlink" href="?page=orbat&amp;s=versions<?= $vq ?>">Open</a>
         </td>
       </tr>
     <?php endforeach; ?>
     </tbody>
   </table>
 
-  <div class="actions"><button type="submit">Make that one live</button></div>
+  <div class="actions"><button type="submit">Make that one the default</button></div>
 </form>
 <p class="dim">Read at the next mission start. A mission already running keeps
 the ORBAT it booted with.</p>
+
+<h2>Who <?= $variant === '' ? 'the default' : h($variant) ?> is</h2>
+<form method="post" class="fields">
+  <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+  <input type="hidden" name="v" value="<?= h($variant) ?>">
+  <input type="hidden" name="s" value="versions">
+  <input type="hidden" name="what" value="faction">
+  <label>Faction <span class="dim">the name over the role screen</span>
+    <input type="text" name="faction" value="<?= h($faction) ?>" placeholder="Ghosts of Battle"></label>
+  <label>Side <span class="dim">which side its groups are created on</span>
+    <select name="side">
+      <?php $side = strtoupper((string) (ghostd_orbat($variant)['side'] ?? 'WEST')); ?>
+      <?php foreach (GHOSTD_SIDES as $k => $label): ?>
+        <option value="<?= h($k) ?>" <?= $side === $k ? 'selected' : '' ?>><?= h($label) ?></option>
+      <?php endforeach; ?>
+    </select></label>
+  <div class="actions"><button type="submit">Save</button></div>
+</form>
+
+<h2>Communications for <?= $variant === '' ? 'the default' : h($variant) ?></h2>
+<p class="note">Which comms templates this order of battle runs. They are
+written on the <a href="?page=orbat&amp;s=radio<?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>">Communications</a>
+tab; this says which of them it uses. A comms plan is written around squads, so
+a different order of battle often wants a different one.</p>
+
+<form method="post" class="fields">
+  <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+  <input type="hidden" name="v" value="<?= h($variant) ?>">
+  <input type="hidden" name="s" value="versions">
+  <input type="hidden" name="what" value="comms">
+  <?php $cur = ghostd_orbat($variant); ?>
+  <label>Messaging nets
+    <select name="netsVersion">
+      <option value="">Default</option>
+      <?php foreach (ghostd_doc_variants('nets') as $v): ?>
+        <option value="<?= h($v) ?>" <?= $cur['nets'] === $v ? 'selected' : '' ?>><?= h($v) ?></option>
+      <?php endforeach; ?>
+    </select></label>
+  <label>Radio plan
+    <select name="radioVersion">
+      <option value="">Default</option>
+      <?php foreach (ghostd_doc_variants('radio') as $v): ?>
+        <option value="<?= h($v) ?>" <?= $cur['radio'] === $v ? 'selected' : '' ?>><?= h($v) ?></option>
+      <?php endforeach; ?>
+    </select></label>
+  <div class="actions"><button type="submit">Save</button></div>
+</form>
+
+<h2>Platoons in <?= $variant === '' ? 'the default' : h($variant) ?>
+  <span class="dim"><?= count($platoons) ?> of <?= count($pool) ?></span></h2>
+<p class="note">An order of battle is a <strong>choice of platoons</strong>. They
+are written once on the <a href="?page=orbat&amp;s=platoons<?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>">Platoons</a>
+tab; this says which of them this one holds. Open a different order of battle
+above to choose its platoons.</p>
+
+<?php if ($pool === []): ?>
+  <p class="dim">No platoons exist yet.
+  <a href="?page=platoon&amp;id=%2B">Make one</a>.</p>
+<?php else: ?>
+<form method="post">
+  <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+  <input type="hidden" name="v" value="<?= h($variant) ?>">
+  <input type="hidden" name="s" value="versions">
+  <input type="hidden" name="what" value="pickplatoons">
+
+  <table class="grid">
+    <thead><tr><th>In</th><th>Platoon</th><th>Net</th><th>Squads</th></tr></thead>
+    <tbody>
+    <?php foreach ($pool as $pid => $p): ?>
+      <tr>
+        <td><input type="checkbox" name="inorbat[]" value="<?= h((string) $pid) ?>"
+                   <?= isset($inThis[(string) $pid]) ? 'checked' : '' ?>></td>
+        <td><strong><?= h((string) ($p[1] ?? $pid)) ?></strong> <code><?= h((string) $pid) ?></code></td>
+        <td><?= ($p[3] ?? '') !== '' ? h((string) $p[3]) : '<span class="dim">none</span>' ?></td>
+        <td class="dim"><?= h(implode(', ', array_map('strval', (array) ($p[4] ?? [])))) ?></td>
+      </tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table>
+
+  <div class="actions"><button type="submit">Save which platoons are in it</button></div>
+</form>
+<?php endif; ?>
 
 <h2>Build another</h2>
 <p class="dim">A second order of battle is nearly always the first one with a
@@ -126,8 +214,8 @@ fifteen squads of typing.</p>
     <input type="hidden" name="s" value="versions">
     <input type="hidden" name="what" value="deleteorbat">
     <p class="dim">Deletes the version you are currently editing. The common
-    ORBAT cannot be deleted, and neither can the live one - make another one
-    live first.</p>
+    ORBAT cannot be deleted, and neither can the default - make another one the
+    default first.</p>
     <button type="submit" class="hot">Delete <?= h($variant) ?></button>
   </form>
 <?php endif; ?>

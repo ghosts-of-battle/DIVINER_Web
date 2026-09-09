@@ -350,7 +350,7 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
     <input type="hidden" name="sq" value="<?= h($name) ?>">
     <?php if ($variant !== ''): ?><input type="hidden" name="v" value="<?= h($variant) ?>"><?php endif; ?>
     <label for="n">Number of roles</label>
-    <input type="number" id="n" name="n" min="1" max="40" value="<?= $want ?>" style="min-width:5rem">
+    <input type="number" id="n" name="n" min="1" max="40" value="<?= $want ?>">
     <button type="submit">Set</button>
     <span class="dim">Fewer drops the slots off the end, more adds empty ones.
     Nothing is written until you save the slots.</span>
@@ -370,7 +370,7 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
         <tr>
           <td><strong><?= $i + 1 ?></strong><?= $i === 0 ? ' <span class="dim">lead</span>' : '' ?></td>
           <td>
-            <select name="roles[<?= $i ?>]" style="min-width:20rem">
+            <select name="roles[<?= $i ?>]">
               <option value="">- empty -</option>
               <?php foreach ($roleIds as $rid): ?>
                 <option value="<?= h($rid) ?>" <?= $sel === $rid ? 'selected' : '' ?>>

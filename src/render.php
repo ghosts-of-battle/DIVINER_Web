@@ -23,6 +23,33 @@ function h(?string $s): string
 }
 
 /** A value from a Mongo document, printed for a table cell. */
+/**
+ * A Steam id as a link to that account's Steam profile.
+ *
+ * WHY IT IS WORTH LINKING. The id is the key to everything here - the roster,
+ * the admin list, a role's whitelist - and it is a seventeen digit number
+ * nobody can recognise. One click to see whose it is turns it from an opaque
+ * key into a person.
+ *
+ * Opens in a new tab and carries rel="noopener noreferrer": these pages are
+ * behind a login and must not hand a third-party page a handle on them.
+ *
+ * A value that is not a Steam id is returned as plain text, not a broken link.
+ */
+function steamlink(?string $uid, ?string $label = null): string
+{
+    $uid = trim((string) $uid);
+    if ($uid === '') {
+        return '<span class="dim">-</span>';
+    }
+    if (!preg_match('/^\d{5,20}$/', $uid)) {
+        return h($uid);
+    }
+    return '<a class="steamid" href="https://steamcommunity.com/profiles/' . h($uid) . '"'
+         . ' target="_blank" rel="noopener noreferrer"'
+         . ' title="Open this Steam profile in a new tab">' . h($label ?? $uid) . '</a>';
+}
+
 function cell($v): string
 {
     if ($v === null) {
@@ -84,6 +111,7 @@ function ghostd_head(string $title, string $active = ''): void
             'tickets'      => 'PAC actions',
             'opords'       => 'Orders',
             'config'       => 'Templates',
+            'arsenal'      => 'Arsenals',
             'orbat'        => 'ORBAT',
             'templates'    => 'Report deck',
             'documents'    => 'Mongo docs',

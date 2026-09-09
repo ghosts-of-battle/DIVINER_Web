@@ -423,6 +423,12 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
     the only other way in. Empty means open to everyone who passes the gates above.</p>
     <textarea name="uids" rows="3" class="short"><?= h(implode("\n", $r['uids'])) ?></textarea>
 
+    <?php if ($r['uids'] !== []): ?>
+      <p class="dim">Who they are:
+        <?php foreach ($r['uids'] as $u): ?><?= steamlink($u) ?> <?php endforeach; ?>
+      </p>
+    <?php endif; ?>
+
     <div class="actions"><button type="submit">Save who may take it</button></div>
   </form>
 </section>
@@ -447,7 +453,7 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
         <?php $isNew = $i >= count($r['nets']); ?>
         <tr>
           <td>
-            <select name="net_name[<?= $i ?>]" style="min-width:14rem">
+            <select name="net_name[<?= $i ?>]">
               <option value=""><?= $isNew ? '- add a net -' : '- remove -' ?></option>
               <?php foreach ($netIds as $nid => $nname): ?>
                 <option value="<?= h((string) $nid) ?>" <?= (string) $row[0] === (string) $nid ? 'selected' : '' ?>>
@@ -538,7 +544,7 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
         ?>
         <label class="inlinelabel<?= $taken ? ' takenrow' : '' ?>">
           <?php if ($number): ?>
-            <input type="number" step="0.01" name="t_num[<?= h($t) ?>]" style="width:5rem"
+            <input type="number" step="0.01" name="t_num[<?= h($t) ?>]"
                    value="<?= h(isset($has[$t]) ? (string) $has[$t] : '') ?>" <?= $taken ? 'disabled' : '' ?>>
           <?php else: ?>
             <input type="checkbox" name="t_on[]" value="<?= h($t) ?>"
@@ -553,7 +559,7 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
     <h3>This unit's own <span class="dim"><?= count($customTraits) ?></span></h3>
     <?php if ($customTraits === []): ?>
       <p class="note readonly">None defined yet. Add them under
-      <a href="?page=orbat&amp;s=common">ORBAT &rarr; Common</a>, so every role
+      <a href="?page=orbat&amp;s=roles">ORBAT &rarr; Roles</a>, so every role
       can tick the same names rather than each one typing its own.</p>
     <?php else: ?>
       <div class="checkgrid">
@@ -561,7 +567,7 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
           <?php $taken = in_array(strtolower($t), $pacOwned, true); ?>
           <label class="inlinelabel<?= $taken ? ' takenrow' : '' ?>">
             <?php if ($meta['kind'] === 'number'): ?>
-              <input type="number" step="0.01" name="t_num[<?= h($t) ?>]" style="width:5rem"
+              <input type="number" step="0.01" name="t_num[<?= h($t) ?>]"
                      value="<?= h(isset($has[$t]) ? (string) $has[$t] : '') ?>" <?= $taken ? 'disabled' : '' ?>>
             <?php else: ?>
               <input type="checkbox" name="t_on[]" value="<?= h($t) ?>"
@@ -592,7 +598,7 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
   <?php if ($stray !== []): ?>
     <p class="flash bad">This role carries traits that are on neither list:
     <?= h(implode(', ', $stray)) ?>. <strong>Saving this page drops them.</strong>
-    Add them under <a href="?page=orbat&amp;s=common">ORBAT &rarr; Common</a> first
+    Add them under <a href="?page=orbat&amp;s=roles">ORBAT &rarr; Roles</a> first
     if you want to keep them.</p>
   <?php endif; ?>
 </section>
@@ -604,7 +610,7 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
   <p class="note">Put on the man with <code>setVariable</code> when he slots in.
   These are the names <strong>this unit</strong> uses - the ones the engine has
   never heard of - and they are kept in one list so every role ticks the same
-  spellings. Add one under <a href="?page=orbat&amp;s=common">ORBAT &rarr;
+  spellings. Add one under <a href="?page=orbat&amp;s=roles">ORBAT &rarr;
   Common</a>.</p>
 
   <?php
@@ -617,7 +623,7 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
 
   <?php if ($cat === []): ?>
     <p class="note readonly">The list is empty, so there is nothing to tick.
-    Add names under <a href="?page=orbat&amp;s=common">ORBAT &rarr; Common</a>.</p>
+    Add names under <a href="?page=orbat&amp;s=roles">ORBAT &rarr; Roles</a>.</p>
   <?php else: ?>
     <?php $open('vars'); ?>
       <div class="checkgrid">
@@ -625,7 +631,7 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
           <?php $taken = in_array(strtolower($vn), $pacOwned, true); ?>
           <label class="inlinelabel<?= $taken ? ' takenrow' : '' ?>">
             <?php if ($meta['kind'] === 'number'): ?>
-              <input type="number" step="1" name="v_num[<?= h($vn) ?>]" style="width:5rem"
+              <input type="number" step="1" name="v_num[<?= h($vn) ?>]"
                      value="<?= h(isset($has[$vn]) ? (string) $has[$vn] : '') ?>" <?= $taken ? 'disabled' : '' ?>>
             <?php else: ?>
               <input type="checkbox" name="v_on[]" value="<?= h($vn) ?>"
@@ -651,7 +657,7 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
   <?php if ($stray !== []): ?>
     <p class="flash bad">This role sets variables that are not on the list:
     <?= h(implode(', ', $stray)) ?>. <strong>Saving this page drops them.</strong>
-    Add them under <a href="?page=orbat&amp;s=common">ORBAT &rarr; Common</a> first
+    Add them under <a href="?page=orbat&amp;s=roles">ORBAT &rarr; Roles</a> first
     if you want to keep them.</p>
   <?php endif; ?>
 </section>

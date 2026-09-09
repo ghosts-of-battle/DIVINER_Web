@@ -24,14 +24,14 @@ replaces <code><?= h($t['replaces']) ?></code></p>
 <nav class="sections">
   <span class="tabsep">version</span>
   <a href="?page=configedit&amp;t=<?= urlencode($key) ?>"
-     class="<?= $variant === '' ? 'on' : '' ?>">Common</a>
+     class="<?= $variant === '' ? 'on' : '' ?>">Default</a>
   <?php foreach ($variants as $v): ?>
     <a href="?page=configedit&amp;t=<?= urlencode($key) ?>&amp;v=<?= urlencode($v) ?>"
        class="<?= $variant === $v ? 'on' : '' ?>"><?= h($v) ?></a>
   <?php endforeach; ?>
 </nav>
 <?php else: ?>
-  <p class="dim">Only the common version so far. Name one below to add another.</p>
+  <p class="dim">Only the default so far - what a mission gets when it names no version. Name one below to add another.</p>
 <?php endif; ?>
 <form method="get" class="inline">
   <input type="hidden" name="page" value="configedit">

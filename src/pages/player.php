@@ -138,7 +138,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 </div>
 
 <h2>Details</h2>
-<p class="dim">Steam id <code><?= h($uid) ?></code>. One save for the section;
+<p class="dim">Steam id <?= steamlink($uid) ?>. One save for the section;
 only the fields you actually changed are written, and nothing else in the
 record is touched.</p>
 
@@ -151,7 +151,7 @@ record is touched.</p>
     <?php if ($opts === null): ?>
       <input type="text" id="f_<?= h($f) ?>" name="<?= h($f) ?>" value="<?= h($now) ?>">
     <?php else: ?>
-      <select id="f_<?= h($f) ?>" name="<?= h($f) ?>" style="min-width:18rem">
+      <select id="f_<?= h($f) ?>" name="<?= h($f) ?>">
         <option value="">- none -</option>
         <?php foreach ($opts as $oid => $olabel): ?>
           <option value="<?= h((string) $oid) ?>" <?= $now === (string) $oid ? 'selected' : '' ?>><?= h($olabel) ?></option>

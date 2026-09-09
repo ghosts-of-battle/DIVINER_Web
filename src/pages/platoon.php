@@ -300,7 +300,7 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
     <input type="hidden" name="id" value="<?= h($pid) ?>">
     <?php if ($variant !== ''): ?><input type="hidden" name="v" value="<?= h($variant) ?>"><?php endif; ?>
     <label for="n">Number of squads</label>
-    <input type="number" id="n" name="n" min="1" max="20" value="<?= $want ?>" style="min-width:5rem">
+    <input type="number" id="n" name="n" min="1" max="20" value="<?= $want ?>">
     <button type="submit">Set</button>
     <span class="dim">Nothing is written until you save the squads.</span>
   </form>
@@ -319,7 +319,7 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
         <tr>
           <td><strong><?= $i + 1 ?></strong></td>
           <td>
-            <select name="squads[<?= $i ?>]" style="min-width:20rem">
+            <select name="squads[<?= $i ?>]">
               <option value="">- empty -</option>
               <?php foreach ($allSquads as $s): ?>
                 <option value="<?= h($s) ?>" <?= $sel === $s ? 'selected' : '' ?>>

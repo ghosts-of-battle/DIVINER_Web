@@ -15,6 +15,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../roles.php';
 
+$customTraits = ghostd_custom_traits();
+
 $roles = ghostd_role_ids();
 
 // Which squads ask for each role, and which roles nothing asks for.
@@ -88,3 +90,58 @@ $missing = array_diff(array_keys($usedBy), $roles);
 
 <p class="note">A role can also be created in game - the admin console's
 STRUCTURE editor, ROLES - and the two write the same document.</p>
+
+<h2>Custom traits <span class="dim"><?= count($customTraits) ?></span></h2>
+<p class="note">The trait names <strong>this unit</strong> invented, as opposed
+to the seven the engine already has. A role assigns them by ticking, and the
+<code>setUnitTrait</code> custom flag is set for you - which is the argument
+that silently throws a trait away when it is wrong.</p>
+<p class="dim">The name is what the mod reads. <strong>Set as</strong> decides
+which of a role's two lists it appears on: <em>a variable</em> is
+<code>setVariable</code> - <code>draWhitelisted</code>, <code>isISR</code>, and
+most of them - and <em>a trait</em> is <code>setUnitTrait</code>. They are two
+different things on the man, and getting it wrong is silent.
+<strong>Kind</strong> is a yes/no or a value. Clearing the name removes the row.</p>
+
+<form method="post">
+  <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+  <input type="hidden" name="v" value="<?= h($variant) ?>">
+  <input type="hidden" name="s" value="roles">
+  <input type="hidden" name="what" value="traits">
+
+  <table class="grid">
+    <thead><tr><th>Name</th><th>Shown as</th><th>Set as</th><th>Kind</th><th>What it does</th><th>Remove</th></tr></thead>
+    <tbody>
+    <?php $rows = $customTraits; $rows[''] = ['label' => '', 'kind' => 'bool', 'help' => '', 'where' => 'variable']; ?>
+    <?php $i = 0; foreach ($rows as $tn => $meta): ?>
+      <?php $isNew = ((string) $tn === ''); ?>
+      <tr>
+        <td><input type="text" name="t_id[<?= $i ?>]" value="<?= h((string) $tn) ?>"
+                   placeholder="<?= $isNew ? 'draWhitelisted' : '' ?>"></td>
+        <td><input type="text" name="t_label[<?= $i ?>]" value="<?= h($meta['label']) ?>"
+                   placeholder="<?= $isNew ? 'DRA whitelisted' : '' ?>"></td>
+        <td>
+          <select name="t_where[<?= $i ?>]">
+            <option value="variable" <?= ($meta['where'] ?? 'variable') !== 'trait' ? 'selected' : '' ?>>a variable</option>
+            <option value="trait" <?= ($meta['where'] ?? '') === 'trait' ? 'selected' : '' ?>>a trait</option>
+          </select>
+        </td>
+        <td>
+          <select name="t_kind[<?= $i ?>]">
+            <option value="bool" <?= $meta['kind'] !== 'number' ? 'selected' : '' ?>>yes / no</option>
+            <option value="number" <?= $meta['kind'] === 'number' ? 'selected' : '' ?>>a number</option>
+          </select>
+        </td>
+        <td><input type="text" name="t_help[<?= $i ?>]" value="<?= h($meta['help']) ?>"
+                   placeholder="<?= $isNew ? 'may draw from the drone rack' : '' ?>"></td>
+        <td><?= $isNew ? '' : '<input type="checkbox" name="t_remove[]" value="' . $i . '">' ?></td>
+      </tr>
+    <?php $i++; endforeach; ?>
+    </tbody>
+  </table>
+
+  <div class="actions"><button type="submit">Save custom traits</button></div>
+</form>
+<p class="dim">Kept in <code><?= h(ghostd_template_doc_id('traits')) ?></code> -
+one set for the whole unit. These are the names a role assigns on its
+<em>Traits</em> and <em>Custom variables</em> screens.</p>

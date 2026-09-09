@@ -328,7 +328,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
         <div class="fieldbox">
           <span class="pill dimpill"><?= h(line_key($lt, $i) . '.' . chr(65 + (int) $fi)) ?></span>
           <input type="text" name="line[<?= (int) $i ?>][field][<?= (int) $fi ?>][prefix]"
-                 value="<?= h((string) ($f[0] ?? '')) ?>" placeholder="prefix" size="8">
+                 value="<?= h((string) ($f[0] ?? '')) ?>" placeholder="prefix">
           <input type="text" name="line[<?= (int) $i ?>][field][<?= (int) $fi ?>][hint]"
                  value="<?= h((string) ($f[1] ?? '')) ?>" placeholder="hint shown to the player">
           <select name="line[<?= (int) $i ?>][field][<?= (int) $fi ?>][type]">
@@ -376,7 +376,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
     var opts = types.map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join('');
     return '<div class="fieldbox">' +
       '<span class="pill dimpill">new</span>' +
-      '<input type="text" name="' + n + '[prefix]" placeholder="prefix" size="8">' +
+      '<input type="text" name="' + n + '[prefix]" placeholder="prefix">' +
       '<input type="text" name="' + n + '[hint]" placeholder="hint shown to the player">' +
       '<select name="' + n + '[type]">' + opts + '</select>' +
       '<textarea name="' + n + '[opts]" rows="2" placeholder="one per line: min=0 / choices=A,B / source=mapClick"></textarea>' +

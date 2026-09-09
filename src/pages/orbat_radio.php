@@ -19,6 +19,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../roles.php';
+
 // How many channels a TFAR radio actually has. Kept generous enough for the
 // long-range sets and honest about being fixed.
 const GHOSTD_TFAR_SLOTS = 8;
@@ -27,6 +29,134 @@ const GHOSTD_TFAR_SLOTS = 8;
 // are drawn up in the page's one menu bar rather than a second bar down here.
 $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
 ?>
+
+<?php if ($sub === 'nets'): ?>
+
+  <?php
+    // THE NETS TAC//MSG OFFERS. Not channels - a net is a mailbox a man reads,
+    // a channel is what he keys up on. They are set up together because a
+    // platoon's net and its MR channel carry the same name, and a role's list
+    // of nets is picked from exactly these.
+    $netItems = [];
+    try {
+        $netItems = ghostd_template_items('nets');
+    } catch (Throwable $e) {
+        $netItems = [];
+    }
+    // Which roles read each one, which is the useful question about a net.
+    $netUsers = [];
+    try {
+        foreach (ghostd_role_ids() as $rid) {
+            foreach (ghostd_role($rid)['nets'] as $row) {
+                $netUsers[(string) $row[0]][] = $rid;
+            }
+        }
+    } catch (Throwable $e) {
+        $netUsers = [];
+    }
+    $netPlatoons = [];
+    foreach ($platoons as $p) {
+        $n = (string) ($p[3] ?? '');
+        if ($n !== '') { $netPlatoons[$n][] = (string) ($p[1] ?? $p[0] ?? ''); }
+    }
+  ?>
+
+  <p class="note">The nets TAC//MSG opens a mailbox for. A <strong>dot</strong>
+  makes one a sub-net of the one before it - <code>C2.reports</code> hangs under
+  <code>C2</code> - and they are separate: a role listing <code>C2</code> does
+  not get <code>C2.reports</code>. Squad nets are not listed here; they exist
+  because the squads do.</p>
+  <p class="dim">These are the names a role picks its nets from, and what a
+  platoon commands on. Clearing a name removes the row.</p>
+
+  <form method="post">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <input type="hidden" name="v" value="<?= h($variant) ?>">
+    <input type="hidden" name="s" value="radio">
+    <input type="hidden" name="r" value="nets">
+    <input type="hidden" name="what" value="msgnets">
+
+    <table class="grid">
+      <thead><tr><th>Net</th><th>What it is for</th><th>Read by</th><th>Remove</th></tr></thead>
+      <tbody>
+      <?php $i = 0; foreach ($netItems as $nid => $n): ?>
+        <tr>
+          <td><input type="text" name="n_id[<?= $i ?>]" value="<?= h((string) $nid) ?>"></td>
+          <td><input type="text" name="n_name[<?= $i ?>]" value="<?= h((string) ($n['name'] ?? '')) ?>"></td>
+          <td class="dim">
+            <?php $u = $netUsers[(string) $nid] ?? []; ?>
+            <?= $u === [] ? 'nobody' : count($u) . ' role' . (count($u) === 1 ? '' : 's') ?>
+            <?php if (isset($netPlatoons[(string) $nid])): ?>
+              &middot; <?= h(implode(', ', $netPlatoons[(string) $nid])) ?>
+            <?php endif; ?>
+          </td>
+          <td><input type="checkbox" name="n_remove[]" value="<?= $i ?>"></td>
+        </tr>
+      <?php $i++; endforeach; ?>
+      <?php for ($k = 0; $k < 3; $k++): $r2 = $i + $k; ?>
+        <tr>
+          <td><input type="text" name="n_id[<?= $r2 ?>]" placeholder="FIRES.cas"></td>
+          <td><input type="text" name="n_name[<?= $r2 ?>]" placeholder="what it is for"></td>
+          <td class="dim">new</td><td></td>
+        </tr>
+      <?php endfor; ?>
+      </tbody>
+    </table>
+
+    <div class="actions"><button type="submit">Save messaging nets</button></div>
+  </form>
+
+  <p class="dim">Kept in <code><?= h(ghostd_template_doc_id('nets')) ?></code>.
+  A role reads a net only if its own list names it - that IS the privacy rule.</p>
+
+  <h2>Shared nets <span class="dim"><?= count($radioNets) ?></span></h2>
+  <p class="note">Squads that share a net <strong>across a platoon boundary</strong>
+  - GROUND 1 is a rifle squad and the crew that carries it, one element of 1st
+  PLT and one of 2nd. Asked before the platoon's own net when a man is tuned, so
+  this is the finer answer and the platoon is the fallback.</p>
+  <p class="dim">Was on the Platoons tab, which is not where anybody looks for a
+  net. The <strong>net</strong> must be a name from the list above and an MR
+  channel of the same name.</p>
+
+  <form method="post">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <input type="hidden" name="v" value="<?= h($variant) ?>">
+    <input type="hidden" name="s" value="radio">
+    <input type="hidden" name="r" value="nets">
+    <input type="hidden" name="what" value="nets">
+
+    <?php $rows = $radioNets; $rows[] = ['', '', []]; ?>
+    <?php foreach ($rows as $i => $n): ?>
+      <?php $isNew = $i >= count($radioNets); ?>
+      <fieldset class="line">
+        <legend><?= $isNew ? '<span class="key">new</span>' : h((string) ($n[1] ?: $n[0])) ?></legend>
+        <div class="fieldbox">
+          <input type="text" name="n_id[<?= $i ?>]" value="<?= h((string) ($n[0] ?? '')) ?>"
+                 placeholder="Ground1">
+          <select name="n_name[<?= $i ?>]">
+            <option value="">- pick the net -</option>
+            <?php foreach (array_keys($netItems) as $nid): ?>
+              <option value="<?= h((string) $nid) ?>"
+                <?= (string) ($n[1] ?? '') === (string) $nid ? 'selected' : '' ?>><?= h((string) $nid) ?></option>
+            <?php endforeach; ?>
+            <?php if (($n[1] ?? '') !== '' && !isset($netItems[(string) $n[1]])): ?>
+              <option value="<?= h((string) $n[1]) ?>" selected><?= h((string) $n[1]) ?> - no such net</option>
+            <?php endif; ?>
+          </select>
+          <?php if (!$isNew): ?>
+            <label class="inlinelabel"><input type="checkbox" name="n_remove[]" value="<?= $i ?>"> remove</label>
+          <?php endif; ?>
+        </div>
+        <textarea name="n_squads[<?= $i ?>]" rows="2" class="short"
+                  placeholder="one squad name per line"><?= h(implode("
+", (array) ($n[2] ?? []))) ?></textarea>
+      </fieldset>
+    <?php endforeach; ?>
+
+    <div class="actions"><button type="submit">Save shared nets</button></div>
+  </form>
+
+<?php endif; ?>
 
 <?php if ($sub === 'acre'): ?>
 
@@ -62,21 +192,21 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
         <tbody>
         <?php $i = 0; foreach ($rows as $r): ?>
           <tr>
-            <td><input type="number" name="c_idx[<?= $i ?>]" value="<?= h((string) ($r[0] ?? '')) ?>" style="min-width:4.5rem"></td>
-            <td><input type="text" name="c_freq[<?= $i ?>]" value="<?= h((string) ($r[1] ?? '')) ?>" style="min-width:6rem"></td>
+            <td><input type="number" name="c_idx[<?= $i ?>]" value="<?= h((string) ($r[0] ?? '')) ?>"></td>
+            <td><input type="text" name="c_freq[<?= $i ?>]" value="<?= h((string) ($r[1] ?? '')) ?>"></td>
             <td><input type="text" name="c_label[<?= $i ?>]" value="<?= h((string) ($r[2] ?? '')) ?>"></td>
             <?php if ($which === 'lrChannels'): ?>
-              <td><input type="number" name="c_power[<?= $i ?>]" value="<?= h((string) ($r[3] ?? '')) ?>" style="min-width:6rem"></td>
+              <td><input type="number" name="c_power[<?= $i ?>]" value="<?= h((string) ($r[3] ?? '')) ?>"></td>
             <?php endif; ?>
             <td><input type="checkbox" name="c_remove[]" value="<?= $i ?>"></td>
           </tr>
         <?php $i++; endforeach; ?>
         <?php for ($n = 0; $n < 3; $n++): $r = $i + $n; ?>
           <tr>
-            <td><input type="number" name="c_idx[<?= $r ?>]" value="<?= $i + $n + 1 ?>" style="min-width:4.5rem"></td>
-            <td><input type="text" name="c_freq[<?= $r ?>]" style="min-width:6rem"></td>
+            <td><input type="number" name="c_idx[<?= $r ?>]" value="<?= $i + $n + 1 ?>"></td>
+            <td><input type="text" name="c_freq[<?= $r ?>]"></td>
             <td><input type="text" name="c_label[<?= $r ?>]" placeholder="new channel"></td>
-            <?php if ($which === 'lrChannels'): ?><td><input type="number" name="c_power[<?= $r ?>]" style="min-width:6rem"></td><?php endif; ?>
+            <?php if ($which === 'lrChannels'): ?><td><input type="number" name="c_power[<?= $r ?>]"></td><?php endif; ?>
             <td></td>
           </tr>
         <?php endfor; ?>
@@ -100,23 +230,23 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
 
     <div class="fieldbox">
       <label class="inlinelabel">SR power
-        <input type="number" name="srPower" value="<?= h((string) ($radio['srPower'] ?? '')) ?>" style="min-width:6rem"></label>
+        <input type="number" name="srPower" value="<?= h((string) ($radio['srPower'] ?? '')) ?>"></label>
       <label class="inlinelabel">MR power
-        <input type="number" name="mrPower" value="<?= h((string) ($radio['mrPower'] ?? '')) ?>" style="min-width:6rem"></label>
+        <input type="number" name="mrPower" value="<?= h((string) ($radio['mrPower'] ?? '')) ?>"></label>
       <label class="inlinelabel">LR power
-        <input type="number" name="lrPower" value="<?= h((string) ($radio['lrPower'] ?? '')) ?>" style="min-width:6rem"></label>
+        <input type="number" name="lrPower" value="<?= h((string) ($radio['lrPower'] ?? '')) ?>"></label>
     </div>
     <div class="fieldbox">
       <label class="inlinelabel">SR fallback ch
-        <input type="number" name="srFallback" value="<?= h((string) ($radio['srFallback'] ?? '')) ?>" style="min-width:5rem"></label>
+        <input type="number" name="srFallback" value="<?= h((string) ($radio['srFallback'] ?? '')) ?>"></label>
       <label class="inlinelabel">MR default ch
-        <input type="number" name="mrDefault" value="<?= h((string) ($radio['mrDefault'] ?? '')) ?>" style="min-width:5rem"></label>
+        <input type="number" name="mrDefault" value="<?= h((string) ($radio['mrDefault'] ?? '')) ?>"></label>
       <label class="inlinelabel">LR default ch
-        <input type="number" name="lrDefault" value="<?= h((string) ($radio['lrDefault'] ?? '')) ?>" style="min-width:5rem"></label>
+        <input type="number" name="lrDefault" value="<?= h((string) ($radio['lrDefault'] ?? '')) ?>"></label>
       <label class="inlinelabel">LR sat ch
-        <input type="number" name="lrSatChannel" value="<?= h((string) ($radio['lrSatChannel'] ?? '')) ?>" style="min-width:5rem"></label>
+        <input type="number" name="lrSatChannel" value="<?= h((string) ($radio['lrSatChannel'] ?? '')) ?>"></label>
       <label class="inlinelabel">LR local ch
-        <input type="number" name="lrLocalChannel" value="<?= h((string) ($radio['lrLocalChannel'] ?? '')) ?>" style="min-width:5rem"></label>
+        <input type="number" name="lrLocalChannel" value="<?= h((string) ($radio['lrLocalChannel'] ?? '')) ?>"></label>
     </div>
 
     <label for="srRadios">Short range radios <span class="dim">one classname per line</span></label>
@@ -159,8 +289,8 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
       <?php for ($i = 0; $i < $slots; $i++): ?>
         <tr>
           <td><strong><?= $i + 1 ?></strong></td>
-          <td><input type="text" name="tfarSrFreqs[<?= $i ?>]" value="<?= h((string) ($sw[$i] ?? '')) ?>" style="min-width:8rem"></td>
-          <td><input type="text" name="tfarLrFreqs[<?= $i ?>]" value="<?= h((string) ($lr[$i] ?? '')) ?>" style="min-width:8rem"></td>
+          <td><input type="text" name="tfarSrFreqs[<?= $i ?>]" value="<?= h((string) ($sw[$i] ?? '')) ?>"></td>
+          <td><input type="text" name="tfarLrFreqs[<?= $i ?>]" value="<?= h((string) ($lr[$i] ?? '')) ?>"></td>
         </tr>
       <?php endfor; ?>
       </tbody>
@@ -174,10 +304,10 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
     <div class="fieldbox">
       <label class="inlinelabel">Short range fallback channel
         <input type="number" name="tfarSwFallback" min="0" max="<?= $slots ?>"
-               value="<?= h((string) ($radio['tfarSwFallback'] ?? '')) ?>" style="min-width:5rem"></label>
+               value="<?= h((string) ($radio['tfarSwFallback'] ?? '')) ?>"></label>
       <label class="inlinelabel">Long range fallback channel
         <input type="number" name="tfarLrFallback" min="0" max="<?= $slots ?>"
-               value="<?= h((string) ($radio['tfarLrFallback'] ?? '')) ?>" style="min-width:5rem"></label>
+               value="<?= h((string) ($radio['tfarLrFallback'] ?? '')) ?>"></label>
     </div>
     <p class="dim">Where somebody outside the ORBAT lands. 0 means leave the
     radio alone.</p>

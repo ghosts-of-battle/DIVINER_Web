@@ -14,6 +14,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../system.php';
+
 require_once __DIR__ . '/../db.php';
 
 $cfg     = ghostd_config();
@@ -92,7 +94,7 @@ if ($me === null) {
     ?>
     <div class="card">
       <h2>You are not on the roster yet</h2>
-      <p>Steam says you are <code><?= h($uid) ?></code>, and that id has no
+      <p>Steam says you are <?= steamlink($uid) ?>, and that id has no
       record with this unit. A record is created the first time you join the
       server - so if you have played here, it will already exist under a
       different Steam account than the one you just used.</p>
@@ -153,7 +155,7 @@ rest is what you choose to share.</p>
       <?php $st = (string) ($t['status'] ?? 'open'); ?>
       <tr>
         <td><a href="?page=ticket&amp;id=<?= urlencode((string) ($t['id'] ?? '')) ?>"><code><?= h((string) ($t['id'] ?? '')) ?></code></a></td>
-        <td><?= h(GHOSTD_TICKET_KINDS[(string) ($t['kind'] ?? '')]['label'] ?? '') ?></td>
+        <td><?= h(ghostd_ticket_kinds()[(string) ($t['kind'] ?? '')]['label'] ?? '') ?></td>
         <td><a href="?page=ticket&amp;id=<?= urlencode((string) ($t['id'] ?? '')) ?>"><?= h((string) ($t['subject'] ?? '')) ?></a></td>
         <td><span class="pill <?= $st === 'open' ? '' : ($st === 'declined' ? 'hot' : 'dimpill') ?>"><?= h(GHOSTD_TICKET_STATUSES[$st] ?? $st) ?></span></td>
         <td><?= count($t['replies'] ?? []) ?></td>

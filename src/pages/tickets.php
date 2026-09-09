@@ -9,6 +9,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../system.php';
+
 require_once __DIR__ . '/../tickets.php';
 
 $msg = null;
@@ -81,7 +83,7 @@ if ($dbErr !== null) { ghostd_flash('bad', 'PAC actions could not be read: ' . $
 
     <label for="kind">What kind</label>
     <select id="kind" name="kind" required>
-      <?php foreach (GHOSTD_TICKET_KINDS as $k => $meta): ?>
+      <?php foreach (ghostd_ticket_kinds() as $k => $meta): ?>
         <option value="<?= h($k) ?>"><?= h($meta['label']) ?> - <?= h($meta['hint']) ?></option>
       <?php endforeach; ?>
     </select>
@@ -126,7 +128,7 @@ if ($dbErr !== null) { ghostd_flash('bad', 'PAC actions could not be read: ' . $
     <?php $tid = (string) ($t['id'] ?? ''); $st = (string) ($t['status'] ?? 'open'); ?>
     <tr>
       <td><a href="?page=ticket&amp;id=<?= urlencode($tid) ?>"><code><?= h($tid) ?></code></a></td>
-      <td><?= h(GHOSTD_TICKET_KINDS[(string) ($t['kind'] ?? '')]['label'] ?? (string) ($t['kind'] ?? '')) ?></td>
+      <td><?= h(ghostd_ticket_kinds()[(string) ($t['kind'] ?? '')]['label'] ?? (string) ($t['kind'] ?? '')) ?></td>
       <td><a href="?page=ticket&amp;id=<?= urlencode($tid) ?>"><?= h((string) ($t['subject'] ?? '')) ?></a></td>
       <td><?= h((string) ($t['raisedByName'] ?? $t['raisedBy'] ?? '')) ?></td>
       <td><?php

@@ -98,6 +98,22 @@ switch ($what) {
 
     // Who the unit is: the name over the role screen, and the side it fights
     // on. One save - they are one answer.
+    // WHICH COMMS TEMPLATES THIS ORDER OF BATTLE USES.
+    case 'comms':
+        $wantRadio = trim((string) ($_POST['radioVersion'] ?? ''));
+        $wantNets  = trim((string) ($_POST['netsVersion'] ?? ''));
+        foreach ([['radio', $wantRadio], ['nets', $wantNets]] as $pair) {
+            if ($pair[1] !== '' && !in_array($pair[1], ghostd_doc_variants($pair[0]), true)) {
+                throw new RuntimeException('There is no ' . $pair[0] . ' template called "' . $pair[1] . '".');
+            }
+        }
+        $editOrbat(static function (array &$doc) use ($wantRadio, $wantNets, &$msg) {
+            $doc['radioVersion'] = $wantRadio;
+            $doc['netsVersion']  = $wantNets;
+            $msg = 'Comms templates saved.';
+        });
+        break;
+
     case 'faction':
         $editOrbat(static function (array &$doc) use (&$msg) {
             $doc['faction'] = trim((string) ($_POST['faction'] ?? ''));
@@ -157,6 +173,51 @@ switch ($what) {
         }
         ghostd_doc_delete(ghostd_orbat_doc_id($variant));
         $msg = $variant . ' deleted.';
+        break;
+
+    // WHICH PLATOONS ARE IN THIS ORDER OF BATTLE. A platoon is written once, on
+    // its own page; an order of battle is a CHOICE of which of them it holds.
+    // This only writes that choice.
+    case 'pickplatoons':
+        $picked = (array) ($_POST['inorbat'] ?? []);
+        $pool = ghostd_platoon_pool($variant);
+        $editOrbat(static function (array &$doc) use ($picked, $pool, &$msg) {
+            $out = [];
+            foreach ($pool as $pid => $row) {
+                if (in_array((string) $pid, $picked, true)) {
+                    $out[] = $row;
+                }
+            }
+            $doc['platoons'] = $out;
+            $msg = count($out) . ' platoons in this order of battle';
+        });
+        break;
+
+    // ---- the messaging nets -----------------------------------------------
+    // A template, not part of the ORBAT document - one net list per unit, with
+    // versions like everything else - but edited on the ORBAT's Radio tab,
+    // because that is where somebody setting up comms is standing.
+    case 'msgnets':
+        $items = [];
+        $order = 0;
+        foreach ((array) ($_POST['n_id'] ?? []) as $i => $nid) {
+            $nid = trim((string) $nid);
+            if ($nid === '' || in_array((string) $i, (array) ($_POST['n_remove'] ?? []), true)) {
+                continue;
+            }
+            if (!preg_match('/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/', $nid)) {
+                throw new RuntimeException('"' . $nid . '" is not a net name. Letters, digits and '
+                    . 'underscore, with a dot to hang one under another - C2, C2.reports.');
+            }
+            $order += 10;
+            $items[$nid] = [
+                'id'    => $nid,
+                'order' => $order,
+                'name'  => trim((string) ($_POST['n_name'][$i] ?? '')),
+            ];
+        }
+        ghostd_template_save('nets', $items);
+        $msg = count($items) . ' messaging nets saved.';
         break;
 
     // ---- the unit's own trait names ---------------------------------------

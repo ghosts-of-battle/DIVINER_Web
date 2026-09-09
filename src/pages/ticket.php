@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../system.php';
+
 require_once __DIR__ . '/../tickets.php';
 
 $id  = (string) ($_GET['id'] ?? ($_POST['id'] ?? ''));
@@ -72,7 +74,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 
 <table class="kv">
   <tr><th>Id</th><td><code><?= h((string) ($t['id'] ?? '')) ?></code></td></tr>
-  <tr><th>Kind</th><td><?= h(GHOSTD_TICKET_KINDS[(string) ($t['kind'] ?? '')]['label'] ?? (string) ($t['kind'] ?? '')) ?></td></tr>
+  <tr><th>Kind</th><td><?= h(ghostd_ticket_kinds()[(string) ($t['kind'] ?? '')]['label'] ?? (string) ($t['kind'] ?? '')) ?></td></tr>
   <tr><th>Raised by</th><td><?= h((string) ($t['raisedByName'] ?? $t['raisedBy'] ?? '')) ?>
       <span class="dim"><?= h((string) ($t['raisedBy'] ?? '')) ?></span></td></tr>
   <?php if ($about !== ''): ?>

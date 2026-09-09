@@ -20,6 +20,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/system.php';
+
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 
@@ -114,7 +116,7 @@ function ghostd_opord(string $id): array
     $order = (is_array($doc['order'] ?? null)) ? $doc['order'] : [];
 
     $out = [];
-    foreach (GHOSTD_OPORD_SECTIONS as $sec => $meta) {
+    foreach (ghostd_opord_sections() as $sec => $meta) {
         $have = (is_array($order[$sec] ?? null)) ? $order[$sec] : [];
         foreach ($meta['fields'] as $f => $fm) {
             $v = $have[$f] ?? ($fm['kind'] === 'a' ? [] : '');
@@ -146,7 +148,7 @@ function ghostd_opord_save(string $id, array $sections): void
     }
 
     $order = ['id' => $id];
-    foreach (GHOSTD_OPORD_SECTIONS as $sec => $meta) {
+    foreach (ghostd_opord_sections() as $sec => $meta) {
         $rec = [];
         foreach ($meta['fields'] as $f => $fm) {
             $v = $sections[$sec][$f] ?? ($fm['kind'] === 'a' ? [] : '');

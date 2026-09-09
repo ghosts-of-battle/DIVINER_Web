@@ -166,7 +166,8 @@ at mission end. Edit between sessions, not during one.</p>
   <tbody>
   <?php foreach ($players as $uid => $p): ?>
     <tr>
-      <td><code><?= h((string) ($p['operatorId'] ?? '')) ?></code></td>
+      <td><code><?= h((string) ($p['operatorId'] ?? '')) ?></code>
+          <span class="dim"><?= steamlink((string) $uid, 'steam') ?></span></td>
       <td><a href="?page=player&amp;uid=<?= urlencode((string) $uid) ?>"><?= h((string) ($p['name'] ?? $uid)) ?></a>
           <?php if (!empty($p['milsimName'])): ?><span class="dim"><?= h((string) $p['milsimName']) ?></span><?php endif; ?>
       </td>

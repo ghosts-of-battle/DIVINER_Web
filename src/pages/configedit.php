@@ -42,6 +42,12 @@ if ($t['shape'] === 'lists') {
     require __DIR__ . '/configedit_lists.php';
     return;
 }
+// PYLONS ARE A TABLE, NOT A CODE BOX. The file is a literal array with no logic
+// in it, so there was never a reason to make somebody edit brackets.
+if ($key === 'pylons') {
+    require __DIR__ . '/configedit_pylons.php';
+    return;
+}
 if ($t['shape'] === 'code') {
     require __DIR__ . '/configedit_code.php';
     return;
@@ -120,16 +126,25 @@ if ($readErr !== null) { ghostd_flash('bad', 'Could not be read: ' . $readErr); 
       <tr>
         <th>Id</th>
         <?php foreach ($t['fields'] as $f => $meta): ?>
+          <?php if ($meta['kind'] === 'block') { continue; } ?>
           <th><?= h($meta['label']) ?></th>
         <?php endforeach; ?>
         <th>Remove</th>
       </tr>
     </thead>
+    <?php
+      // A "block" field is not a column - it gets the row underneath, the full
+      // width of the table. Everything else is a column, and the block row has
+      // to span all of them.
+      $blockFields = array_filter($t['fields'], static fn($m) => $m['kind'] === 'block');
+      $colSpan = 2 + count($t['fields']) - count($blockFields);
+    ?>
     <tbody>
     <?php $row = 0; foreach ($items as $id => $it): ?>
       <tr>
-        <td><input type="text" name="id[<?= $row ?>]" value="<?= h((string) $id) ?>" size="14"></td>
+        <td><input type="text" name="id[<?= $row ?>]" value="<?= h((string) $id) ?>"></td>
         <?php foreach ($t['fields'] as $f => $meta): ?>
+          <?php if ($meta['kind'] === 'block') { continue; } ?>
           <td>
             <?php if ($meta['kind'] === 'list'): ?>
               <textarea name="<?= h($f) ?>[<?= $row ?>]" rows="2" class="short"><?= h(implode("\n", (array) ($it[$f] ?? []))) ?></textarea>
@@ -140,12 +155,23 @@ if ($readErr !== null) { ghostd_flash('bad', 'Could not be read: ' . $readErr); 
         <?php endforeach; ?>
         <td><input type="checkbox" name="remove[]" value="<?= $row ?>"></td>
       </tr>
+      <?php foreach ($blockFields as $f => $meta): ?>
+        <tr class="blockrow">
+          <td colspan="<?= $colSpan ?>">
+            <label for="b_<?= h($f) ?>_<?= $row ?>"><?= h($meta['label']) ?>
+              <span class="dim"><?= h($meta['help']) ?></span></label>
+            <textarea id="b_<?= h($f) ?>_<?= $row ?>" name="<?= h($f) ?>[<?= $row ?>]"
+                      class="codebox blockbox" spellcheck="false"><?= h((string) ($it[$f] ?? '')) ?></textarea>
+          </td>
+        </tr>
+      <?php endforeach; ?>
     <?php $row++; endforeach; ?>
 
     <?php for ($i = 0; $i < 3; $i++): $r = $row + $i; ?>
       <tr>
-        <td><input type="text" name="id[<?= $r ?>]" size="14" placeholder="new id"></td>
+        <td><input type="text" name="id[<?= $r ?>]" placeholder="new id"></td>
         <?php foreach ($t['fields'] as $f => $meta): ?>
+          <?php if ($meta['kind'] === 'block') { continue; } ?>
           <td>
             <?php if ($meta['kind'] === 'list'): ?>
               <textarea name="<?= h($f) ?>[<?= $r ?>]" rows="2" class="short" placeholder="one per line"></textarea>
@@ -156,6 +182,14 @@ if ($readErr !== null) { ghostd_flash('bad', 'Could not be read: ' . $readErr); 
         <?php endforeach; ?>
         <td></td>
       </tr>
+      <?php foreach ($blockFields as $f => $meta): ?>
+        <tr class="blockrow">
+          <td colspan="<?= $colSpan ?>">
+            <textarea name="<?= h($f) ?>[<?= $r ?>]" class="codebox blockbox" spellcheck="false"
+                      placeholder="<?= h($meta['label']) ?> - <?= h($meta['help']) ?>"></textarea>
+          </td>
+        </tr>
+      <?php endforeach; ?>
     <?php endfor; ?>
     </tbody>
   </table>

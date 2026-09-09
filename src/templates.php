@@ -54,16 +54,12 @@ const GHOSTD_TEMPLATES = [
         'variants'  => true,
         'variantOf' => 'groupArsenal',
     ],
-    'radar' => [
-        'label'    => 'Radar network',
-        'doc'      => 'radar',
-        'shape'    => 'lists',
-        'replaces' => 'config_radar.hpp (Radar_Network)',
-        'blurb'    => 'Vehicle classes put on the datalink at mission start, so they feed the shared radar picture.',
-        'lists'    => ['classes'],
-        'openNames' => false,
-        'classKind' => 'vehicles',
-    ],
+    // 'radar' WAS HERE. The radar network is a CBA setting now
+    // (ghostD_Settings_radarClasses, 2026-09-09) - a server admin types the
+    // vehicle classes in the settings menu rather than editing a document.
+    // ghostD_init_fnc_radarNetwork still adds <unit>.radar to whatever is
+    // typed, so an old list keeps working; there is just nothing to edit here.
+
     'motorpool' => [
         'label'   => 'Motorpool',
         'doc'     => 'motorpool',
@@ -94,8 +90,12 @@ const GHOSTD_TEMPLATES = [
                           'help' => 'The base class it is offered on - MRAP_01_base_F.'],
             'name'    => ['label' => 'Shown as', 'kind' => 'text', 'help' => 'Green Paint.'],
             'icon'    => ['label' => 'Icon', 'kind' => 'text', 'help' => 'Optional path.'],
-            'code'    => ['label' => 'SQF', 'kind' => 'text',
-                          'help' => 'Runs with _vehicle set. A mistake here is a runtime error in game, not a build error.'],
+            // ITS OWN ROW, UNDER THE REST. A block of SQF in a table cell is a
+            // one-line box you cannot read three words of, and it squeezed the
+            // four columns beside it. "block" means: not a column - a full
+            // width box on the row underneath.
+            'code'    => ['label' => 'SQF', 'kind' => 'block',
+                          'help' => 'Runs with _vehicle set to the vehicle. A mistake here is a runtime error in game, not a build error.'],
         ],
         'ordered' => true,
         'classKind' => 'vehicles',
@@ -126,26 +126,22 @@ const GHOSTD_TEMPLATES = [
         'blurb'   => 'Pylon loadouts, as SQF.',
         'global'  => 'missionConfig_pylons',
     ],
-    'skill' => [
-        'label'   => 'AI skill',
-        'doc'     => 'skill',
-        'shape'   => 'code',
-        'replaces' => 'config_skill.hpp',
-        'blurb'   => 'The AI skill block, as SQF. It runs with _unit set to the AI being configured.',
-        'global'  => 'missionConfig_skillBlock',
-        'wrap'    => 'private _unit = _this; ',
-    ],
-    // THE UNIT'S OWN TRAITS. The engine has seven names; everything else a
-    // role puts on a man with setUnitTrait needs its third argument set, and a
-    // name typed with that flag wrong is thrown away without a word. Listing
-    // them here turns the role editor's trait box into a set of checkboxes and
-    // takes the flag out of anybody's hands.
+    // 'skill' WAS HERE. The AI skill block is twenty-two CBA sliders now
+    // (2026-09-09) - general, aiming, spotting, what changes after dark, and
+    // what a machinegunner or a sniper gets instead. A block of SQF nobody
+    // could safely edit became numbers anybody can move.
+
+    // THE UNIT'S OWN TRAIT NAMES. The engine has seven; everything else a role
+    // puts on a man needs setUnitTrait's custom flag set, and a name with that
+    // flag wrong is thrown away without a word. Listing them turns the role
+    // editor's boxes into checkboxes and takes the flag out of anybody's hands.
+    // Edited on the ORBAT page's Roles tab, beside the roles that assign them.
     'traits' => [
         'label'   => 'Custom traits',
         'doc'     => 'traits',
         'shape'   => 'items',
         'replaces' => 'nothing - this is new',
-        'blurb'   => 'Every name this unit invented - the ones a role puts on a man that the engine has never heard of. draWhitelisted, isISR, draAccessDrones. A role assigns them by ticking, and whether each is a setVariable or a setUnitTrait is decided here rather than by whoever is editing the role.',
+        'blurb'   => 'The names this unit invented - the ones a role puts on a man that the engine has never heard of. A role assigns them by ticking, and whether each is a setVariable or a setUnitTrait is decided here rather than by whoever is editing the role.',
         'idHelp'  => 'The name exactly as the mod reads it - draWhitelisted, isRTO. No spaces.',
         'idPattern' => '/^[A-Za-z_][A-Za-z0-9_]{0,63}$/',
         'fields'  => [
@@ -161,11 +157,11 @@ const GHOSTD_TEMPLATES = [
         'ordered' => true,
     ],
     'nets' => [
-        'label'   => 'Radio nets',
+        'label'   => 'Messaging nets',
         'doc'     => 'nets',
         'shape'   => 'items',
         'replaces' => 'config_nets.hpp',
-        'blurb'   => 'The nets TAC//MSG offers, and what each is for. A dot in an id makes it a sub-net of the one before it - "C2.reports" hangs under "C2".',
+        'blurb'   => 'The nets TAC//MSG offers a mailbox for, and what each is for. A dot in an id makes it a sub-net of the one before it - "C2.reports" hangs under "C2". These are the names a role picks its nets from, and what a platoon commands on.',
         'idHelp'  => 'Short, upper-case, no spaces. C2, FIRES, LOG. A dot makes it a sub-net.',
         'idPattern' => '/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/',
         'fields'  => [
@@ -408,8 +404,16 @@ function ghostd_template_lists_save(string $key, array $lists, string $variant =
         if ($name === '' || !preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $name)) {
             continue;
         }
+        // A PASTE FROM A CONFIG FILE JUST WORKS. Nobody types these - they come
+        // out of a .hpp, where every line is  "classname",  and out of the
+        // arsenal export, where they are quoted too. Making somebody strip the
+        // quotes and commas by hand is asking them to introduce a typo into a
+        // list of two hundred names, so the quotes, commas and semicolons come
+        // off here. A classname has none of those characters in it, so nothing
+        // real is lost.
         $clean[$name] = array_values(array_unique(array_filter(
-            array_map('trim', (array) $vals),
+            array_map(static fn($x) => trim((string) $x, " 	
+\"',;"), (array) $vals),
             static fn($x) => $x !== ''
         )));
     }

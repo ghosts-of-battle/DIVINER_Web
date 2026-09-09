@@ -5,6 +5,11 @@
  * Included by configedit.php when the template's shape is 'lists'. $t and $key
  * are already set there.
  *
+ * PASTE FROM A CONFIG FILE AND IT WORKS. These lists come out of a .hpp, where
+ * every line reads  "classname",  - so the quotes, the commas and any trailing
+ * semicolon are stripped on save. A classname contains none of those, so
+ * nothing real is lost, and nobody has to hand-edit two hundred lines.
+ *
  * ONE PER LINE, AND A PICKER WHEN THERE IS ONE. If the game has exported its
  * classnames (<unit>.classes) the boxes get a datalist, so a name is chosen
  * rather than typed. Without the export they are plain textareas - a unit that
@@ -56,6 +61,13 @@ if ($msg !== null) { ghostd_flash('good', $msg); }
 if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
 <?php require __DIR__ . '/_versions.php'; ?>
+
+<p class="note"><strong>One classname per line. Quotes and commas are not
+needed</strong> - and are not a problem either. Paste a block straight out of a
+<code>.hpp</code>, where every line reads <code>"classname",</code>, and the
+quotes, commas and any trailing semicolon are stripped when you save. A
+classname contains none of those characters, so nothing real is lost and nobody
+has to hand-edit two hundred lines.</p>
 
 <?php if ($known === []): ?>
   <p class="note readonly"><strong>No classname list yet.</strong> These are

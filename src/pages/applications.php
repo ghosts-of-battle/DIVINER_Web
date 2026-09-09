@@ -123,7 +123,7 @@ $new = array_filter($apps, static fn($a) => ($a['status'] ?? 'new') === 'new');
   <details class="card" <?= $st === 'new' ? 'open' : '' ?>>
     <summary>
       <strong><?= h((string) ($a['name'] ?? $uid)) ?></strong>
-      <span class="dim"><?= h($uid) ?></span>
+      <span class="dim"><?= steamlink($uid) ?></span>
       <span class="pill <?= $st === 'new' ? '' : ($st === 'accepted' ? '' : 'hot') ?><?= $st === 'accepted' ? ' dimpill' : '' ?>">
         <?= h(GHOSTD_APPLICATION_STATUSES[$st] ?? $st) ?>
       </span>

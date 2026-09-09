@@ -78,6 +78,31 @@ function ghostd_radio_doc_id(): string
     return ghostd_config()['unit'] . '.radio';
 }
 
+/**
+ * Every named version of ANY document, by listing the "<unit>.<doc>." prefix.
+ *
+ * The radio plan is not a template in the registry - its document is a map of
+ * ghostFR_radio_* globals rather than the {id: {fields}} shape the generic
+ * editor takes - but it still has versions, and the order of battle still has
+ * to offer them. This is the same prefix listing the mod does.
+ */
+function ghostd_doc_variants(string $doc): array
+{
+    $prefix = ghostd_config()['unit'] . '.' . $doc . '.';
+    $out = [];
+    try {
+        foreach (ghostd_keys() as $k) {
+            if (str_starts_with($k, $prefix)) {
+                $out[] = substr($k, strlen($prefix));
+            }
+        }
+    } catch (Throwable $e) {
+        return [];
+    }
+    sort($out);
+    return $out;
+}
+
 /** Every named version of the ORBAT, sorted. '' - the common one - is not listed. */
 function ghostd_orbat_variants(): array
 {
@@ -155,6 +180,11 @@ function ghostd_orbat(string $variant = ''): array
     $side = strtoupper((string) ($doc['side'] ?? ''));
     return [
         'faction'   => (string) ($doc['faction'] ?? ''),
+        // WHICH COMMS THIS ORDER OF BATTLE USES. Empty is the default template.
+        // They belong to the ORBAT because a different order of battle is a
+        // different set of squads, and a comms plan is written around squads.
+        'radio'     => (string) ($doc['radioVersion'] ?? ''),
+        'nets'      => (string) ($doc['netsVersion'] ?? ''),
         'side'      => isset(GHOSTD_SIDES[$side]) ? $side : 'WEST',
         'platoons'  => $arr($doc['platoons'] ?? null),
         'groups'    => $arr($doc['groups'] ?? null),
@@ -285,6 +315,35 @@ function ghostd_channel_set(array &$items, string $list, string $key, ?array $va
         $rows[] = $values;
     }
     $items[$list] = $rows;
+}
+
+/**
+ * Every platoon the unit has, across ALL its orders of battle.
+ *
+ * A PLATOON IS DEFINED ONCE AND SELECTED INTO AN ORBAT. An order of battle is a
+ * choice of which platoons are in it, not a second place to write them down -
+ * so this is the pool the selection is made from. A platoon that only one ORBAT
+ * has is still in the pool; that is how a new one gets into a second.
+ *
+ * Keyed by id. Where two ORBATs define the same id differently, the one in the
+ * version being edited wins - it is the one in front of somebody.
+ */
+function ghostd_platoon_pool(string $prefer = ''): array
+{
+    $pool = [];
+    foreach (array_merge([''], ghostd_orbat_variants()) as $v) {
+        foreach (ghostd_orbat((string) $v)['platoons'] as $p) {
+            $pid = (string) ($p[0] ?? '');
+            if ($pid === '') {
+                continue;
+            }
+            if (!isset($pool[$pid]) || (string) $v === $prefer) {
+                $pool[$pid] = $p;
+            }
+        }
+    }
+    ksort($pool);
+    return $pool;
 }
 
 /** A squad's row in the ORBAT, or null. */

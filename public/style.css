@@ -762,3 +762,41 @@ label.stacked textarea { width: 100%; }
    not editable - the role would not apply it anyway. */
 .takenrow { opacity: .55; }
 .takenrow input { cursor: not-allowed; }
+
+/* A Steam id that goes to its profile. Kept monospace because it is still an
+   id - the link is a way to find out whose, not a change of what it is. */
+a.steamid { font-family: var(--mono); font-size: .86em; }
+a.steamid::after { content: " 97"; font-family: inherit; opacity: .5; }
+
+/* A field that is a BLOCK, not a column: its own row under the one it belongs
+   to, the full width of the table. A paint scheme's SQF was a one-line box you
+   could read three words of, and it squeezed the four columns beside it. */
+.blockrow > td { padding-top: 0; border-top: 0; }
+.blockrow label { display: block; font-size: .78rem; letter-spacing: .04em;
+                  text-transform: uppercase; color: var(--dim); margin-bottom: var(--s1); }
+.blockrow label .dim { text-transform: none; letter-spacing: 0; font-size: .95em; }
+textarea.blockbox { min-height: 9rem; width: 100%; }
+/* The row above it reads as the same record, not a separate one. */
+.grid tr:has(+ .blockrow) > td { border-bottom: 0; }
+
+/* WIDTHS IN PER CENT, NOT rem. A field given a fixed width does not know how
+   wide the column it is in turned out to be, so a table with six of them runs
+   off the side of the page and the last one is cut off. The CELL is what gets a
+   width - and only ever a percentage - and the control simply fills it. */
+.grid { table-layout: fixed; width: 100%; }
+.grid th, .grid td { overflow-wrap: anywhere; }
+.grid input[type=text],
+.grid input[type=number],
+.grid select,
+.grid textarea { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+
+/* The same inside a fields block and a fieldbox row. */
+.fields input, .fields select, .fields textarea,
+.fieldbox input, .fieldbox select, .fieldbox textarea {
+  max-width: 100%; box-sizing: border-box;
+}
+.fieldbox { flex-wrap: wrap; }
+.fieldbox input[type=text] { flex: 1 1 30%; min-width: 0; }
+
+/* A checkbox must not be stretched to the cell. */
+.grid input[type=checkbox], .grid input[type=radio] { width: auto; }
