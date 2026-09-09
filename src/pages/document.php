@@ -95,7 +95,7 @@ $json = json_encode($view, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNE
 
 <form method="post">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
-  <textarea name="json" spellcheck="false" rows="30"><?= h($json) ?></textarea>
+  <textarea name="json" spellcheck="false" rows="30" data-editor="json"><?= h($json) ?></textarea>
   <?php if ($isStore): ?>
     <label class="confirm">
       <input type="checkbox" name="confirm" value="yes">

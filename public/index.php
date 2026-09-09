@@ -110,7 +110,7 @@ if ($page === 'logout') {
 ghostd_require_login();
 
 // ---- what this session may open ------------------------------------------
-$adminPages  = ['dashboard', 'roster', 'templates', 'template_edit', 'documents', 'document',
+$adminPages  = ['dashboard', 'roster', 'player', 'templates', 'template_edit', 'documents', 'document',
                 'branding', 'applications', 'questions'];
 $memberPages = ['me', 'apply'];
 
@@ -130,7 +130,11 @@ if (!in_array($page, $allowed, true)) {
 try {
     require __DIR__ . '/../src/pages/' . $page . '.php';
 } catch (Throwable $e) {
-    ghostd_head('Error', 'error');
+    // Half a page may already be on the wire. Finish that one rather than
+    // opening a second document inside it.
+    if (!ghostd_head_sent()) {
+        ghostd_head('Error', 'error');
+    }
     ghostd_flash('bad', $e->getMessage());
     echo '<p class="dim">If this is a connection error: check the Atlas Network Access allowlist '
        . 'includes this web server\'s public IP, and that the connection string is right.</p>';

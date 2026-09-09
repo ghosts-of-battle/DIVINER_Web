@@ -59,25 +59,36 @@ function ghostd_questions(): array
     try {
         $doc = ghostd_get(ghostd_questions_doc_id());
     } catch (Throwable $e) {
-        return GHOSTD_DEFAULT_QUESTIONS;
+        return ghostd_normalise_questions(GHOSTD_DEFAULT_QUESTIONS);
     }
     $items = (is_array($doc['items'] ?? null)) ? $doc['items'] : [];
-    if ($items === []) {
-        return GHOSTD_DEFAULT_QUESTIONS;
-    }
+    return ghostd_normalise_questions($items === [] ? GHOSTD_DEFAULT_QUESTIONS : $items);
+}
 
+/**
+ * Give every question every key, whatever it came from.
+ *
+ * THE DEFAULTS GO THROUGH HERE TOO. They used to be returned raw, and only
+ * one of the nine declares "options" - so the editor called implode() on null
+ * and the page died. A fallback that is shaped differently from the real thing
+ * is a bug waiting for the day the fallback is used.
+ */
+function ghostd_normalise_questions(array $items): array
+{
     $out = [];
+    $i = 0;
     foreach ($items as $id => $q) {
         if (!is_array($q)) {
             continue;
         }
+        $i += 10;
         $out[(string) $id] = [
             'label'    => (string) ($q['label'] ?? $id),
             'type'     => isset(GHOSTD_QUESTION_TYPES[(string) ($q['type'] ?? '')]) ? (string) $q['type'] : 'text',
             'required' => !empty($q['required']),
             'help'     => (string) ($q['help'] ?? ''),
             'options'  => array_values(array_filter(array_map('strval', (array) ($q['options'] ?? [])))),
-            'order'    => (int) ($q['order'] ?? 0),
+            'order'    => (int) ($q['order'] ?? $i),
         ];
     }
     uasort($out, static fn($a, $b) => $a['order'] <=> $b['order']);

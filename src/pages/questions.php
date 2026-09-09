@@ -114,7 +114,7 @@ application.</p>
       <div class="fieldbox">
         <input type="text" name="help[<?= $row ?>]" value="<?= h($q['help']) ?>"
                placeholder="Help text under the question (optional)">
-        <input type="text" name="options[<?= $row ?>]" value="<?= h(implode(' | ', $q['options'])) ?>"
+        <input type="text" name="options[<?= $row ?>]" value="<?= h(implode(' | ', (array) ($q['options'] ?? []))) ?>"
                placeholder="Choices, separated by | (only for 'Choose one')">
       </div>
     </fieldset>

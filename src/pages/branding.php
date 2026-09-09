@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } elseif ($what === 'upload') {
             $which = (string) ($_POST['which'] ?? '');
-            if (!in_array($which, ['logo', 'background'], true)) {
+            if (!in_array($which, GHOSTD_ASSET_SLOTS, true)) {
                 throw new RuntimeException('Unknown picture.');
             }
             $f = $_FILES['file'] ?? null;
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     . ') are the limits to raise.'
                 );
             }
-            $max = $which === 'logo' ? GHOSTD_LOGO_MAX : GHOSTD_BG_MAX;
+            $max = $which === 'background' ? GHOSTD_BG_MAX : GHOSTD_LOGO_MAX;
             if ((int) $f['size'] > $max) {
                 throw new RuntimeException('That file is ' . round($f['size'] / 1024) . ' KB; the limit is '
                     . round($max / 1024) . ' KB. Resize it first - this is a web page, not an archive.');
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } elseif ($what === 'remove') {
             $which = (string) ($_POST['which'] ?? '');
-            if (!in_array($which, ['logo', 'background'], true)) {
+            if (!in_array($which, GHOSTD_ASSET_SLOTS, true)) {
                 throw new RuntimeException('Unknown picture.');
             }
             ghostd_unset_path($assetId, $which);
@@ -179,14 +179,14 @@ in <code><?= h($assetId) ?></code>.</p>
   card is the only thing on its page, while the bar sits above every table.
   100% is 96px tall on the login card and 26px in the bar.</p>
 
-  <label for="logoLoginScale">On the login page <span class="dim">centred, above the unit name</span></label>
+  <label for="logoLoginScale">Login logo <span class="dim">centred, above the unit name</span></label>
   <div class="scalerow">
     <input type="range" id="logoLoginScale" name="logoLoginScale" min="20" max="400" step="5"
            value="<?= (int) $b['logoLoginScale'] ?>" oninput="this.nextElementSibling.textContent = this.value + '%'">
     <output><?= (int) $b['logoLoginScale'] ?>%</output>
   </div>
 
-  <label for="logoBarScale">In the bar <span class="dim">every other page</span></label>
+  <label for="logoBarScale">Bar logo <span class="dim">every other page</span></label>
   <div class="scalerow">
     <input type="range" id="logoBarScale" name="logoBarScale" min="20" max="400" step="5"
            value="<?= (int) $b['logoBarScale'] ?>" oninput="this.nextElementSibling.textContent = this.value + '%'">
@@ -217,14 +217,17 @@ in <code><?= h($assetId) ?></code>.</p>
 
 <h2>Pictures</h2>
 <div class="tiles">
-  <?php foreach ([['logo', 'Logo', 'Shown in the bar and on the login card. 512 KB.'],
-                  ['background', 'Login background', 'Behind the login card only. 2 MB.']] as $a): ?>
+  <?php foreach ([
+      ['logo', 'Bar logo', 'The small mark beside the navigation, on every page. Reads at 26px, so a compact badge works better than a wordmark. 512 KB.'],
+      ['loginLogo', 'Login logo', 'The big mark on the login card. Falls back to the bar logo if you leave this empty. 512 KB.'],
+      ['background', 'Login background', 'Behind the login card only. 2 MB - and it is fetched before anyone has signed in, so smaller is kinder.'],
+  ] as $a): ?>
     <?php [$which, $label, $hint] = $a; $have = ghostd_brand_asset($which) !== null; ?>
     <div class="card">
       <h3><?= h($label) ?></h3>
       <p class="dim"><?= h($hint) ?></p>
       <?php if ($have): ?>
-        <p><img src="<?= ghostd_asset_url($which) ?>" alt="" class="brandprev"></p>
+        <p><img src="<?= h(ghostd_asset_url($which)) ?>" alt="" class="brandprev"></p>
       <?php else: ?>
         <p class="dim">None uploaded.</p>
       <?php endif; ?>

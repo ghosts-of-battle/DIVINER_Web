@@ -144,6 +144,28 @@ function ghostd_next_operator_id(array $players): string
     return 'OP-' . ($max + 1);
 }
 
+/**
+ * The record fields an admin may change from the web, and what to call them.
+ *
+ * Anything not here - skills, awards, notes, training, loadouts - is left to
+ * the game's admin page, which validates against the structure. This site does
+ * not, so it only offers the fields where a free-text value is the whole
+ * meaning.
+ */
+const GHOSTD_ROSTER_FIELDS = [
+    'name'        => 'Name',
+    'milsimName'  => 'Milsim name',
+    'rankId'      => 'Rank',
+    'roleId'      => 'Role',
+    'groupId'     => 'Group',
+    'statusId'    => 'Status',
+    'company'     => 'Company',
+    'clearance'   => 'Clearance',
+    'discordId'   => 'Discord id',
+    'email'       => 'Email',
+    'reportsTo'   => 'Reports to',
+];
+
 /** Set while ghostd_set_self_path is doing a checked self-edit. */
 function ghostd_write_scope(?bool $set = null): bool
 {

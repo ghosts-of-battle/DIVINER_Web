@@ -91,7 +91,7 @@ accepted, nothing has to be retyped.</p>
     <?php elseif ($q['type'] === 'select'): ?>
       <select id="<?= h($id) ?>" name="<?= h($id) ?>" <?= $q['required'] ? 'required' : '' ?>>
         <option value="">-</option>
-        <?php foreach ($q['options'] as $opt): ?>
+        <?php foreach ((array) ($q['options'] ?? []) as $opt): ?>
           <option value="<?= h($opt) ?>" <?= $val === $opt ? 'selected' : '' ?>><?= h($opt) ?></option>
         <?php endforeach; ?>
       </select>

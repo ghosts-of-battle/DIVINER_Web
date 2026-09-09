@@ -57,9 +57,24 @@ function ghostd_active(?string $set = null): string
     return $active;
 }
 
+/**
+ * Whether the page has already begun. An error thrown mid-render must not
+ * start a second document inside the first - which is what a nested <html>
+ * in the middle of a form looks like on screen.
+ */
+function ghostd_head_sent(?bool $set = null): bool
+{
+    static $sent = false;
+    if ($set !== null) {
+        $sent = $set;
+    }
+    return $sent;
+}
+
 function ghostd_head(string $title, string $active = ''): void
 {
     ghostd_active($active);
+    ghostd_head_sent(true);
 
     $nav = ghostd_is_admin() || !ghostd_is_member()
         ? [
@@ -69,6 +84,9 @@ function ghostd_head(string $title, string $active = ''): void
             'templates'    => 'Report deck',
             'documents'    => 'Documents',
             'branding'     => 'Branding',
+            // An admin is a member too - they have a record like anybody else,
+            // and dropping this left them no way to reach their own details.
+            'me'           => 'My details',
         ]
         : ['me' => 'My details', 'apply' => 'Apply'];
 
@@ -187,6 +205,7 @@ function ghostd_foot(): void
   }
 })();
 </script>
+<script src="editor.js"></script>
 </body>
 </html><?php
 }

@@ -174,6 +174,17 @@ function ghostd_shade(string $hex, float $by): string
 
 // ---- the pictures ---------------------------------------------------------
 
+/**
+ * The pictures a unit can store.
+ *
+ * THE BAR LOGO AND THE LOGIN LOGO ARE SEPARATE. They are asked to do different
+ * jobs: the bar wants a compact mark that reads at 26px beside text, the login
+ * card wants the full lockup with wordmark. One image doing both is either
+ * unreadable in the bar or underwhelming on the door. The login card falls
+ * back to the bar logo when only one has been uploaded.
+ */
+const GHOSTD_ASSET_SLOTS = ['logo', 'loginLogo', 'background'];
+
 const GHOSTD_ASSET_TYPES = [
     'image/png'  => 'png',
     'image/jpeg' => 'jpg',
@@ -185,7 +196,7 @@ const GHOSTD_ASSET_TYPES = [
 /** One stored picture: ['mime' => ..., 'data' => base64], or null. */
 function ghostd_brand_asset(string $which): ?array
 {
-    if (!in_array($which, ['logo', 'background'], true)) {
+    if (!in_array($which, GHOSTD_ASSET_SLOTS, true)) {
         return null;
     }
     try {
@@ -211,12 +222,30 @@ function ghostd_has_asset(string $which): bool
         || ghostd_brand_asset($which) !== null;
 }
 
-/** The URL of a stored picture, stamped so a change is not served from cache. */
+/**
+ * The URL of a stored picture, stamped so a change is not served from cache.
+ *
+ * RAW AMPERSANDS. This is used both in HTML attributes and inside a CSS
+ * url() - and CSS does not decode HTML entities, so an &amp; here becomes a
+ * literal parameter named "amp;which" and the image 404s. Callers putting it
+ * in an attribute escape it themselves.
+ */
 function ghostd_asset_url(string $which): string
 {
     $stamp = (string) ghostd_branding()['assetsAt'];
-    return '?page=asset&amp;which=' . rawurlencode($which)
-         . ($stamp !== '' ? '&amp;v=' . rawurlencode($stamp) : '');
+    return '?page=asset&which=' . rawurlencode($which)
+         . ($stamp !== '' ? '&v=' . rawurlencode($stamp) : '');
+}
+
+/** The login card's picture: its own if set, otherwise the bar logo. */
+function ghostd_login_logo(): ?string
+{
+    foreach (['loginLogo', 'logo'] as $which) {
+        if (ghostd_brand_asset($which) !== null) {
+            return $which;
+        }
+    }
+    return null;
 }
 
 /** The brand block for the bar: the logo if there is one, else the name. */
@@ -224,7 +253,7 @@ function ghostd_brand_html(): string
 {
     $name = ghostd_unit_name();
     if (ghostd_brand_asset('logo') !== null) {
-        return '<img class="logo" src="' . ghostd_asset_url('logo') . '" alt="' . h($name) . '">';
+        return '<img class="logo" src="' . h(ghostd_asset_url('logo')) . '" alt="' . h($name) . '">';
     }
     // The house style: the unit's name, with the second word dimmed.
     $parts = explode(' ', $name, 2);

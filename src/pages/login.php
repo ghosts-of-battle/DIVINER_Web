@@ -50,8 +50,9 @@ ghostd_head('Sign in');
 ?>
 <div class="gate">
   <div class="gatemark">
-    <?php if (ghostd_brand_asset('logo') !== null): ?>
-      <img class="gatelogo" src="<?= ghostd_asset_url('logo') ?>" alt="<?= h(ghostd_unit_name()) ?>">
+    <?php $gateLogo = ghostd_login_logo(); ?>
+    <?php if ($gateLogo !== null): ?>
+      <img class="gatelogo" src="<?= h(ghostd_asset_url($gateLogo)) ?>" alt="<?= h(ghostd_unit_name()) ?>">
     <?php endif; ?>
     <h2 class="gatename"><?= h(ghostd_unit_name()) ?></h2>
     <p class="gatetag"><?= $tagline !== '' ? h($tagline) : 'Personnel and operations' ?></p>
