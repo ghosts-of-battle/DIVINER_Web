@@ -125,19 +125,18 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 <p class="dim"><code><?= h($docId) ?></code> &middot; squad channels in
 <code><?= h($radioId) ?></code> &middot; replaces <code>config_groups.hpp</code></p>
 
-<p class="sections">
+<nav class="sections">
   <?php foreach (GHOSTD_ORBAT_TABS as $k => $label): ?>
     <a href="?page=orbat&amp;s=<?= h($k) ?><?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>"
        class="<?= $tab === $k ? 'on' : '' ?>"><?= h($label) ?></a>
-    <?= $k !== 'platoons' ? '&middot;' : '' ?>
   <?php endforeach; ?>
-  &nbsp;&nbsp;|&nbsp;&nbsp;
+  <span class="tabsep">version</span>
   <a href="?page=orbat&amp;s=<?= h($tab) ?>" class="<?= $variant === '' ? 'on' : '' ?>">Common</a>
   <?php foreach ($variants as $v): ?>
-    &middot; <a href="?page=orbat&amp;s=<?= h($tab) ?>&amp;v=<?= urlencode($v) ?>"
-                class="<?= $variant === $v ? 'on' : '' ?>"><?= h($v) ?></a>
+    <a href="?page=orbat&amp;s=<?= h($tab) ?>&amp;v=<?= urlencode($v) ?>"
+       class="<?= $variant === $v ? 'on' : '' ?>"><?= h($v) ?></a>
   <?php endforeach; ?>
-</p>
+</nav>
 <p class="dim">Fill them in that order: nets before squads can sit on one,
 roles before a squad can hold them, squads before a platoon can list them.
 Editing <strong><?= $variant === '' ? 'the common ORBAT' : h($variant) ?></strong>.</p>

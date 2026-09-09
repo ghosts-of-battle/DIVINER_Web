@@ -652,9 +652,43 @@ textarea.short { min-height: 5rem; }
 .replyhead strong { color: var(--ink); margin-right: var(--s2); }
 p.dim a.on { color: var(--accent); }
 
-/* Template version switcher. */
-.sections { font-family: var(--mono); font-size: .82rem; }
-.sections a.on { color: var(--accent); font-weight: 600; }
+/* ---- tab bars -------------------------------------------------------------
+   Used for the ORBAT's sections, template versions and list filters. A tab
+   has to look like a tab: the selected one is joined to the panel below it and
+   the rest sit behind a rule, so which one you are on is unmistakable at a
+   glance rather than a colour difference you have to look for. */
+
+.sections {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin: 0 0 var(--s5); padding: 0;
+  max-width: none;
+}
+.sections a {
+  padding: var(--s2) var(--s4);
+  border: 1px solid transparent; border-bottom: 0;
+  border-radius: var(--r) var(--r) 0 0;
+  color: var(--dim); text-decoration: none;
+  font-size: .8rem; letter-spacing: .04em; font-weight: 600;
+  text-transform: uppercase; white-space: nowrap;
+  position: relative; bottom: -1px;
+}
+.sections a:hover { color: var(--ink); background: var(--raise); }
+.sections a.on {
+  background: var(--panel);
+  border-color: var(--line);
+  border-bottom: 1px solid var(--panel);
+  color: var(--accent);
+}
+/* A second row of tabs, for a section that has its own. */
+.subtabs { border-bottom-style: dashed; margin-bottom: var(--s4); }
+.subtabs a { font-size: .74rem; text-transform: none; letter-spacing: .02em; }
+/* The label between two groups of tabs - "versions", say. */
+.sections .tabsep {
+  padding: var(--s2) var(--s3); color: var(--faint);
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .1em;
+  align-self: center;
+}
 
 .codebox {
   width: 100%; font-family: var(--mono); font-size: .82rem; line-height: 1.5;

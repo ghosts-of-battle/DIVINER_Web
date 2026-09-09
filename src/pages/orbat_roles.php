@@ -47,7 +47,7 @@ these by id.</p>
   <p class="dim">No role documents yet.</p>
 <?php else: ?>
 <table class="grid">
-  <thead><tr><th>Role id</th><th>Used by</th><th>Document</th><th></th></tr></thead>
+  <thead><tr><th>Role id</th><th>Used by</th><th>Mongo doc</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($roles as $r): ?>
     <tr>

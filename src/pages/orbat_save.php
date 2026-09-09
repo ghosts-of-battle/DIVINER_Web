@@ -35,11 +35,23 @@ switch ($what) {
 
     case 'tfar':
         $editRadio(static function (array &$items) use (&$msg) {
+            // NUMBERED SLOTS, so the INDEX is the channel number. A blank
+            // slot 3 must stay slot 3 - closing the gap would shift every
+            // squad's channel by one and nobody would know until they keyed up.
+            // Trailing blanks are dropped; gaps in the middle are kept.
             foreach (['tfarSrFreqs', 'tfarLrFreqs'] as $k) {
-                if (isset($_POST[$k])) {
-                    $items[$k] = array_values(array_filter(array_map('trim',
-                        preg_split('/\r?\n/', (string) $_POST[$k]) ?: []), static fn($x) => $x !== ''));
+                if (!isset($_POST[$k]) || !is_array($_POST[$k])) {
+                    continue;
                 }
+                $slots = [];
+                foreach ($_POST[$k] as $i => $v) {
+                    $slots[(int) $i] = trim((string) $v);
+                }
+                ksort($slots);
+                while ($slots !== [] && end($slots) === '') {
+                    array_pop($slots);
+                }
+                $items[$k] = array_values($slots);
             }
             if (isset($_POST['tfarActiveRadio'])) {
                 $items['tfarActiveRadio'] = trim((string) $_POST['tfarActiveRadio']);
@@ -79,40 +91,83 @@ switch ($what) {
         });
         break;
 
-    // ---- Squads ------------------------------------------------------------
+    // ---- Squads, one at a time ---------------------------------------------
     // The squad and its channel are one thought, so one save writes both
     // documents: the roles into <unit>.orbat, the channels into <unit>.radio.
-    case 'squads':
-        $keep = [];
-        $editOrbat(static function (array &$doc) use (&$keep, $lines, &$msg) {
-            $out = [];
-            foreach ((array) ($_POST['g_name'] ?? []) as $i => $gname) {
-                $gname = trim((string) $gname);
-                if ($gname === '' || in_array((string) $i, (array) ($_POST['g_remove'] ?? []), true)) {
-                    continue;
-                }
-                $cond = trim((string) ($_POST['g_cond'][$i] ?? ''));
-                $out[] = [$gname, $lines((string) ($_POST['g_roles'][$i] ?? '')), $cond === '' ? 'true' : $cond];
-                $keep[$i] = $gname;
+    case 'squad':
+        $name = trim((string) ($_POST['name'] ?? ''));
+        $was  = trim((string) ($_POST['was'] ?? ''));
+        if ($name === '') {
+            throw new RuntimeException('A squad needs a name - it is what a platoon lists it by.');
+        }
+
+        // Empty slots are dropped, but the ORDER of the rest is kept: slot 1
+        // is the squad leader's and the game fills them in this order.
+        $roles = [];
+        foreach ((array) ($_POST['roles'] ?? []) as $i => $r) {
+            $r = trim((string) $r);
+            if ($r !== '') { $roles[(int) $i] = $r; }
+        }
+        ksort($roles);
+        $roles = array_values($roles);
+
+        $cond = trim((string) ($_POST['cond'] ?? ''));
+
+        $editOrbat(static function (array &$doc) use ($name, $was, $roles, $cond, &$msg) {
+            $groups = is_array($doc['groups'] ?? null) ? $doc['groups'] : [];
+            $row = [$name, $roles, $cond === '' ? 'true' : $cond];
+
+            $at = -1;
+            foreach ($groups as $i => $g) {
+                if ((string) ($g[0] ?? '') === ($was !== '' ? $was : $name)) { $at = $i; break; }
             }
-            $doc['groups'] = $out;
-            $msg = count($out) . ' squads saved';
+            if ($at >= 0) {
+                $groups[$at] = $row;
+                $msg = 'Squad ' . $name . ' saved with ' . count($roles) . ' slots';
+            } else {
+                $groups[] = $row;
+                $msg = 'Squad ' . $name . ' added with ' . count($roles) . ' slots';
+            }
+            $doc['groups'] = $groups;
         });
 
-        $editRadio(static function (array &$items) use ($keep, &$msg) {
-            $acre = [];
-            $tfar = [];
-            foreach ($keep as $i => $name) {
-                $ch = trim((string) ($_POST['g_acre'][$i] ?? ''));
-                if ($ch !== '') { $acre[] = [$name, (int) $ch]; }
-
-                $sw = trim((string) ($_POST['g_tfar_sw'][$i] ?? ''));
-                $lr = trim((string) ($_POST['g_tfar_lr'][$i] ?? ''));
-                if ($sw !== '' || $lr !== '') { $tfar[] = [$name, (int) $sw, (int) $lr]; }
+        $editRadio(static function (array &$items) use ($name, $was, &$msg) {
+            // A rename has to move the channel with it, or the squad loses its
+            // radio and nothing says why.
+            $old = $was !== '' ? $was : $name;
+            foreach ([['srSquadChannel', 'acre'], ['tfarNets', 'tfar']] as $pair) {
+                $rows = is_array($items[$pair[0]] ?? null) ? $items[$pair[0]] : [];
+                $rows = array_values(array_filter($rows,
+                    static fn($r) => (string) ($r[0] ?? '') !== $old && (string) ($r[0] ?? '') !== $name));
+                if ($pair[1] === 'acre') {
+                    $ch = trim((string) ($_POST['acre'] ?? ''));
+                    if ($ch !== '') { $rows[] = [$name, (int) $ch]; }
+                } else {
+                    $sw = trim((string) ($_POST['tfar_sw'] ?? ''));
+                    $lr = trim((string) ($_POST['tfar_lr'] ?? ''));
+                    if ($sw !== '' || $lr !== '') { $rows[] = [$name, (int) $sw, (int) $lr]; }
+                }
+                $items[$pair[0]] = $rows;
             }
-            $items['srSquadChannel'] = $acre;
-            $items['tfarNets'] = $tfar;
-            $msg .= ', ' . count($acre) . ' ACRE and ' . count($tfar) . ' TFAR channel settings.';
+            $msg .= ', channels set.';
+        });
+        break;
+
+    case 'deletesquad':
+        $name = trim((string) ($_POST['name'] ?? ''));
+        $editOrbat(static function (array &$doc) use ($name, &$msg) {
+            $groups = is_array($doc['groups'] ?? null) ? $doc['groups'] : [];
+            $doc['groups'] = array_values(array_filter($groups,
+                static fn($g) => (string) ($g[0] ?? '') !== $name));
+            $msg = $name . ' removed';
+        });
+        $editRadio(static function (array &$items) use ($name, &$msg) {
+            foreach (['srSquadChannel', 'tfarNets'] as $k) {
+                $rows = is_array($items[$k] ?? null) ? $items[$k] : [];
+                $items[$k] = array_values(array_filter($rows,
+                    static fn($r) => (string) ($r[0] ?? '') !== $name));
+            }
+            $msg .= ', with its channels.';
         });
         break;
 

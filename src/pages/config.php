@@ -87,7 +87,7 @@ the common one unless something names another.</p>
     <table class="grid">
       <thead>
         <tr>
-          <th>Version</th><th>Document</th>
+          <th>Version</th><th>Mongo doc</th>
           <th><?= $t['shape'] === 'code' ? 'Lines' : 'Entries' ?></th><th></th>
         </tr>
       </thead>
@@ -113,7 +113,7 @@ the common one unless something names another.</p>
   <p class="dim">replaces <code>config_groups.hpp</code> (Dynamic_Groups)
   &middot; <?= count($orbatCounts) ?> version<?= count($orbatCounts) === 1 ? '' : 's' ?></p>
   <table class="grid">
-    <thead><tr><th>Version</th><th>Document</th><th>Holds</th><th></th></tr></thead>
+    <thead><tr><th>Version</th><th>Mongo doc</th><th>Holds</th><th></th></tr></thead>
     <tbody>
     <?php foreach ($orbatCounts as $v => $desc): ?>
       <tr>

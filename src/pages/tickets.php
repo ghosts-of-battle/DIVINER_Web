@@ -110,12 +110,11 @@ if ($dbErr !== null) { ghostd_flash('bad', 'PAC actions could not be read: ' . $
   <?= $isAdmin ? 'Everything raised' : 'Your requests' ?>
   <span class="dim"><?= count($shown) ?> of <?= count($mine) ?></span>
 </h2>
-<p class="dim">
+<nav class="sections">
   <?php foreach (['open' => 'Open', 'accepted' => 'Accepted', 'declined' => 'Declined', 'closed' => 'Closed', 'all' => 'All'] as $k => $label): ?>
-    <a href="?page=tickets&amp;show=<?= h($k) ?>" <?= $filter === $k ? 'class="on"' : '' ?>><?= h($label) ?></a>
-    <?= $k !== 'all' ? ' &middot; ' : '' ?>
+    <a href="?page=tickets&amp;show=<?= h($k) ?>" class="<?= $filter === $k ? 'on' : '' ?>"><?= h($label) ?></a>
   <?php endforeach; ?>
-</p>
+</nav>
 
 <?php if ($shown === []): ?>
   <p class="dim">Nothing here.</p>

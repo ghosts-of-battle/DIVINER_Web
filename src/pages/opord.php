@@ -51,7 +51,7 @@ if ($msg !== null) { ghostd_flash('good', $msg); }
 if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
 <p class="dim"><a href="?page=opords">&larr; Operation orders</a> &middot;
-document <code><?= h(ghostd_opord_doc_id($id)) ?></code></p>
+Mongo doc <code><?= h(ghostd_opord_doc_id($id)) ?></code></p>
 
 <p class="note">Each section saves on its own. The game reads this at the next
 mission start, and a report template's <code>autoFill</code> pulls single

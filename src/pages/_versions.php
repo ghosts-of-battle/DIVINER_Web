@@ -14,20 +14,21 @@
 declare(strict_types=1);
 ?>
 <p class="dim"><a href="?page=config">&larr; Templates</a> &middot;
-document <code><?= h(ghostd_template_doc_id($key, $variant)) ?></code> &middot;
+Mongo doc <code><?= h(ghostd_template_doc_id($key, $variant)) ?></code> &middot;
 replaces <code><?= h($t['replaces']) ?></code></p>
 
 <p class="note"><?= h($t['blurb']) ?></p>
 
 <h2>Versions</h2>
-<p class="sections">
+<nav class="sections">
+  <span class="tabsep">version</span>
   <a href="?page=configedit&amp;t=<?= urlencode($key) ?>"
      class="<?= $variant === '' ? 'on' : '' ?>">Common</a>
   <?php foreach ($variants as $v): ?>
-    &middot; <a href="?page=configedit&amp;t=<?= urlencode($key) ?>&amp;v=<?= urlencode($v) ?>"
-                class="<?= $variant === $v ? 'on' : '' ?>"><?= h($v) ?></a>
+    <a href="?page=configedit&amp;t=<?= urlencode($key) ?>&amp;v=<?= urlencode($v) ?>"
+       class="<?= $variant === $v ? 'on' : '' ?>"><?= h($v) ?></a>
   <?php endforeach; ?>
-</p>
+</nav>
 <form method="get" class="inline">
   <input type="hidden" name="page" value="configedit">
   <input type="hidden" name="t" value="<?= h($key) ?>">
