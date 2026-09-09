@@ -9,7 +9,7 @@
  *
  * THE FIELD NAMES ARE THE MISSION'S, verbatim. ghostD_groups_fnc_roleFields is
  * the contract - name, description, icon, nets, tiles, traits, customVariables,
- * defaultLoadout, groupArsenal and the four arsenal lists - plus what TAC//PAC
+ * defaultLoadout and the four arsenal lists - plus what TAC//PAC
  * adds on top (minRank, requiredSkills, uids, arsenalWhitelist, defaultSkills,
  * slotTag). A role written in a config file and a role kept here are the same
  * record with the same keys, which is the only reason the mod can read either.
@@ -250,7 +250,6 @@ function ghostd_role(string $id): array
         'icon'            => $str('icon'),
         'slotTag'         => $str('slotTag', $id),
         'minRank'         => $str('minRank'),
-        'groupArsenal'    => $str('groupArsenal'),
         'requiredSkills'  => $list('requiredSkills'),
         'defaultSkills'   => $list('defaultSkills'),
         'uids'            => $list('uids'),

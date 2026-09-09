@@ -812,3 +812,16 @@ textarea.blockbox { min-height: 9rem; width: 100%; }
    an insignia or a ribbon, and the row has to stay a row. */
 .recthumb { height: 2rem; width: auto; max-width: 6rem; object-fit: contain;
             background: var(--well); border: 1px solid var(--line); border-radius: 3px; }
+
+/* The welcome screen's tag buttons. A row of small buttons over the box, so
+   applying a heading is pressing a button rather than typing a tag. */
+.tagbar { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center;
+          margin: 0 0 var(--s2); }
+.tagbar button { font-size: .78rem; padding: var(--s2) var(--s3); }
+.tagbar input[type=color] { width: 2.6rem; height: 1.9rem; min-width: 0; padding: 2px; }
+
+/* A row with more than one button in its last cell - Edit beside Delete. They
+   sit on one line and do not stretch the row. */
+td.rowacts { white-space: nowrap; }
+td.rowacts > * { margin-right: .35rem; }
+td.rowacts > *:last-child { margin-right: 0; }

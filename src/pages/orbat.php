@@ -84,7 +84,18 @@ if ($variant === '') {
     $variant = ghostd_default_orbat_id();
 }
 $docId   = $unit . '.orbat' . ($variant !== '' ? '.' . $variant : '');
-$radioId = $unit . '.radio';
+// WHICH COMMS TEMPLATE IS OPEN. The messaging nets and the radio plan are
+// documents with named versions like everything else, and an order of battle
+// says which pair it runs (user, 2026-09-09: "messaging acre and tfar need to
+// be a list of templates that are assigned at the orbat level"). These two say
+// which one the Communications tab is EDITING - the assignment is on the order
+// of battle's own page.
+$nv = trim((string) ($_GET['nv'] ?? ($_POST['nv'] ?? '')));
+$rv = trim((string) ($_GET['rv'] ?? ($_POST['rv'] ?? '')));
+if ($nv !== '' && !ghostd_variant_ok($nv)) { $nv = ''; }
+if ($rv !== '' && !ghostd_variant_ok($rv)) { $rv = ''; }
+
+$radioId = ghostd_radio_doc_id($rv);
 
 $variants = ghostd_orbat_variants();
 
@@ -101,7 +112,7 @@ $lines = static function (string $s): array {
 // pages - two editors that disagree about what a squad is would be two
 // different squads.
 $editOrbat = static fn(callable $fn) => ghostd_orbat_edit($variant, $fn);
-$editRadio = static fn(callable $fn) => ghostd_radio_edit($fn);
+$editRadio = static fn(callable $fn) => ghostd_radio_edit($fn, $rv);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ghostd_csrf_check();
@@ -143,16 +154,6 @@ if ($err !== null) { ghostd_flash('bad', $err); }
   <?php endforeach; ?>
 
 
-  <?php // The orders of battle are chosen on their own tab; this strip says
-        // which one the tab in front of you is editing.
-        if ($variants !== [] && !in_array($tab, ['versions', 'one'], true)): ?>
-    <span class="tabsep">order of battle</span>
-    <a href="?page=orbat&amp;s=<?= h($tab) ?>" class="<?= $variant === '' ? 'on' : '' ?>"><?= h($unit) ?>.orbat</a>
-    <?php foreach ($variants as $v): ?>
-      <a href="?page=orbat&amp;s=<?= h($tab) ?>&amp;v=<?= urlencode($v) ?>"
-         class="<?= $variant === $v ? 'on' : '' ?>"><?= h($v) ?></a>
-    <?php endforeach; ?>
-  <?php endif; ?>
 </nav>
 <?php if ($subTabs !== []): ?>
   <nav class="subrail">

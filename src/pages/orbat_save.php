@@ -102,15 +102,20 @@ switch ($what) {
     case 'comms':
         $wantRadio = trim((string) ($_POST['radioVersion'] ?? ''));
         $wantNets  = trim((string) ($_POST['netsVersion'] ?? ''));
-        foreach ([['radio', $wantRadio], ['nets', $wantNets]] as $pair) {
+        $wantArs   = trim((string) ($_POST['arsenalVersion'] ?? ''));
+        $wantMp    = trim((string) ($_POST['motorpoolVersion'] ?? ''));
+        foreach ([['radio', $wantRadio], ['nets', $wantNets],
+                  ['arsenal', $wantArs], ['motorpool', $wantMp]] as $pair) {
             if ($pair[1] !== '' && !in_array($pair[1], ghostd_doc_variants($pair[0]), true)) {
                 throw new RuntimeException('There is no ' . $pair[0] . ' template called "' . $pair[1] . '".');
             }
         }
-        $editOrbat(static function (array &$doc) use ($wantRadio, $wantNets, &$msg) {
-            $doc['radioVersion'] = $wantRadio;
-            $doc['netsVersion']  = $wantNets;
-            $msg = 'Comms templates saved.';
+        $editOrbat(static function (array &$doc) use ($wantRadio, $wantNets, $wantArs, $wantMp, &$msg) {
+            $doc['radioVersion']     = $wantRadio;
+            $doc['netsVersion']      = $wantNets;
+            $doc['arsenalVersion']   = $wantArs;
+            $doc['motorpoolVersion'] = $wantMp;
+            $msg = 'Saved. The mission reads these at its next start.';
         });
         break;
 
@@ -252,8 +257,19 @@ switch ($what) {
             ];
         }
         uasort($items, static fn($a, $b) => $a['order'] <=> $b['order']);
-        ghostd_template_save('nets', $items);
+        ghostd_template_save('nets', $items, $nv);
         $msg = count($items) . ' messaging nets saved.';
+        break;
+
+    case 'msgnetdel':
+        $gone  = trim((string) ($_POST['net'] ?? ''));
+        $items = ghostd_template_items('nets', $nv);
+        if ($gone === '' || !isset($items[$gone])) {
+            throw new RuntimeException('There is no net called "' . $gone . '".');
+        }
+        unset($items[$gone]);
+        ghostd_template_save('nets', $items, $nv);
+        $msg = $gone . ' deleted.';
         break;
 
     case 'msgnetnew':
@@ -262,7 +278,7 @@ switch ($what) {
             throw new RuntimeException('"' . $nid . '" is not a net name. Letters, digits and '
                 . 'underscore, with a dot to hang one under another - C2, C2.reports.');
         }
-        $items = ghostd_template_items('nets');
+        $items = ghostd_template_items('nets', $nv);
         if (isset($items[$nid])) {
             throw new RuntimeException('There is already a net called "' . $nid . '".');
         }
@@ -275,7 +291,7 @@ switch ($what) {
             'order' => $last + 10,
             'name'  => trim((string) ($_POST['nn_name'] ?? '')),
         ];
-        ghostd_template_save('nets', $items);
+        ghostd_template_save('nets', $items, $nv);
         $msg = $nid . ' added.';
         break;
 

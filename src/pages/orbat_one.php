@@ -55,9 +55,10 @@ this order of battle. 1 is normal.</p>
   <div class="actions"><button type="submit">Save</button></div>
 </form>
 
-<h2>Communications</h2>
-<p class="dim">Written on the <a href="?page=orbat&amp;s=radio<?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>">Communications</a>
-tab; this says which of them this order of battle runs.</p>
+<h2>What it runs</h2>
+<p class="dim">Each of these is a template with named versions, written on its
+own page. This says which ones this order of battle uses - the mission gets
+them without naming a single setting.</p>
 
 <form method="post" class="fields">
   <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
@@ -76,6 +77,20 @@ tab; this says which of them this order of battle runs.</p>
       <option value="">Default</option>
       <?php foreach (ghostd_doc_variants('radio') as $v): ?>
         <option value="<?= h($v) ?>" <?= $cur['radio'] === $v ? 'selected' : '' ?>><?= h($v) ?></option>
+      <?php endforeach; ?>
+    </select></label>
+  <label>Arsenal
+    <select name="arsenalVersion">
+      <option value="">Default</option>
+      <?php foreach (ghostd_doc_variants('arsenal') as $v): ?>
+        <option value="<?= h($v) ?>" <?= ($cur['arsenal'] ?? '') === $v ? 'selected' : '' ?>><?= h($v) ?></option>
+      <?php endforeach; ?>
+    </select></label>
+  <label>Motorpool
+    <select name="motorpoolVersion">
+      <option value="">Default</option>
+      <?php foreach (ghostd_doc_variants('motorpool') as $v): ?>
+        <option value="<?= h($v) ?>" <?= ($cur['motorpool'] ?? '') === $v ? 'selected' : '' ?>><?= h($v) ?></option>
       <?php endforeach; ?>
     </select></label>
   <div class="actions"><button type="submit">Save</button></div>

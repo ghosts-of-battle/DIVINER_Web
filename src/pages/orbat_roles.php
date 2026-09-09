@@ -109,7 +109,7 @@ $hit = static function (string ...$parts) use ($q): bool {
       <tr><th>Loadout</th><td><?= $loadout === []
             ? '<span class="dim">none - spawns in whatever the mission gives him</span>'
             : h(implode(' / ', array_map(static fn($s) => $s[1], array_slice($loadout, 0, 3)))) ?></td></tr>
-      <tr><th>Group arsenal</th><td><?= $r['groupArsenal'] !== '' ? '<code>' . h($r['groupArsenal']) . '</code>' : '<span class="dim">none</span>' ?></td></tr>
+      <tr><th>Own arsenal</th><td class="dim"><code><?= h(ghostd_template_doc_id('arsenal', ghostd_role_variant($rid))) ?></code></td></tr>
       <tr><th>Mongo doc</th><td class="dim"><code><?= h(ghostd_role_doc_id($rid)) ?></code></td></tr>
     </table>
   </details>

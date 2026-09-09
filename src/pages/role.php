@@ -9,9 +9,10 @@
  * just typed.
  *
  * WHAT YOU CAN PICK, YOU PICK. Nets come from the net list, tiles from the nine
- * the TAC//PAD has, the rank from the rank list, the group arsenal from the
- * arsenals that exist. A typed id that matches nothing is a permission that
- * grants nothing, and nothing in game says so.
+ * the TAC//PAD has, the rank from the rank list. A typed id that matches
+ * nothing is a permission that grants nothing, and nothing in game says so -
+ * which is why this role's own arsenal is a document named after the role
+ * rather than a class name somebody types.
  *
  * The loadout is the exception and always will be: it is a nested array copied
  * out of a config file. It gets a paste box and a plain-English summary of what
@@ -717,7 +718,11 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
       // and had never been filled in (user, 2026-09-09). The document is
       // derived from the role's id now, the way a squad's and a platoon's are,
       // so there is nothing to point at.
-      $rv = ghostd_role_variant($rid);
+      // $id, NOT $rid. $rid is the rank picker's loop variable further up this
+      // file and still holds the last rank id here - every role's arsenal
+      // resolved to role_COLONEL, one document shared by all of them, named
+      // after a rank (2026-09-09).
+      $rv = ghostd_role_variant($id);
       $rvHas = ghostd_variant_summary('arsenal', $rv);
     ?>
     <table class="kv">

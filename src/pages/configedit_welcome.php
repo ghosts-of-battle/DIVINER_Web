@@ -58,16 +58,63 @@ if ($err !== null) { ghostd_flash('bad', $err); }
          placeholder="HERDING CATS SINCE 2034">
 
   <label for="text">Text</label>
-  <p class="dim">Returns are line breaks. Arma's own tags do the rest:
-  <code>&lt;t size='1.15' color='#cc4331'&gt;HEADING&lt;/t&gt;</code>,
-  <code>align='center'</code>, <code>&lt;br/&gt;</code>,
-  <code>&lt;img image='path.paa'/&gt;</code>,
-  <code>&lt;a href='https://...'&gt;link&lt;/a&gt;</code>.
-  Size multiplies the body size, so 1.15 is a heading and 2 is twice the text.
-  A literal <code>&lt;</code> is <code>&amp;lt;</code>.</p>
+  <p class="dim">Returns are line breaks. Select some text and press a button;
+  the tags are Arma's own.</p>
+
+  <div class="tagbar">
+    <button type="button" data-wrap="heading">Heading</button>
+    <input type="color" id="tagcolor" value="#cc4331" title="the colour Heading and Colour use">
+    <button type="button" data-wrap="color">Colour</button>
+    <button type="button" data-wrap="big">Bigger</button>
+    <button type="button" data-wrap="small">Smaller</button>
+    <button type="button" data-wrap="center">Centre</button>
+    <button type="button" data-wrap="right">Right</button>
+    <button type="button" data-wrap="br">Line break</button>
+    <button type="button" data-wrap="img">Image</button>
+    <button type="button" data-wrap="link">Link</button>
+  </div>
+
   <textarea id="text" name="text" spellcheck="false"
-            placeholder="&lt;t size='1.15' color='#cc4331'&gt;SITUATION&lt;/t&gt;
-The situation, in as many paragraphs as it takes."><?= h($w['text']) ?></textarea>
+            placeholder="Type the briefing. Select a line and press Heading."><?= h($w['text']) ?></textarea>
+
+  <script>
+  // THE BUTTONS ARE THE EDITOR. Each one wraps what is selected in the tag it
+  // names, or drops the tag in with the caret between its halves when nothing
+  // is selected (user, 2026-09-09: "a simple editor will have buttons to apply
+  // the html tags").
+  (function () {
+    var ta = document.getElementById('text');
+    var col = document.getElementById('tagcolor');
+    function tag(kind) {
+      var c = col.value;
+      switch (kind) {
+        case 'heading': return ["<t size='1.15' color='" + c + "'>", '</t>'];
+        case 'color':   return ["<t color='" + c + "'>", '</t>'];
+        case 'big':     return ["<t size='1.4'>", '</t>'];
+        case 'small':   return ["<t size='0.8'>", '</t>'];
+        case 'center':  return ["<t align='center'>", '</t>'];
+        case 'right':   return ["<t align='right'>", '</t>'];
+        case 'br':      return ['<br/>', ''];
+        case 'img':     return ["<img image='", "' />"];
+        case 'link':    return ["<a href='https://'>", '</a>'];
+      }
+      return ['', ''];
+    }
+    document.querySelector('.tagbar').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-wrap]');
+      if (!b) { return; }
+      var parts = tag(b.getAttribute('data-wrap'));
+      var s = ta.selectionStart, t = ta.selectionEnd;
+      var mid = ta.value.slice(s, t);
+      ta.value = ta.value.slice(0, s) + parts[0] + mid + parts[1] + ta.value.slice(t);
+      // Leave the caret where the typing goes next: inside the tag when it
+      // wrapped nothing, after it when it wrapped a selection.
+      var at = mid === '' ? s + parts[0].length : s + parts[0].length + mid.length + parts[1].length;
+      ta.focus();
+      ta.setSelectionRange(at, at);
+    });
+  })();
+  </script>
 
   <div class="actions"><button type="submit">Save welcome screen</button></div>
 </form>

@@ -49,12 +49,12 @@ const GHOSTD_TEMPLATES = [
                        'itemsBipods', 'itemsBinoculars', 'itemsMedical', 'itemsTools'],
         'openNames' => true,
         'classKind' => 'all',
-        // MORE THAN ONE ARSENAL. The common one is <unit>.arsenal; each variant
-        // is <unit>.arsenal.<id>, and the id is the class name a role's
-        // groupArsenal names - "Arsenal_Banshee" stays "Arsenal_Banshee", so
-        // the roles need no editing.
+        // MORE THAN ONE ARSENAL. The common one is <unit>.arsenal; each
+        // variant is <unit>.arsenal.<id>. A narrower one is named for what it
+        // belongs to - plt_<PLATOON>, sqd_<SQUAD>, role_<CLASS> - derived from
+        // the id, so nothing points at it and nothing can point at the wrong
+        // one. The rest are the unit's own camo sets, named freely.
         'variants'  => true,
-        'variantOf' => 'groupArsenal',
     ],
     // 'radar' WAS HERE. The radar network is a CBA setting now
     // (ghostD_Settings_radarClasses, 2026-09-09) - a server admin types the
@@ -100,16 +100,6 @@ const GHOSTD_TEMPLATES = [
                           'help' => 'Runs with _vehicle set to the vehicle. A mistake here is a runtime error in game, not a build error.'],
         ],
         'ordered' => true,
-        'classKind' => 'vehicles',
-    ],
-    'vehicleSpawner' => [
-        'label'   => 'Vehicle spawner',
-        'doc'     => 'vehicleSpawner',
-        'shape'   => 'lists',
-        'replaces' => 'config_vehicleSpawner.hpp (VehicleSpawner)',
-        'blurb'   => 'What the engineer-course spawn pads offer, by kind.',
-        'lists'   => ['ground', 'air', 'sea', 'static'],
-        'openNames' => true,
         'classKind' => 'vehicles',
     ],
     'logistics' => [
@@ -616,8 +606,8 @@ function ghostd_template_code_save(string $key, string $code, string $variant = 
 //   common          <unit>.arsenal                 everybody
 //   platoon         <unit>.arsenal.plt_<id>        everyone in that platoon
 //   squad           <unit>.arsenal.sqd_<name>      everyone in that squad
-//   role            the role document's own arsenalWeapons/Items/... and its
-//                   groupArsenal variant
+//   role            <unit>.arsenal.role_<CLASS>    that role only, plus the
+//                   role document's own arsenalWeapons/Magazines/Items/Backpacks
 //
 // The document name is DERIVED from the platoon id or squad name rather than
 // stored anywhere, so adding a platoon arsenal is creating a document and

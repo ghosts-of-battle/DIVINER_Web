@@ -77,9 +77,18 @@ function ghostd_orbat_doc_id(string $variant = ''): string
     return $id;
 }
 
-function ghostd_radio_doc_id(): string
+/**
+ * The radio plan's document - the common one, or a named version.
+ *
+ * A COMMS PLAN IS A TEMPLATE LIKE ANY OTHER (user, 2026-09-09: "messaging acre
+ * and tfar need to be a list of templates that are assigned at the orbat
+ * level"). <unit>.radio is the default; <unit>.radio.<id> is a version, and an
+ * order of battle names which one it runs.
+ */
+function ghostd_radio_doc_id(string $variant = ''): string
 {
-    return ghostd_config()['unit'] . '.radio';
+    $id = ghostd_config()['unit'] . '.radio';
+    return $variant === '' ? $id : $id . '.' . $variant;
 }
 
 /**
@@ -189,6 +198,10 @@ function ghostd_orbat(string $variant = ''): array
         // different set of squads, and a comms plan is written around squads.
         'radio'     => (string) ($doc['radioVersion'] ?? ''),
         'nets'      => (string) ($doc['netsVersion'] ?? ''),
+        // AND ITS GEAR. The mod folds these into currentArsenal and
+        // currentMotorpool at boot - see svcOrbat.inc.sqf.
+        'arsenal'   => (string) ($doc['arsenalVersion'] ?? ''),
+        'motorpool' => (string) ($doc['motorpoolVersion'] ?? ''),
         'side'      => isset(GHOSTD_SIDES[$side]) ? $side : 'WEST',
         'platoons'  => $arr($doc['platoons'] ?? null),
         'groups'    => $arr($doc['groups'] ?? null),
@@ -215,10 +228,10 @@ function ghostd_orbat_edit(string $variant, callable $fn): void
 }
 
 /** The radio plan's items - the shape the mod reads, {section, items}. */
-function ghostd_radio_items(): array
+function ghostd_radio_items(string $variant = ''): array
 {
     try {
-        $doc = ghostd_get(ghostd_radio_doc_id());
+        $doc = ghostd_get(ghostd_radio_doc_id($variant));
     } catch (Throwable $e) {
         return [];
     }
@@ -226,15 +239,16 @@ function ghostd_radio_items(): array
 }
 
 /** The same for the radio plan. */
-function ghostd_radio_edit(callable $fn): void
+function ghostd_radio_edit(callable $fn, string $variant = ''): void
 {
-    $docId = ghostd_radio_doc_id();
+    $docId = ghostd_radio_doc_id($variant);
     $doc = ghostd_get($docId);
     $doc = is_array($doc) ? $doc : [];
     unset($doc['_id']);
     $items = is_array($doc['items'] ?? null) ? $doc['items'] : [];
     $fn($items);
     $doc['section']   = 'radio';
+    $doc['id']        = $variant;
     $doc['items']     = $items;
     $doc['from']      = 'DIVINER_Web';
     $doc['updatedAt'] = gmdate('Y-m-d H:i:s');

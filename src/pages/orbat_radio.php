@@ -35,11 +35,53 @@ $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
 // there is how that screen came to throw when it was moved off Messaging.
 $netItems = [];
 try {
-    $netItems = ghostd_template_items('nets');
+    $netItems = ghostd_template_items('nets', $nv);
 } catch (Throwable $e) {
     $netItems = [];
 }
 ?>
+
+<?php
+// THE TEMPLATE BAR. Each of the three is a document with named versions, and an
+// order of battle says which pair it runs - that assignment is on the order of
+// battle's own page, not here. This picks which one you are EDITING.
+$fam   = $sub === 'nets' ? 'nets' : 'radio';
+$cur   = $sub === 'nets' ? $nv : $rv;
+$vlist = ghostd_doc_variants($fam);
+$param = $sub === 'nets' ? 'nv' : 'rv';
+$docNow = $sub === 'nets' ? ghostd_template_doc_id('nets', $nv) : ghostd_radio_doc_id($rv);
+$assigned = ghostd_orbat(ghostd_default_orbat_id());
+$assignedNow = $sub === 'nets' ? $assigned['nets'] : $assigned['radio'];
+?>
+<form method="get" class="inline">
+  <input type="hidden" name="page" value="orbat">
+  <input type="hidden" name="s" value="radio">
+  <input type="hidden" name="r" value="<?= h($sub) ?>">
+  <?php if ($variant !== ''): ?><input type="hidden" name="v" value="<?= h($variant) ?>"><?php endif; ?>
+  <label for="tpl">Template</label>
+  <select id="tpl" name="<?= h($param) ?>">
+    <option value="" <?= $cur === '' ? 'selected' : '' ?>>Default</option>
+    <?php foreach ($vlist as $vv): ?>
+      <option value="<?= h($vv) ?>" <?= $cur === $vv ? 'selected' : '' ?>><?= h($vv) ?></option>
+    <?php endforeach; ?>
+  </select>
+  <button type="submit">Open</button>
+  <span class="dim">Editing <code><?= h($docNow) ?></code>. The default order of
+  battle runs <strong><?= h($assignedNow === '' ? 'Default' : $assignedNow) ?></strong> -
+  <a href="?page=orbat&amp;s=one<?= $variant !== '' ? '&amp;v=' . urlencode($variant) : '' ?>">change that on the order of battle</a>.</span>
+</form>
+
+<form method="get" class="inline">
+  <input type="hidden" name="page" value="orbat">
+  <input type="hidden" name="s" value="radio">
+  <input type="hidden" name="r" value="<?= h($sub) ?>">
+  <?php if ($variant !== ''): ?><input type="hidden" name="v" value="<?= h($variant) ?>"><?php endif; ?>
+  <label for="newtpl">New template</label>
+  <input type="text" id="newtpl" name="<?= h($param) ?>" placeholder="NightOps"
+         pattern="[A-Za-z][A-Za-z0-9_]*">
+  <button type="submit">Create</button>
+  <span class="dim">Opens empty; saving anything on it creates the document.</span>
+</form>
 
 <?php if ($sub === 'nets'): ?>
 
@@ -76,6 +118,14 @@ try {
     uasort($netItems, static fn($a, $b) => ((int) ($a['order'] ?? 0)) <=> ((int) ($b['order'] ?? 0)));
   ?>
 
+  <form method="post" id="netdel">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <input type="hidden" name="v" value="<?= h($variant) ?>">
+    <input type="hidden" name="s" value="radio">
+    <input type="hidden" name="r" value="nets">
+    <input type="hidden" name="what" value="msgnetdel">
+  </form>
+
   <form method="post">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
     <input type="hidden" name="v" value="<?= h($variant) ?>">
@@ -86,7 +136,7 @@ try {
     <table class="grid">
       <thead><tr><th style="width:10%">Order</th><th style="width:26%">Net</th>
           <th style="width:34%">What it is for</th><th style="width:22%">Read by</th>
-          <th style="width:8%">Remove</th></tr></thead>
+          <th style="width:8%"></th></tr></thead>
       <tbody>
       <?php $i = 0; foreach ($netItems as $nid => $n): ?>
         <tr>
@@ -101,7 +151,8 @@ try {
               &middot; <?= h(implode(', ', $netPlatoons[(string) $nid])) ?>
             <?php endif; ?>
           </td>
-          <td><input type="checkbox" name="n_remove[]" value="<?= $i ?>"></td>
+          <td><button type="submit" form="netdel" name="net" value="<?= h((string) $nid) ?>" class="hot"
+                      onclick="return confirm('Delete the net <?= h((string) $nid) ?>? A role that lists it stops reading it.');">Delete</button></td>
         </tr>
       <?php $i++; endforeach; ?>
       </tbody>
@@ -157,7 +208,7 @@ try {
         <thead>
           <tr><th>Index</th><th>Frequency</th><th>Label</th>
           <?php if ($which === 'lrChannels'): ?><th>Power</th><?php endif; ?>
-          <th>Remove</th></tr>
+          <th>Clear</th></tr>
         </thead>
         <tbody>
         <?php $i = 0; foreach ($rows as $r): ?>

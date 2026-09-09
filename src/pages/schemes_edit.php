@@ -19,6 +19,22 @@ $err = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ghostd_csrf_check();
     try {
+        // One scheme, one button - see the row above. Its own branch, so it
+        // does not run the whole-table save underneath it.
+        if (($_POST['what'] ?? '') === 'deletescheme') {
+            $gone = trim((string) ($_POST['scheme'] ?? ''));
+            $doc  = ghostd_get($docId);
+            $doc  = is_array($doc) ? $doc : [];
+            unset($doc['_id']);
+            $items = is_array($doc['items'] ?? null) ? $doc['items'] : [];
+            if ($gone === '' || !isset($items[$gone])) {
+                throw new RuntimeException('There is no scheme called "' . $gone . '".');
+            }
+            unset($items[$gone]);
+            $doc['items'] = $items;
+            ghostd_put($docId, $doc);
+            $msg = $gone . ' deleted.';
+        } else {
         $items = [];
         foreach ((array) ($_POST['s_id'] ?? []) as $i => $id) {
             $id = trim((string) $id);
@@ -54,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ghostd_put($docId, $doc);
 
         $msg = count($items) . ' schemes saved.';
+        }
     } catch (Throwable $e) {
         $err = $e->getMessage();
     }
@@ -70,6 +87,11 @@ painted from in game, and this site with it. Clearing an id removes it.</p>
 <?php if ($msg !== null) { ghostd_flash('good', $msg); } ?>
 <?php if ($err !== null) { ghostd_flash('bad', $err); } ?>
 
+<form method="post" id="schemedel">
+  <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+  <input type="hidden" name="what" value="deletescheme">
+</form>
+
 <form method="post">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
 
@@ -77,7 +99,7 @@ painted from in game, and this site with it. Clearing an id removes it.</p>
     <thead>
       <tr><th style="width:16%">Id</th><th style="width:24%">Shown as</th>
           <th style="width:17%">Ground</th><th style="width:17%">Ink</th>
-          <th style="width:17%">Accent</th><th style="width:9%">Del</th></tr>
+          <th style="width:17%">Accent</th><th style="width:9%"></th></tr>
     </thead>
     <tbody id="schemes">
     <?php $i = 0; foreach ($schemes as $id => $s): ?>
@@ -101,7 +123,8 @@ painted from in game, and this site with it. Clearing an id removes it.</p>
           <td><input type="color" name="s_ground[<?= $i ?>]" value="<?= h($s['ground']) ?>"></td>
           <td><input type="color" name="s_ink[<?= $i ?>]" value="<?= h($s['ink']) ?>"></td>
           <td><input type="color" name="s_accent[<?= $i ?>]" value="<?= h($s['accent']) ?>"></td>
-          <td><input type="checkbox" name="s_remove[]" value="<?= $i ?>"></td>
+          <td><button type="submit" form="schemedel" name="scheme" value="<?= h((string) $id) ?>" class="hot"
+                      onclick="return confirm('Delete the scheme <?= h((string) $id) ?>?');">Delete</button></td>
         </tr>
         <?php $i++; ?>
       <?php endif; ?>

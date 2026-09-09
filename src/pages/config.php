@@ -72,12 +72,44 @@ if (!isset($tabs[$tab])) {
     $tab = (string) array_key_first($tabs);
 }
 
-// WHICH VERSION IS IN USE. A unit keeps several common arsenals - a bare-bones
-// one and a set named for the camo an operation is in - and until this was
-// wired the camo sets were documents nobody read.
-// ---- the System tab's saves ---------------------------------------------
+// ---- deleting one version ------------------------------------------------
 $msg = null;
 $err = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['what'] ?? '') === 'delversion') {
+    ghostd_csrf_check();
+    require_once __DIR__ . '/../roles.php';        // ghostd_doc_delete
+    try {
+        $dk = (string) ($_POST['key'] ?? '');
+        $dv = trim((string) ($_POST['v'] ?? ''));
+        if (!isset(GHOSTD_TEMPLATES[$dk])) {
+            throw new RuntimeException('There is no template type called "' . $dk . '".');
+        }
+        // THE DEFAULT IS NOT DELETABLE. It is what a mission gets when it names
+        // no version, so removing it is removing the config, not a version of
+        // it - empty the lists instead if that is what you want.
+        if ($dv === '') {
+            throw new RuntimeException('The default is not a version - it is what a mission '
+                . 'gets when it names none. Empty its lists instead.');
+        }
+        // A platoon's, a squad's or a role's own arsenal is deleted from that
+        // platoon, squad or role, where the name comes from. Here it would be
+        // deleting a thing whose owner still expects it.
+        foreach (['plt_' => 'platoon', 'sqd_' => 'squad', 'role_' => 'role'] as $pfx => $whose) {
+            if (str_starts_with($dv, $pfx)) {
+                throw new RuntimeException($dv . ' belongs to a ' . $whose . ' and is deleted on '
+                    . 'that ' . $whose . ', not here.');
+            }
+        }
+        $docId = ghostd_template_doc_id($dk, $dv);
+        ghostd_doc_delete($docId);
+        $msg = $docId . ' deleted. A copy went to the backup collection first.';
+        $tab = $dk;
+    } catch (Throwable $e) {
+        $err = $e->getMessage();
+    }
+}
+
+// ---- the System tab's saves ---------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['t'] ?? '') === 'system') {
     ghostd_csrf_check();
     require_once __DIR__ . '/../system.php';
@@ -134,14 +166,26 @@ that platoon or that squad, not here.</p>
   <?php require __DIR__ . '/config_system.php'; ?>
 <?php endif; ?>
 
+<form method="post" id="verdel">
+  <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+  <input type="hidden" name="what" value="delversion">
+  <input type="hidden" name="key" value="<?= h($tab) ?>">
+</form>
+
 <?php foreach (GHOSTD_TEMPLATES as $key => $t): ?>
-  <?php if ($tab !== $key || in_array($key, ['nets', 'traits', 'arsenal'], true)) { continue; } ?>
+  <?php // Only the messaging nets live elsewhere - on the ORBAT, beside the
+        // radio. The arsenals were skipped here too, left over from when they
+        // had a page of their own: the tab existed and drew nothing
+        // (2026-09-09, twice - the tab bar was fixed and this was not).
+        if ($tab !== $key || $key === 'nets') { continue; } ?>
   <?php
-    // A plt_* or sqd_* version belongs to a platoon or a squad and is edited
-    // there. This page lists the common templates, and only those.
+    // A plt_*, sqd_* or role_* version belongs to a platoon, a squad or a role
+    // and is edited there - one document, one place to change it. This page
+    // lists the common versions, and only those.
     $rows = array_merge([''], array_values(array_filter(
         ghostd_template_variants($key),
         static fn($v) => !str_starts_with($v, 'plt_') && !str_starts_with($v, 'sqd_')
+                      && !str_starts_with($v, 'role_')
     )));
   ?>
   <section class="tsection">
@@ -166,7 +210,19 @@ that platoon or that squad, not here.</p>
                 : '<code>' . h($v) . '</code>' ?></td>
           <td class="dim"><code><?= h($unit . '.' . $t['doc'] . ($v !== '' ? '.' . $v : '')) ?></code></td>
           <td><?= $n === null ? '<span class="dim">unreadable</span>' : (int) $n ?></td>
-          <td><a href="?page=configedit&amp;t=<?= urlencode($key) ?><?= $v !== '' ? '&amp;v=' . urlencode($v) : '' ?>">edit</a></td>
+          <td class="rowacts">
+            <a class="btnlink" href="?page=configedit&amp;t=<?= urlencode($key) ?><?= $v !== '' ? '&amp;v=' . urlencode($v) : '' ?>">Edit</a>
+            <?php // NO DELETE ON THE DEFAULT, and none on a version that belongs
+                  // to a platoon, a squad or a role - that one is deleted where
+                  // its name comes from. Every other version is a document
+                  // somebody made here and can unmake here, with the same
+                  // are-you-sure as every other delete on this site. ?>
+            <?php if ($v !== '' && !str_starts_with($v, 'plt_') && !str_starts_with($v, 'sqd_')
+                      && !str_starts_with($v, 'role_')): ?>
+              <button type="submit" form="verdel" name="v" value="<?= h($v) ?>" class="hot"
+                      onclick="return confirm('Delete <?= h($t['label']) ?> version <?= h($v) ?>? <?= (int) ($n ?? 0) ?> entries go with it. A copy is kept in the backup collection.');">Delete</button>
+            <?php endif; ?>
+          </td>
         </tr>
       <?php endforeach; ?>
       </tbody>
