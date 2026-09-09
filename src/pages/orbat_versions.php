@@ -80,9 +80,7 @@ the default below when it names none.</p>
                 // a form is not HTML, and this is the row you want it on. ?>
           <button type="submit" form="orbatdel" name="v" value="<?= h($r['id']) ?>" class="hot"
                   onclick="return confirm('Delete <?= h($r['doc']) ?>?<?= $r['id'] === $default
-                      ? ' It is the default - the tick goes to whatever is left.' : '' ?>
-
-Its platoons and squads are kept.');">Delete</button>
+                      ? ' It is the default - the tick goes to whatever is left.' : '' ?> Its platoons and squads are kept.');">Delete</button>
         </td>
       </tr>
     <?php endforeach; ?>
