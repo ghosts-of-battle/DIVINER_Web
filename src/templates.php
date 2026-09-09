@@ -1,0 +1,565 @@
+<?php
+/**
+ * Config templates: the things a mission used to ship as files.
+ *
+ * ONE SET PER UNIT, NOT PER MISSION. Every mission that names the same unit id
+ * reads the same documents, so Roomba and the framework missions share one set
+ * of templates. That is the point of moving this out of the mission folder:
+ * edit the net list once and every mission that unit runs has it.
+ *
+ * A REGISTRY, NOT TWELVE PAGES. Each config type declares its document, the
+ * shape of one item and what to call each field; one editor page renders any of
+ * them. Adding the next config type is an entry here, not a new page - which is
+ * the only way twelve of these get finished rather than two.
+ *
+ * SHAPES. Not every config is a keyed list:
+ *   'items'  <unit>.<doc> = {section, items:{id: {...fields}}} - the shape the
+ *            mod already uses for nets, ranks, skills, statuses and the rest.
+ *   'lists'  named lists of classnames - the arsenal shape. Not built yet.
+ *   'code'   a block of SQF - logistics, skill. Not built yet.
+ */
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/db.php';
+
+const GHOSTD_TEMPLATES = [
+    'welcome' => [
+        'label'    => 'Welcome screen',
+        'doc'      => 'welcome',
+        'shape'    => 'welcome',
+        'replaces' => 'config_welcome.hpp',
+        'blurb'    => 'The panel every player sees once, at mission start. A title, a subtitle, and a run of lines - each line its own size, colour and alignment.',
+    ],
+    'arsenal' => [
+        'label'    => 'Common arsenal',
+        'doc'      => 'arsenal',
+        'shape'    => 'lists',
+        'replaces' => 'config/arsenal/ (Common_Arsenal)',
+        'blurb'    => 'Gear every player can draw, whatever their role. One list per kind. The mod merges every list here with the role\'s own group arsenal - and any list whose name starts with "items" is treated as items, which is why the names matter.',
+        // THE NAMES ARE THE MISSION'S, verbatim - camelCase, as the .hpp files
+        // spell them. fnc_setupPlayer merges by name and treats anything
+        // beginning "items" as items, so a renamed list silently stops working.
+        'lists'    => ['weapons', 'magazines', 'backpacks', 'itemsUniforms',
+                       'itemsHeadgear', 'itemsVests', 'itemsFacewear', 'itemsNvgs',
+                       'itemsOptics', 'itemsMuzzles', 'itemsPointersLights',
+                       'itemsBipods', 'itemsBinoculars', 'itemsMedical', 'itemsTools'],
+        'openNames' => true,
+        'classKind' => 'all',
+        // MORE THAN ONE ARSENAL. The common one is <unit>.arsenal; each variant
+        // is <unit>.arsenal.<id>, and the id is the class name a role's
+        // groupArsenal names - "Arsenal_Banshee" stays "Arsenal_Banshee", so
+        // the roles need no editing.
+        'variants'  => true,
+        'variantOf' => 'groupArsenal',
+    ],
+    'radar' => [
+        'label'    => 'Radar network',
+        'doc'      => 'radar',
+        'shape'    => 'lists',
+        'replaces' => 'config_radar.hpp (Radar_Network)',
+        'blurb'    => 'Vehicle classes put on the datalink at mission start, so they feed the shared radar picture.',
+        'lists'    => ['classes'],
+        'openNames' => false,
+        'classKind' => 'vehicles',
+    ],
+    'motorpool' => [
+        'label'   => 'Motorpool',
+        'doc'     => 'motorpool',
+        'shape'   => 'items',
+        'replaces' => 'config_motorpool_common.hpp (MotorPool_Common)',
+        'blurb'   => 'The vehicles the motorpool offers, in categories. The id is the category, the name is its heading on screen.',
+        'idHelp'  => 'One word, no spaces - Cars, Boats, Air, Armour.',
+        'idPattern' => '/^[A-Za-z][A-Za-z0-9_]{0,31}$/',
+        'fields'  => [
+            'displayName' => ['label' => 'Heading', 'kind' => 'text',
+                              'help' => 'Shown above the category on the motorpool screen. CARS, BOATS.'],
+            'vehicles'    => ['label' => 'Vehicle classes', 'kind' => 'list',
+                              'help' => 'One classname per line.'],
+        ],
+        'ordered' => true,
+        'classKind' => 'vehicles',
+    ],
+    'cosmetics' => [
+        'label'   => 'Vehicle cosmetics',
+        'doc'     => 'cosmetics',
+        'shape'   => 'items',
+        'replaces' => 'config_cosmetics.hpp (GHOSTFR_Cosmetics)',
+        'blurb'   => 'Paint schemes and fittings offered on a vehicle. Each entry names the vehicle class it applies to and the SQF that does it - _vehicle is the vehicle.',
+        'idHelp'  => 'One word - Hunter_Green, MBT01_ToggleCamoNet.',
+        'idPattern' => '/^[A-Za-z][A-Za-z0-9_]{0,63}$/',
+        'fields'  => [
+            'vehicle' => ['label' => 'Vehicle class', 'kind' => 'text',
+                          'help' => 'The base class it is offered on - MRAP_01_base_F.'],
+            'name'    => ['label' => 'Shown as', 'kind' => 'text', 'help' => 'Green Paint.'],
+            'icon'    => ['label' => 'Icon', 'kind' => 'text', 'help' => 'Optional path.'],
+            'code'    => ['label' => 'SQF', 'kind' => 'text',
+                          'help' => 'Runs with _vehicle set. A mistake here is a runtime error in game, not a build error.'],
+        ],
+        'ordered' => true,
+        'classKind' => 'vehicles',
+    ],
+    'vehicleSpawner' => [
+        'label'   => 'Vehicle spawner',
+        'doc'     => 'vehicleSpawner',
+        'shape'   => 'lists',
+        'replaces' => 'config_vehicleSpawner.hpp (VehicleSpawner)',
+        'blurb'   => 'What the engineer-course spawn pads offer, by kind.',
+        'lists'   => ['ground', 'air', 'sea', 'static'],
+        'openNames' => true,
+        'classKind' => 'vehicles',
+    ],
+    'logistics' => [
+        'label'   => 'Logistics',
+        'doc'     => 'logistics',
+        'shape'   => 'code',
+        'replaces' => 'config_logistics.sqf',
+        'blurb'   => 'The logistics table, as SQF. The mission used to compile this file; the unit can keep it here instead.',
+        'global'  => 'missionConfig_logistics',
+    ],
+    'pylons' => [
+        'label'   => 'Pylons',
+        'doc'     => 'pylons',
+        'shape'   => 'code',
+        'replaces' => 'config_pylons.sqf',
+        'blurb'   => 'Pylon loadouts, as SQF.',
+        'global'  => 'missionConfig_pylons',
+    ],
+    'skill' => [
+        'label'   => 'AI skill',
+        'doc'     => 'skill',
+        'shape'   => 'code',
+        'replaces' => 'config_skill.hpp',
+        'blurb'   => 'The AI skill block, as SQF. It runs with _unit set to the AI being configured.',
+        'global'  => 'missionConfig_skillBlock',
+        'wrap'    => 'private _unit = _this; ',
+    ],
+    'nets' => [
+        'label'   => 'Radio nets',
+        'doc'     => 'nets',
+        'shape'   => 'items',
+        'replaces' => 'config_nets.hpp',
+        'blurb'   => 'The nets TAC//MSG offers, and what each is for. A dot in an id makes it a sub-net of the one before it - "C2.reports" hangs under "C2".',
+        'idHelp'  => 'Short, upper-case, no spaces. C2, FIRES, LOG. A dot makes it a sub-net.',
+        'idPattern' => '/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/',
+        'fields'  => [
+            'name' => ['label' => 'What it is for', 'kind' => 'text',
+                       'help' => 'Read by the people choosing a net, so say the job, not the frequency.'],
+        ],
+        'ordered' => true,
+    ],
+];
+
+/**
+ * Where a template's document lives.
+ *
+ * EVERY TYPE HAS VERSIONS. <unit>.<doc> is the common one and
+ * <unit>.<doc>.<id> is a named version - of the arsenal, the nets, the welcome
+ * screen, anything. The mod finds the named ones by listing the prefix, the
+ * same way it finds roles and orders, so nothing needs a registry of names.
+ */
+function ghostd_template_doc_id(string $key, string $variant = ''): string
+{
+    $t = GHOSTD_TEMPLATES[$key] ?? null;
+    if ($t === null) {
+        throw new RuntimeException('No such template.');
+    }
+    $id = ghostd_config()['unit'] . '.' . $t['doc'];
+    if ($variant !== '') {
+        if (!ghostd_variant_ok($variant)) {
+            throw new RuntimeException('A version id is letters, digits and underscore - "Arsenal_Banshee", not "Banshee arsenal".');
+        }
+        $id .= '.' . $variant;
+    }
+    return $id;
+}
+
+function ghostd_variant_ok(string $v): bool
+{
+    return (bool) preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $v);
+}
+
+/**
+ * One template's items, in order, every field present.
+ *
+ * Normalised the same way for a stored document and for an empty one - a
+ * fallback shaped differently from the real thing is a bug waiting to happen
+ * (the application questions did exactly that).
+ */
+function ghostd_template_items(string $key, string $variant = ''): array
+{
+    $t = GHOSTD_TEMPLATES[$key];
+    try {
+        $doc = ghostd_get(ghostd_template_doc_id($key, $variant));
+    } catch (Throwable $e) {
+        return [];
+    }
+    $items = (is_array($doc['items'] ?? null)) ? $doc['items'] : [];
+
+    $out = [];
+    $n = 0;
+    foreach ($items as $id => $it) {
+        if (!is_array($it)) {
+            continue;
+        }
+        $n += 10;
+        $rec = ['id' => (string) $id, 'order' => (int) ($it['order'] ?? $n)];
+        foreach ($t['fields'] as $f => $meta) {
+            $v = $it[$f] ?? '';
+            $rec[$f] = $meta['kind'] === 'list'
+                ? array_values(array_map('strval', (array) $v))
+                : (string) (is_array($v) ? implode(', ', $v) : $v);
+        }
+        $out[(string) $id] = $rec;
+    }
+    if (!empty($t['ordered'])) {
+        uasort($out, static fn($a, $b) => $a['order'] <=> $b['order']);
+    }
+    return $out;
+}
+
+/**
+ * Replace a template's items.
+ *
+ * The whole document goes at once, so ghostd_put copies the previous version
+ * into the backup collection first. "from" records that the site wrote it, so a
+ * later push from a mission file can be told apart from an edit made here.
+ */
+function ghostd_template_save(string $key, array $items, string $variant = ''): void
+{
+    $t = GHOSTD_TEMPLATES[$key];
+    if ($items === []) {
+        throw new RuntimeException('That would leave the template empty. The mission reads this at boot; an empty one is worse than an old one.');
+    }
+    ghostd_put(ghostd_template_doc_id($key, $variant), [
+        'section'   => $t['doc'],
+        'id'        => $variant,
+        'items'     => $items,
+        'from'      => 'DIVINER_Web',
+        'updatedAt' => gmdate('Y-m-d H:i:s'),
+    ]);
+}
+
+/** How many items each template holds, for the list page. Never throws. */
+function ghostd_template_counts(): array
+{
+    $out = [];
+    foreach (GHOSTD_TEMPLATES as $key => $t) {
+        try {
+            switch ($t['shape']) {
+                case 'welcome':
+                    $out[$key] = count(ghostd_welcome('')['lines']);
+                    break;
+                case 'code':
+                    // Lines of SQF - the only number that means anything here.
+                    $c = ghostd_template_code($key);
+                    $out[$key] = $c === '' ? 0 : substr_count($c, "\n") + 1;
+                    break;
+                case 'lists':
+                    // Entries across every list, not the number of lists - the
+                    // useful number is how much gear is in there.
+                    $out[$key] = array_sum(array_map('count', ghostd_template_lists($key)));
+                    break;
+                default:
+                    $out[$key] = count(ghostd_template_items($key));
+            }
+        } catch (Throwable $e) {
+            $out[$key] = null;
+        }
+    }
+    return $out;
+}
+
+// ---- the welcome shape ----------------------------------------------------
+// Not a keyed list: a title, a subtitle and an ORDERED run of lines. Giving
+// each line an id would be inventing one nobody types or refers to.
+
+const GHOSTD_WELCOME_ALIGN = [0 => 'Left', 1 => 'Centre', 2 => 'Right'];
+
+/** {title, subtitle, lines:[{text,size,colour[3],align}]}, always complete. */
+function ghostd_welcome(string $variant = ''): array
+{
+    $out = ['title' => '', 'subtitle' => '', 'lines' => []];
+    try {
+        $doc = ghostd_get(ghostd_template_doc_id('welcome', $variant));
+    } catch (Throwable $e) {
+        return $out;
+    }
+    if (!is_array($doc)) {
+        return $out;
+    }
+    $out['title']    = (string) ($doc['title'] ?? '');
+    $out['subtitle'] = (string) ($doc['subtitle'] ?? '');
+
+    foreach ((array) ($doc['lines'] ?? []) as $l) {
+        if (!is_array($l)) {
+            continue;
+        }
+        $c = (array) ($l['colour'] ?? $l['color'] ?? [1, 1, 1]);
+        $out['lines'][] = [
+            'text'   => (string) ($l['text'] ?? ''),
+            'size'   => (float) ($l['size'] ?? 0.9),
+            'colour' => [(float) ($c[0] ?? 1), (float) ($c[1] ?? 1), (float) ($c[2] ?? 1)],
+            'align'  => (int) ($l['align'] ?? 0),
+        ];
+    }
+    return $out;
+}
+
+function ghostd_welcome_save(string $title, string $subtitle, array $lines, string $variant = ''): void
+{
+    if ($lines === []) {
+        throw new RuntimeException('A welcome screen with no lines is just a title bar. Add a line, or leave the whole thing empty by removing the document.');
+    }
+    ghostd_put(ghostd_template_doc_id('welcome', $variant), [
+        'section'   => 'welcome',
+        'id'        => $variant,
+        'title'     => $title,
+        'subtitle'  => $subtitle,
+        'lines'     => $lines,
+        'from'      => 'DIVINER_Web',
+        'updatedAt' => gmdate('Y-m-d H:i:s'),
+    ]);
+}
+
+/** The game stores colour as three 0-1 floats; a colour input speaks #rrggbb. */
+function ghostd_rgb_to_hex(array $c): string
+{
+    return sprintf('#%02x%02x%02x',
+        max(0, min(255, (int) round(((float) ($c[0] ?? 1)) * 255))),
+        max(0, min(255, (int) round(((float) ($c[1] ?? 1)) * 255))),
+        max(0, min(255, (int) round(((float) ($c[2] ?? 1)) * 255))));
+}
+
+function ghostd_hex_to_rgb(string $hex): array
+{
+    if (!preg_match('/^#[0-9a-fA-F]{6}$/', $hex)) {
+        return [1, 1, 1];
+    }
+    return [
+        round(hexdec(substr($hex, 1, 2)) / 255, 3),
+        round(hexdec(substr($hex, 3, 2)) / 255, 3),
+        round(hexdec(substr($hex, 5, 2)) / 255, 3),
+    ];
+}
+
+// ---- the lists shape ------------------------------------------------------
+// A document of named arrays: {section, lists: {weapons: [...], ...}}. The
+// arsenal and the radar network are both this; they differ only in how many
+// names they have and whether new ones may be invented.
+
+/** {listName: [classnames]}, every declared name present even when empty. */
+function ghostd_template_lists(string $key, string $variant = ''): array
+{
+    $t = GHOSTD_TEMPLATES[$key];
+    $stored = [];
+    try {
+        $doc = ghostd_get(ghostd_template_doc_id($key, $variant));
+        $stored = (is_array($doc['lists'] ?? null)) ? $doc['lists'] : [];
+    } catch (Throwable $e) {
+        $stored = [];
+    }
+
+    $out = [];
+    foreach ($t['lists'] as $name) {
+        $out[$name] = array_values(array_map('strval', (array) ($stored[$name] ?? [])));
+    }
+    // Names the unit added that the registry does not declare - kept, not lost.
+    foreach ($stored as $name => $v) {
+        if (!isset($out[$name])) {
+            $out[(string) $name] = array_values(array_map('strval', (array) $v));
+        }
+    }
+    return $out;
+}
+
+function ghostd_template_lists_save(string $key, array $lists, string $variant = ''): void
+{
+    $t = GHOSTD_TEMPLATES[$key];
+    $clean = [];
+    foreach ($lists as $name => $vals) {
+        $name = trim((string) $name);
+        if ($name === '' || !preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $name)) {
+            continue;
+        }
+        $clean[$name] = array_values(array_unique(array_filter(
+            array_map('trim', (array) $vals),
+            static fn($x) => $x !== ''
+        )));
+    }
+    if ($clean === []) {
+        throw new RuntimeException('Every list is empty. The mission reads this at boot - an empty arsenal is a server full of people with nothing to draw.');
+    }
+    ghostd_put(ghostd_template_doc_id($key, $variant), [
+        'section'   => $t['doc'],
+        'id'        => $variant,
+        'lists'     => $clean,
+        'from'      => 'DIVINER_Web',
+        'updatedAt' => gmdate('Y-m-d H:i:s'),
+    ]);
+}
+
+/**
+ * The classnames the mod exported, for the pickers.
+ *
+ * Written by the game (an admin presses EXPORT CLASSES), because only the game
+ * knows what is actually loaded - a list typed by hand goes stale the day a mod
+ * is added. Absent is fine: the editors fall back to plain text boxes, so a
+ * unit that has never run the export can still type classnames.
+ */
+function ghostd_classnames(string $kind = 'all'): array
+{
+    static $doc = null;
+    if ($doc === null) {
+        try {
+            $doc = ghostd_get(ghostd_config()['unit'] . '.classes');
+        } catch (Throwable $e) {
+            $doc = [];
+        }
+        if (!is_array($doc)) {
+            $doc = [];
+        }
+    }
+    $lists = (is_array($doc['lists'] ?? null)) ? $doc['lists'] : [];
+    if ($kind !== 'all') {
+        return array_values(array_map('strval', (array) ($lists[$kind] ?? [])));
+    }
+    $all = [];
+    foreach ($lists as $v) {
+        foreach ((array) $v as $c) {
+            $all[] = (string) $c;
+        }
+    }
+    sort($all);
+    return array_values(array_unique($all));
+}
+
+// ---- variants -------------------------------------------------------------
+// A template type may have more than one version: the common one lives at
+// <unit>.<doc> and each variant at <unit>.<doc>.<id>. The mod fetches the
+// common document and then lists the prefix, exactly as it does for roles.
+
+/** Every variant id stored for a template, sorted. */
+function ghostd_template_variants(string $key): array
+{
+    $t = GHOSTD_TEMPLATES[$key];
+    $prefix = ghostd_config()['unit'] . '.' . $t['doc'] . '.';
+    $out = [];
+    try {
+        foreach (ghostd_keys() as $k) {
+            if (str_starts_with($k, $prefix)) {
+                $out[] = substr($k, strlen($prefix));
+            }
+        }
+    } catch (Throwable $e) {
+        return [];
+    }
+    sort($out);
+    return $out;
+}
+
+/** Kept for the lists editor; ghostd_template_lists does the work now. */
+function ghostd_variant_lists(string $key, string $variant = ''): array
+{
+    return ghostd_template_lists($key, $variant);
+}
+
+function ghostd_variant_lists_unused(string $key, string $variant = ''): array
+{
+    $t = GHOSTD_TEMPLATES[$key];
+    if ($variant === '') {
+        return ghostd_template_lists($key);
+    }
+    $stored = [];
+    try {
+        $doc = ghostd_get(ghostd_config()['unit'] . '.' . $t['doc'] . '.' . $variant);
+        $stored = (is_array($doc['lists'] ?? null)) ? $doc['lists'] : [];
+    } catch (Throwable $e) {
+        $stored = [];
+    }
+    $out = [];
+    foreach ($t['lists'] as $name) {
+        $out[$name] = array_values(array_map('strval', (array) ($stored[$name] ?? [])));
+    }
+    foreach ($stored as $name => $v) {
+        if (!isset($out[$name])) {
+            $out[(string) $name] = array_values(array_map('strval', (array) $v));
+        }
+    }
+    return $out;
+}
+
+function ghostd_variant_save(string $key, string $variant, array $lists): void
+{
+    ghostd_template_lists_save($key, $lists, $variant);
+}
+
+function ghostd_variant_save_unused(string $key, string $variant, array $lists): void
+{
+    $t = GHOSTD_TEMPLATES[$key];
+    if ($variant === '') {
+        ghostd_template_lists_save($key, $lists);
+        return;
+    }
+    if (!preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $variant)) {
+        throw new RuntimeException('A variant id is a class name - letters, digits and underscore. "Arsenal_Banshee", not "Banshee arsenal".');
+    }
+    $clean = [];
+    foreach ($lists as $name => $vals) {
+        $name = trim((string) $name);
+        if ($name === '' || !preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $name)) {
+            continue;
+        }
+        $clean[$name] = array_values(array_unique(array_filter(
+            array_map('trim', (array) $vals), static fn($x) => $x !== ''
+        )));
+    }
+    ghostd_put(ghostd_config()['unit'] . '.' . $t['doc'] . '.' . $variant, [
+        'section'   => $t['doc'],
+        'id'        => $variant,
+        'lists'     => $clean,
+        'from'      => 'DIVINER_Web',
+        'updatedAt' => gmdate('Y-m-d H:i:s'),
+    ]);
+}
+
+// ---- the code shape -------------------------------------------------------
+// SQF held as text. This is the shape with real teeth: a mistake saved here is
+// a runtime error in game, with no hemtt check between the two. The editor says
+// so, the mod compiles it defensively, and a document that will not compile is
+// ignored in favour of the mission's own file.
+
+function ghostd_template_code(string $key, string $variant = ''): string
+{
+    try {
+        $doc = ghostd_get(ghostd_template_doc_id($key, $variant));
+    } catch (Throwable $e) {
+        return '';
+    }
+    return (string) ($doc['code'] ?? '');
+}
+
+function ghostd_template_code_save(string $key, string $code, string $variant = ''): void
+{
+    $t = GHOSTD_TEMPLATES[$key];
+
+    // The cheapest sanity a web server can offer for SQF it cannot run:
+    // balanced brackets. It catches the paste that lost its last line.
+    foreach ([['{', '}'], ['[', ']'], ['(', ')']] as $pair) {
+        if (substr_count($code, $pair[0]) !== substr_count($code, $pair[1])) {
+            throw new RuntimeException(
+                'Unbalanced ' . $pair[0] . $pair[1] . ' - ' . substr_count($code, $pair[0]) .
+                ' opening and ' . substr_count($code, $pair[1]) . ' closing. Nothing was saved.'
+            );
+        }
+    }
+    ghostd_put(ghostd_template_doc_id($key, $variant), [
+        'section'   => $t['doc'],
+        'id'        => $variant,
+        'code'      => $code,
+        'global'    => $t['global'] ?? '',
+        'from'      => 'DIVINER_Web',
+        'updatedAt' => gmdate('Y-m-d H:i:s'),
+    ]);
+}

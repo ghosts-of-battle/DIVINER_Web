@@ -111,7 +111,7 @@ ghostd_require_login();
 
 // ---- what this session may open ------------------------------------------
 $adminPages  = ['dashboard', 'roster', 'player', 'templates', 'template_edit', 'documents', 'document',
-                'branding', 'applications', 'questions', 'tickets', 'ticket', 'opords', 'opord'];
+                'branding', 'applications', 'questions', 'tickets', 'ticket', 'opords', 'opord', 'config', 'configedit', 'orbat'];
 $memberPages = ['me', 'apply', 'tickets', 'ticket'];
 
 if (ghostd_is_admin() || !ghostd_is_member()) {
