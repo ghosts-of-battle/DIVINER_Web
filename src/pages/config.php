@@ -23,7 +23,8 @@ function ghostd_count_one(string $key, array $t, string $variant): ?int
     try {
         switch ($t['shape']) {
             case 'welcome':
-                return count(ghostd_welcome($variant)['lines']);
+                $wt = ghostd_welcome($variant)['text'];
+                return $wt === '' ? 0 : substr_count($wt, "\n") + 1;
             case 'lists':
                 return array_sum(array_map('count', ghostd_template_lists($key, $variant)));
             case 'code':

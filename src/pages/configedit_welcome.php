@@ -1,12 +1,18 @@
 <?php
 /**
- * The welcome screen, edited as a title and a run of lines.
+ * The welcome screen - a title, a subtitle, and the text.
  *
  * Included by configedit.php when the template's shape is 'welcome'. $t and
  * $key are already set there.
  *
- * COLOUR IS THREE FLOATS IN THE GAME and #rrggbb in a browser, so it is
- * converted on the way in and out rather than making somebody type 0.85.
+ * ONE BOX. This was a stack of fieldsets, one per line, each carrying a size,
+ * a colour and an alignment - which is a worse spelling of the tags Arma
+ * already reads (user, 2026-09-09: "instead of all this crap how about a
+ * simple editor that you can insert returns and set the html stuff arma
+ * uses"). Returns are returns, and the tags are the game's own.
+ *
+ * The mod turns the returns into <br/> and hands the whole block to the panel
+ * as one piece of structured text - see ghostD_pac_fnc_welcomeShow.
  */
 
 declare(strict_types=1);
@@ -14,34 +20,17 @@ declare(strict_types=1);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ghostd_csrf_check();
     try {
-        $texts  = (array) ($_POST['text'] ?? []);
-        $sizes  = (array) ($_POST['size'] ?? []);
-        $cols   = (array) ($_POST['colour'] ?? []);
-        $aligns = (array) ($_POST['align'] ?? []);
-        $remove = (array) ($_POST['remove'] ?? []);
-
-        $lines = [];
-        foreach ($texts as $row => $raw) {
-            $text = trim((string) $raw);
-            if ($text === '' || in_array((string) $row, $remove, true)) {
-                continue;
-            }
-            $size = (float) ($sizes[$row] ?? 0.9);
-            $lines[] = [
-                'text'   => $text,
-                'size'   => max(0.4, min(3.0, $size)),
-                'colour' => ghostd_hex_to_rgb((string) ($cols[$row] ?? '#ffffff')),
-                'align'  => max(0, min(2, (int) ($aligns[$row] ?? 0))),
-            ];
-        }
+        // CRLF is what a browser posts and it is not what the game wants to
+        // read back; the document keeps plain newlines.
+        $text = str_replace(["\r\n", "\r"], "\n", (string) ($_POST['text'] ?? ''));
 
         ghostd_welcome_save(
             trim((string) ($_POST['title'] ?? '')),
             trim((string) ($_POST['subtitle'] ?? '')),
-            $lines,
+            rtrim($text),
             $variant
         );
-        $msg = count($lines) . ' lines saved. Players see this at the next mission start.';
+        $msg = 'Saved. Players see this at the next mission start.';
     } catch (Throwable $e) {
         $err = $e->getMessage();
     }
@@ -68,46 +57,17 @@ if ($err !== null) { ghostd_flash('bad', $err); }
   <input type="text" id="subtitle" name="subtitle" maxlength="120" value="<?= h($w['subtitle']) ?>"
          placeholder="HERDING CATS SINCE 2034">
 
-  <h2>Lines</h2>
-  <p class="dim">In order, top to bottom. A heading is just a line with a
-  bigger size and a colour. Clearing the text removes the line.</p>
-
-  <?php
-    $rows = $w['lines'];
-    for ($i = 0; $i < 3; $i++) {
-        $rows[] = ['text' => '', 'size' => ($i === 0 ? 1.15 : 0.9), 'colour' => [1, 1, 1], 'align' => 0];
-    }
-  ?>
-  <?php foreach ($rows as $row => $l): ?>
-    <fieldset class="line">
-      <legend>
-        <?= $row < count($w['lines']) ? 'Line ' . ($row + 1) : '<span class="key">new</span>' ?>
-      </legend>
-      <textarea name="text[<?= $row ?>]" rows="3" class="short"
-                placeholder="The text of this line"><?= h((string) $l['text']) ?></textarea>
-      <div class="fieldbox">
-        <label class="inlinelabel">size
-          <input type="number" name="size[<?= $row ?>]" step="0.05" min="0.4" max="3"
-                 value="<?= h((string) $l['size']) ?>">
-        </label>
-        <label class="inlinelabel">colour
-          <input type="color" name="colour[<?= $row ?>]" value="<?= h(ghostd_rgb_to_hex($l['colour'])) ?>">
-        </label>
-        <label class="inlinelabel">align
-          <select name="align[<?= $row ?>]">
-            <?php foreach (GHOSTD_WELCOME_ALIGN as $v => $lbl): ?>
-              <option value="<?= (int) $v ?>" <?= (int) $l['align'] === (int) $v ? 'selected' : '' ?>><?= h($lbl) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <?php if ($row < count($w['lines'])): ?>
-          <label class="inlinelabel">
-            <input type="checkbox" name="remove[]" value="<?= $row ?>"> remove
-          </label>
-        <?php endif; ?>
-      </div>
-    </fieldset>
-  <?php endforeach; ?>
+  <label for="text">Text</label>
+  <p class="dim">Returns are line breaks. Arma's own tags do the rest:
+  <code>&lt;t size='1.15' color='#cc4331'&gt;HEADING&lt;/t&gt;</code>,
+  <code>align='center'</code>, <code>&lt;br/&gt;</code>,
+  <code>&lt;img image='path.paa'/&gt;</code>,
+  <code>&lt;a href='https://...'&gt;link&lt;/a&gt;</code>.
+  Size multiplies the body size, so 1.15 is a heading and 2 is twice the text.
+  A literal <code>&lt;</code> is <code>&amp;lt;</code>.</p>
+  <textarea id="text" name="text" spellcheck="false"
+            placeholder="&lt;t size='1.15' color='#cc4331'&gt;SITUATION&lt;/t&gt;
+The situation, in as many paragraphs as it takes."><?= h($w['text']) ?></textarea>
 
   <div class="actions"><button type="submit">Save welcome screen</button></div>
 </form>

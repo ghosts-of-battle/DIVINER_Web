@@ -30,7 +30,7 @@ const GHOSTD_TEMPLATES = [
         'doc'      => 'welcome',
         'shape'    => 'welcome',
         'replaces' => 'config_welcome.hpp',
-        'blurb'    => 'The panel every player sees once, at mission start. A title, a subtitle, and a run of lines - each line its own size, colour and alignment.',
+        'blurb'    => "The panel every player sees once, at mission start. A title, a subtitle, and the text - typed the way it reads, with Arma's own tags for a heading, a colour or an image.",
     ],
     'arsenal' => [
         'label'    => 'Common arsenal',
@@ -270,7 +270,8 @@ function ghostd_template_counts(): array
         try {
             switch ($t['shape']) {
                 case 'welcome':
-                    $out[$key] = count(ghostd_welcome('')['lines']);
+                    $t = ghostd_welcome('')['text'];
+                    $out[$key] = $t === '' ? 0 : substr_count($t, "\n") + 1;
                     break;
                 case 'code':
                     // Lines of SQF - the only number that means anything here.
@@ -293,15 +294,18 @@ function ghostd_template_counts(): array
 }
 
 // ---- the welcome shape ----------------------------------------------------
-// Not a keyed list: a title, a subtitle and an ORDERED run of lines. Giving
-// each line an id would be inventing one nobody types or refers to.
+// A title, a subtitle and THE TEXT - one block of Arma structured text, typed
+// with its own returns. It used to be a run of records, each with a size, a
+// colour and an alignment, which is a worse version of the tags the game
+// already reads (user, 2026-09-09: "instead of all this crap how about a
+// simple editor that you can insert returns and set the html stuff arma uses").
 
-const GHOSTD_WELCOME_ALIGN = [0 => 'Left', 1 => 'Centre', 2 => 'Right'];
+const GHOSTD_WELCOME_ALIGN = [0 => 'left', 1 => 'center', 2 => 'right'];
 
-/** {title, subtitle, lines:[{text,size,colour[3],align}]}, always complete. */
+/** {title, subtitle, text}, always complete. */
 function ghostd_welcome(string $variant = ''): array
 {
-    $out = ['title' => '', 'subtitle' => '', 'lines' => []];
+    $out = ['title' => '', 'subtitle' => '', 'text' => ''];
     try {
         $doc = ghostd_get(ghostd_template_doc_id('welcome', $variant));
     } catch (Throwable $e) {
@@ -312,33 +316,59 @@ function ghostd_welcome(string $variant = ''): array
     }
     $out['title']    = (string) ($doc['title'] ?? '');
     $out['subtitle'] = (string) ($doc['subtitle'] ?? '');
+    $out['text']     = (string) ($doc['text'] ?? '');
 
-    foreach ((array) ($doc['lines'] ?? []) as $l) {
-        if (!is_array($l)) {
-            continue;
-        }
-        $c = (array) ($l['colour'] ?? $l['color'] ?? [1, 1, 1]);
-        $out['lines'][] = [
-            'text'   => (string) ($l['text'] ?? ''),
-            'size'   => (float) ($l['size'] ?? 0.9),
-            'colour' => [(float) ($c[0] ?? 1), (float) ($c[1] ?? 1), (float) ($c[2] ?? 1)],
-            'align'  => (int) ($l['align'] ?? 0),
-        ];
+    // A welcome written before the text field is a run of line records. It is
+    // rendered into the markup that says the same thing rather than making
+    // somebody retype a briefing; saving stores the text and drops the lines.
+    if ($out['text'] === '' && is_array($doc['lines'] ?? null)) {
+        $out['text'] = ghostd_welcome_markup((array) $doc['lines']);
     }
     return $out;
 }
 
-function ghostd_welcome_save(string $title, string $subtitle, array $lines, string $variant = ''): void
+/** The old [{text,size,colour,align}] records as structured text. */
+function ghostd_welcome_markup(array $lines): string
 {
-    if ($lines === []) {
-        throw new RuntimeException('A welcome screen with no lines is just a title bar. Add a line, or leave the whole thing empty by removing the document.');
+    $out = [];
+    foreach ($lines as $l) {
+        if (!is_array($l)) {
+            continue;
+        }
+        $text = (string) ($l['text'] ?? '');
+        $attr = [];
+
+        // Only what differs from the body default is written out - a paragraph
+        // stays a paragraph, and the tags mark the headings.
+        $size = round((float) ($l['size'] ?? 0.9), 2);
+        if (abs($size - 0.9) > 0.001) {
+            $attr[] = "size='" . $size . "'";
+        }
+        $hex = ghostd_rgb_to_hex((array) ($l['colour'] ?? $l['color'] ?? [1, 1, 1]));
+        if ($hex !== '#ffffff') {
+            $attr[] = "color='" . $hex . "'";
+        }
+        $align = (int) ($l['align'] ?? 0);
+        if ($align !== 0) {
+            $attr[] = "align='" . (GHOSTD_WELCOME_ALIGN[$align] ?? 'left') . "'";
+        }
+
+        $out[] = $attr === [] ? $text : '<t ' . implode(' ', $attr) . '>' . $text . '</t>';
+    }
+    return implode("\n", $out);
+}
+
+function ghostd_welcome_save(string $title, string $subtitle, string $text, string $variant = ''): void
+{
+    if (trim($text) === '') {
+        throw new RuntimeException('A welcome screen with no text is just a title bar. Write something, or leave the whole thing empty by removing the document.');
     }
     ghostd_put(ghostd_template_doc_id('welcome', $variant), [
         'section'   => 'welcome',
         'id'        => $variant,
         'title'     => $title,
         'subtitle'  => $subtitle,
-        'lines'     => $lines,
+        'text'      => $text,
         'from'      => 'DIVINER_Web',
         'updatedAt' => gmdate('Y-m-d H:i:s'),
     ]);
