@@ -1,7 +1,23 @@
 <?php
+/**
+ * The dashboard: what state the unit is actually in.
+ *
+ * NOT A LIST OF DOCUMENTS. It used to be three columns of Mongo doc names
+ * linking to a JSON editor - which told you what existed and nothing about
+ * whether any of it was right. The Templates and ORBAT pages own the documents
+ * now; this page answers the questions you open it for: is the database up, is
+ * anything unfinished, what needs attention, and when did the game last write.
+ */
+
 declare(strict_types=1);
 
-$cfg = ghostd_config();
+require_once __DIR__ . '/../templates.php';
+require_once __DIR__ . '/../tickets.php';
+require_once __DIR__ . '/../applications.php';
+
+$cfg  = ghostd_config();
+$unit = $cfg['unit'];
+
 [$up, $why] = ghostd_ping();
 
 ghostd_head('Dashboard', 'dashboard');
@@ -17,71 +33,176 @@ if (!$up) {
 $sections = ghostd_sections();
 $store    = $sections['store'] !== null ? ghostd_get($sections['store']) : null;
 
-// The store document uses plain field names - players, sessions, windows,
-// opords, log - not the gfa_pac_* keys the server's profileNamespace uses.
 $arr = static fn($v) => is_array($v) ? $v : [];
 $players  = $arr($store['players']  ?? null);
 $sessions = $arr($store['sessions'] ?? null);
-$opords   = $arr($store['opords']   ?? null);
+$windows  = $arr($store['windows']  ?? null);
+$log      = $arr($store['log']      ?? null);
+
+// ---- what needs attention -------------------------------------------------
+$attention = [];
+
+// Applications waiting.
+$appsWaiting = 0;
+try {
+    foreach (ghostd_applications() as $a) {
+        if (($a['status'] ?? 'new') === 'new') { $appsWaiting++; }
+    }
+} catch (Throwable $e) {
+    $appsWaiting = null;
+}
+if ($appsWaiting) {
+    $attention[] = [$appsWaiting . ' application' . ($appsWaiting === 1 ? '' : 's') . ' waiting',
+                    '?page=applications', 'Nobody has decided them yet.'];
+}
+
+// PAC actions still open.
+$openTickets = 0;
+try {
+    foreach (ghostd_tickets() as $t) {
+        if (($t['status'] ?? 'open') === 'open') { $openTickets++; }
+    }
+} catch (Throwable $e) {
+    $openTickets = null;
+}
+if ($openTickets) {
+    $attention[] = [$openTickets . ' PAC action' . ($openTickets === 1 ? '' : 's') . ' open',
+                    '?page=tickets', 'Leave, awards, requests and problems nobody has answered.'];
+}
+
+// Operators the Discord bot cannot match.
+$unlinked = 0;
+foreach ($players as $p) {
+    if (trim((string) ($p['discordId'] ?? '')) === '') { $unlinked++; }
+}
+if ($unlinked) {
+    $attention[] = [$unlinked . ' of ' . count($players) . ' operators have no Discord id',
+                    '?page=roster', 'The bot cannot match them to a record.'];
+}
+
+// The ORBAT's two halves disagreeing - a squad nobody can slot into.
+$orbat = [];
+try {
+    $orbat = ghostd_get($unit . '.orbat') ?? [];
+} catch (Throwable $e) {
+    $orbat = [];
+}
+$claimed = [];
+foreach ((array) ($orbat['platoons'] ?? []) as $p) {
+    foreach ((array) ($p[4] ?? []) as $sq) { $claimed[(string) $sq] = true; }
+}
+$defined = [];
+foreach ((array) ($orbat['groups'] ?? []) as $g) { $defined[(string) ($g[0] ?? '')] = true; }
+$orphans = array_diff(array_keys($claimed), array_keys($defined));
+if ($orphans !== []) {
+    $attention[] = [count($orphans) . ' squad' . (count($orphans) === 1 ? '' : 's') . ' with no roles',
+                    '?page=orbat&s=squads', implode(', ', $orphans) . ' - a platoon lists them but nobody can slot in.'];
+}
+
+// Roles a squad asks for that have no document.
+$roleIds = array_map(static fn($k) => substr($k, strlen($unit . '.role.')), $sections['roles']);
+$wanted = [];
+foreach ((array) ($orbat['groups'] ?? []) as $g) {
+    foreach ((array) ($g[1] ?? []) as $r) { $wanted[(string) $r] = true; }
+}
+$missingRoles = array_diff(array_keys($wanted), $roleIds);
+if ($missingRoles !== []) {
+    $attention[] = [count($missingRoles) . ' role' . (count($missingRoles) === 1 ? '' : 's') . ' with no document',
+                    '?page=orbat&s=roles', implode(', ', array_slice($missingRoles, 0, 6)) . ' - those slots will not fill.'];
+}
+
+// The class export the arsenal editors want.
+$classCount = count(ghostd_classnames());
+if ($classCount === 0) {
+    $attention[] = ['No classname export', '?page=config',
+                    'The arsenal and motorpool editors are plain text boxes until the game runs EXPORT CLASSES.'];
+}
+
+// ---- the last thing the game did ------------------------------------------
+$lastLog = [];
+foreach (array_slice(array_reverse($log), 0, 8) as $l) {
+    if (is_array($l)) { $lastLog[] = $l; }
+}
 ?>
 <div class="tiles">
   <div class="tile"><span class="n"><?= count($players) ?></span>on the roster</div>
-  <div class="tile"><span class="n"><?= count($sessions) ?></span>sessions</div>
+  <div class="tile"><span class="n"><?= count($sessions) ?></span>sessions recorded</div>
+  <div class="tile"><span class="n"><?= count($windows) ?></span>operation windows</div>
   <div class="tile"><span class="n"><?= count($sections['roles']) ?></span>roles</div>
-  <div class="tile"><span class="n"><?= count($opords) + count($sections['opords']) ?></span>orders</div>
+  <div class="tile"><span class="n"><?= count($sections['opords']) ?></span>orders</div>
+  <div class="tile"><span class="n"><?= $openTickets === null ? '?' : $openTickets ?></span>PAC actions open</div>
 </div>
 
-<h2>This unit</h2>
+<?php if ($attention !== []): ?>
+  <h2>Needs attention <span class="dim"><?= count($attention) ?></span></h2>
+  <table class="grid">
+    <tbody>
+    <?php foreach ($attention as $a): ?>
+      <tr>
+        <td style="width:22rem"><strong><?= h($a[0]) ?></strong></td>
+        <td class="dim"><?= h($a[2]) ?></td>
+        <td><a class="btnlink" href="<?= h($a[1]) ?>">Open</a></td>
+      </tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table>
+<?php else: ?>
+  <p class="flash good">Nothing waiting - no open applications, no open PAC
+  actions, and the ORBAT's squads and roles all resolve.</p>
+<?php endif; ?>
+
+<h2>The unit</h2>
 <table class="kv">
-  <tr><th>Unit id</th><td><code><?= h($cfg['unit']) ?></code></td></tr>
-  <tr><th>Database</th><td><code><?= h($cfg['database']) ?>.<?= h($cfg['collection']) ?></code></td></tr>
+  <tr><th>Unit id</th><td><code><?= h($unit) ?></code></td></tr>
+  <tr><th>Database</th><td><code><?= h($cfg['database']) ?>.<?= h($cfg['collection']) ?></code>
+      <span class="pill">answering</span></td></tr>
   <tr><th>Server id</th><td><?= cell($store['serverId'] ?? null) ?></td></tr>
-  <tr><th>Schema</th><td><?= cell($store['schemaVersion'] ?? null) ?></td></tr>
-  <tr><th>Store last written</th><td><?= h(when($store['exportedAt'] ?? null)) ?></td></tr>
-  <tr><th>Store document</th><td>
-    <?php if ($sections['store'] !== null): ?>
-      <a href="?page=document&amp;id=<?= urlencode($sections['store']) ?>"><code><?= h($sections['store']) ?></code></a>
-    <?php else: ?>
-      <span class="dim">none yet - the game writes it on SAVE, or at mission end</span>
-    <?php endif; ?>
-  </td></tr>
+  <tr><th>Store schema</th><td><?= cell($store['schemaVersion'] ?? null) ?></td></tr>
+  <tr><th>Game last wrote the store</th>
+      <td><?= $store === null
+            ? '<span class="dim">never - the game writes it on SAVE, or at mission end</span>'
+            : h(when($store['exportedAt'] ?? null)) ?></td></tr>
+  <tr><th>Classnames exported</th>
+      <td><?= $classCount === 0
+            ? '<span class="dim">none - run EXPORT CLASSES in the admin console</span>'
+            : (int) $classCount ?></td></tr>
+  <tr><th>Mongo docs</th><td><?= count(ghostd_keys()) ?> in total</td></tr>
 </table>
 
-<p class="note">The game server writes the store only when an admin presses SAVE
-and at mission end. Editing it here while a mission is running will be
-overwritten by that save - change the roster in game, or between sessions.</p>
+<h2>Order of battle</h2>
+<table class="kv">
+  <tr><th>Faction</th><td><?= cell($orbat['faction'] ?? null) ?></td></tr>
+  <tr><th>Platoons</th><td><?= count((array) ($orbat['platoons'] ?? [])) ?></td></tr>
+  <tr><th>Squads</th><td><?= count((array) ($orbat['groups'] ?? [])) ?></td></tr>
+  <tr><th>Radio nets</th><td><?= count((array) ($orbat['radioNets'] ?? [])) ?></td></tr>
+  <tr><th>Slots in total</th><td><?php
+      $slots = 0;
+      foreach ((array) ($orbat['groups'] ?? []) as $g) { $slots += count((array) ($g[1] ?? [])); }
+      echo $slots;
+  ?></td></tr>
+</table>
+<p class="dim"><a href="?page=orbat">Edit the order of battle</a> &middot;
+<a href="?page=config">Config templates</a></p>
 
-<h2>Config documents</h2>
-<p class="dim">One per config file. A document edited here is read at the next mission start.</p>
-<ul class="cols">
-<?php foreach ($sections['sections'] as $k): ?>
-  <li><a href="?page=document&amp;id=<?= urlencode($k) ?>"><?= h($k) ?></a></li>
-<?php endforeach; ?>
-</ul>
-
-<h2>Roles <span class="dim">(<?= count($sections['roles']) ?>)</span></h2>
-<ul class="cols">
-<?php foreach ($sections['roles'] as $k): ?>
-  <li><a href="?page=document&amp;id=<?= urlencode($k) ?>"><?= h(substr($k, strlen($cfg['unit'] . '.role.'))) ?></a></li>
-<?php endforeach; ?>
-</ul>
-
-<?php if ($sections['opords'] !== []): ?>
-<h2>Orders</h2>
-<ul class="cols">
-<?php foreach ($sections['opords'] as $k): ?>
-  <li><a href="?page=document&amp;id=<?= urlencode($k) ?>"><?= h(substr($k, strlen($cfg['unit'] . '.opord.'))) ?></a></li>
-<?php endforeach; ?>
-</ul>
+<?php if ($lastLog !== []): ?>
+  <h2>Last admin actions</h2>
+  <p class="dim">From the store's own log - what the game recorded, newest first.</p>
+  <table class="grid">
+    <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+    <tbody>
+    <?php foreach ($lastLog as $l): ?>
+      <tr>
+        <td class="dim"><?= h((string) ($l['date'] ?? $l['at'] ?? '')) ?></td>
+        <td><?= h((string) ($l['byName'] ?? $l['by'] ?? '')) ?></td>
+        <td><?= h((string) ($l['detail'] ?? $l['text'] ?? $l['type'] ?? '')) ?></td>
+      </tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table>
 <?php endif; ?>
 
-<?php if ($sections['other'] !== []): ?>
-<h2>Other units in this database</h2>
-<ul class="cols">
-<?php foreach ($sections['other'] as $k): ?>
-  <li><a href="?page=document&amp;id=<?= urlencode($k) ?>"><?= h($k) ?></a></li>
-<?php endforeach; ?>
-</ul>
-<?php endif; ?>
+<p class="note">The game rewrites the store when an admin presses SAVE and at
+mission end, so an edit made here mid-mission is lost. Change the roster in
+game, or between sessions.</p>
 <?php
 ghostd_foot();
