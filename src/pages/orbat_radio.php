@@ -1,6 +1,6 @@
 <?php
 /**
- * The radio plan, in two sub-tabs: ACRE and TFAR.
+ * The radio plan, in two sub-tabs: ACRE and TFAR (drawn in orbat.php's bar).
  *
  * THEY ARE NOT THE SAME SHAPE, so they do not share a form.
  *
@@ -23,17 +23,10 @@ declare(strict_types=1);
 // long-range sets and honest about being fixed.
 const GHOSTD_TFAR_SLOTS = 8;
 
-$sub = (string) ($_GET['r'] ?? ($_POST['r'] ?? 'acre'));
-if (!in_array($sub, ['acre', 'tfar'], true)) {
-    $sub = 'acre';
-}
-
+// $sub - which of ACRE and TFAR - is chosen by orbat.php, because the sub-tabs
+// are drawn up in the page's one menu bar rather than a second bar down here.
 $vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
 ?>
-<nav class="sections subtabs">
-  <a href="?page=orbat&amp;s=radio&amp;r=acre<?= $vq ?>" class="<?= $sub === 'acre' ? 'on' : '' ?>">ACRE</a>
-  <a href="?page=orbat&amp;s=radio&amp;r=tfar<?= $vq ?>" class="<?= $sub === 'tfar' ? 'on' : '' ?>">TFAR</a>
-</nav>
 
 <?php if ($sub === 'acre'): ?>
 

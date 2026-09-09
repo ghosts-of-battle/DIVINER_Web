@@ -13,7 +13,7 @@ if ($q !== '') {
     );
 }
 
-ghostd_head('Documents', 'documents');
+ghostd_head('Mongo docs', 'documents');
 ?>
 <form method="get" class="inline">
   <input type="hidden" name="page" value="documents">

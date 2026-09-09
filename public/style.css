@@ -680,9 +680,39 @@ p.dim a.on { color: var(--accent); }
   border-bottom: 1px solid var(--panel);
   color: var(--accent);
 }
-/* A second row of tabs, for a section that has its own. */
+/* A second row of tabs, for a section that has its own. Kept for pages that
+   still draw one; the ORBAT puts its sub-tabs in the single bar below. */
 .subtabs { border-bottom-style: dashed; margin-bottom: var(--s4); }
 .subtabs a { font-size: .74rem; text-transform: none; letter-spacing: .02em; }
+
+/* ONE BAR, NOT TWO STACKED ONES. A tab, its sub-tabs and the version group all
+   sit on the same rule, so the eye reads a single menu and the sub-tabs are
+   plainly a part of the tab above them rather than a second navigation. The
+   groups are told apart by weight and a hairline, not by being on a new line. */
+.onebar { gap: 0; align-items: stretch; }
+.onebar a { display: flex; align-items: center; }
+/* The hairline between the tabs and their sub-tabs. */
+.onebar .tabdiv {
+  width: 1px; margin: var(--s2) var(--s3) 0;
+  background: var(--line); align-self: stretch;
+}
+/* THE SUB-TABS GO UNDER THE RULE, not on it. On the bar they read as two more
+   tabs of the same rank; under it they are plainly a part of the tab above.
+   No boxes - just the words, with the live one accented and underlined. */
+.subrail {
+  display: flex; flex-wrap: wrap; gap: var(--s4);
+  margin: calc(var(--s5) * -1 + var(--s2)) 0 var(--s5);
+  padding-left: var(--s4);
+}
+.subrail a {
+  color: var(--dim); text-decoration: none;
+  font-size: .74rem; letter-spacing: .06em; font-weight: 600;
+  text-transform: uppercase; white-space: nowrap;
+  padding-bottom: 2px; border-bottom: 2px solid transparent;
+}
+.subrail a:hover { color: var(--ink); }
+.subrail a.on { color: var(--accent); border-bottom-color: var(--accent); }
+
 /* The label between two groups of tabs - "versions", say. */
 .sections .tabsep {
   padding: var(--s2) var(--s3); color: var(--faint);
@@ -699,3 +729,31 @@ p.dim a.on { color: var(--accent); }
 .tsection { margin-bottom: var(--s6); }
 .tsection h2 { margin-bottom: var(--s1); }
 .tsection table { margin-bottom: var(--s2); }
+
+/* The faction sits above every ORBAT tab - it belongs to the whole order of
+   battle, not to one of its sections. */
+.factionbar { margin-bottom: var(--s5); padding-bottom: var(--s4); border-bottom: 1px solid var(--line-dim); }
+
+/* A grid of checkboxes - the tiles a role may see, the skills it needs. A list
+   of nine things down the page is nine lines of scrolling to answer one
+   question; across, it is one glance. */
+.checkgrid {
+  display: grid; gap: var(--s1) var(--s4);
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  margin: var(--s2) 0 var(--s4);
+}
+.checkgrid .inlinelabel { margin: 0; }
+
+/* A label whose control goes UNDER it rather than beside it - used where four
+   textareas sit side by side and each needs its own heading. */
+label.stacked { display: flex; flex-direction: column; gap: var(--s1); flex: 1 1 14rem; }
+label.stacked textarea { width: 100%; }
+
+/* A section of a record - identity, nets, tiles - with its own save button.
+   The rule under the heading says where one ends and the next begins without
+   boxing every one of them. */
+.tsection > h2 {
+  border-bottom: 1px solid var(--line-dim);
+  padding-bottom: var(--s1);
+}
+.tsection form + p.dim { margin-top: var(--s2); }

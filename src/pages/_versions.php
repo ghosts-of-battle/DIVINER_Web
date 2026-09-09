@@ -20,6 +20,7 @@ replaces <code><?= h($t['replaces']) ?></code></p>
 <p class="note"><?= h($t['blurb']) ?></p>
 
 <h2>Versions</h2>
+<?php if ($variants !== []): ?>
 <nav class="sections">
   <span class="tabsep">version</span>
   <a href="?page=configedit&amp;t=<?= urlencode($key) ?>"
@@ -29,6 +30,9 @@ replaces <code><?= h($t['replaces']) ?></code></p>
        class="<?= $variant === $v ? 'on' : '' ?>"><?= h($v) ?></a>
   <?php endforeach; ?>
 </nav>
+<?php else: ?>
+  <p class="dim">Only the common version so far. Name one below to add another.</p>
+<?php endif; ?>
 <form method="get" class="inline">
   <input type="hidden" name="page" value="configedit">
   <input type="hidden" name="t" value="<?= h($key) ?>">

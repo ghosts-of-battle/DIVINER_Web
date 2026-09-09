@@ -1,0 +1,444 @@
+<?php
+/**
+ * One squad, in sections.
+ *
+ * SET THE NUMBER, THEN FILL THE SLOTS. A squad is "eight men" before it is a
+ * list of eight roles. The count is its own little form so changing it does not
+ * risk what is already typed; shrinking drops the slots off the end, growing
+ * adds empty ones, and nothing is written until the slots are saved.
+ *
+ * ROLES ARE DROPDOWNS, never typed. A role id that matches no role document is
+ * a slot nobody can fill and nothing in game says why.
+ *
+ * ITS CHANNELS ARE PART OF IT. They live in <unit>.radio, not the ORBAT, but a
+ * squad without a radio is half a squad, so they are edited here and written
+ * there.
+ */
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../orbat.php';
+require_once __DIR__ . '/../roles.php';
+
+$unit = ghostd_config()['unit'];
+
+$variant = trim((string) ($_GET['v'] ?? ($_POST['v'] ?? '')));
+if ($variant !== '' && !ghostd_variant_ok($variant)) {
+    $variant = '';
+}
+$vq = $variant !== '' ? '&amp;v=' . urlencode($variant) : '';
+
+$name = (string) ($_GET['sq'] ?? ($_POST['sq'] ?? ''));
+$new  = ($name === '' || $name === '+');
+
+$msg = null;
+$err = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    ghostd_csrf_check();
+    $what = (string) ($_POST['what'] ?? '');
+
+    try {
+        switch ($what) {
+
+            // A squad is created by name alone; everything else follows.
+            case 'create':
+                $wanted = trim((string) ($_POST['newname'] ?? ''));
+                if ($wanted === '') {
+                    throw new RuntimeException('A squad needs a name - it is what a platoon lists it by.');
+                }
+                if (ghostd_squad($variant, $wanted) !== null) {
+                    throw new RuntimeException('A squad called "' . $wanted . '" already exists.');
+                }
+                ghostd_orbat_edit($variant, static function (array &$doc) use ($wanted) {
+                    $g = is_array($doc['groups'] ?? null) ? $doc['groups'] : [];
+                    $g[] = [$wanted, [], 'true'];
+                    $doc['groups'] = $g;
+                });
+                header('Location: ?page=squad&sq=' . urlencode($wanted) . ($variant !== '' ? '&v=' . urlencode($variant) : ''));
+                exit;
+
+            case 'identity':
+                $to   = trim((string) ($_POST['newname'] ?? $name));
+                $cond = trim((string) ($_POST['cond'] ?? '')) ?: 'true';
+                if ($to === '') {
+                    throw new RuntimeException('A squad needs a name.');
+                }
+                if ($to !== $name && ghostd_squad($variant, $to) !== null) {
+                    throw new RuntimeException('A squad called "' . $to . '" already exists.');
+                }
+
+                ghostd_orbat_edit($variant, static function (array &$doc) use ($name, $to, $cond) {
+                    $groups = is_array($doc['groups'] ?? null) ? $doc['groups'] : [];
+                    foreach ($groups as $i => $g) {
+                        if ((string) ($g[0] ?? '') === $name) {
+                            $groups[$i][0] = $to;
+                            $groups[$i][2] = $cond;
+                        }
+                    }
+                    // A rename has to follow into every platoon that lists it,
+                    // or the platoon quietly loses a squad.
+                    if ($to !== $name) {
+                        $ps = is_array($doc['platoons'] ?? null) ? $doc['platoons'] : [];
+                        foreach ($ps as $pi => $p) {
+                            foreach ((array) ($p[4] ?? []) as $si => $sq) {
+                                if ((string) $sq === $name) { $ps[$pi][4][$si] = $to; }
+                            }
+                        }
+                        $doc['platoons'] = $ps;
+
+                        $nets = is_array($doc['radioNets'] ?? null) ? $doc['radioNets'] : [];
+                        foreach ($nets as $ni => $n) {
+                            foreach ((array) ($n[2] ?? []) as $si => $sq) {
+                                if ((string) $sq === $name) { $nets[$ni][2][$si] = $to; }
+                            }
+                        }
+                        $doc['radioNets'] = $nets;
+                    }
+                    $doc['groups'] = $groups;
+                });
+
+                // And its channels, or it loses its radio with nothing to say why.
+                if ($to !== $name) {
+                    ghostd_radio_edit(static function (array &$items) use ($name, $to) {
+                        foreach (['srSquadChannel', 'tfarNets'] as $list) {
+                            $rows = is_array($items[$list] ?? null) ? $items[$list] : [];
+                            foreach ($rows as $i => $r) {
+                                if (is_array($r) && (string) ($r[0] ?? '') === $name) {
+                                    $rows[$i][0] = $to;
+                                }
+                            }
+                            $items[$list] = $rows;
+                        }
+                    });
+                    header('Location: ?page=squad&sq=' . urlencode($to) . ($variant !== '' ? '&v=' . urlencode($variant) : '') . '&renamed=1');
+                    exit;
+                }
+                $msg = 'Identity saved.';
+                break;
+
+            case 'slots':
+                $roles = [];
+                foreach ((array) ($_POST['roles'] ?? []) as $i => $r) {
+                    $r = trim((string) $r);
+                    if ($r !== '') { $roles[(int) $i] = $r; }
+                }
+                ksort($roles);
+                $roles = array_values($roles);
+
+                ghostd_orbat_edit($variant, static function (array &$doc) use ($name, $roles) {
+                    $groups = is_array($doc['groups'] ?? null) ? $doc['groups'] : [];
+                    foreach ($groups as $i => $g) {
+                        if ((string) ($g[0] ?? '') === $name) { $groups[$i][1] = $roles; }
+                    }
+                    $doc['groups'] = $groups;
+                });
+                $msg = count($roles) . ' slots saved.';
+                break;
+
+            case 'radio':
+                ghostd_radio_edit(static function (array &$items) use ($name) {
+                    $acre = trim((string) ($_POST['acre'] ?? ''));
+                    ghostd_channel_set($items, 'srSquadChannel', $name,
+                        $acre === '' ? null : [(int) $acre]);
+
+                    $sw = trim((string) ($_POST['tfar_sw'] ?? ''));
+                    $lr = trim((string) ($_POST['tfar_lr'] ?? ''));
+                    ghostd_channel_set($items, 'tfarNets', $name,
+                        ($sw === '' && $lr === '') ? null : [(int) $sw, (int) $lr]);
+                });
+                $msg = 'Channels saved.';
+                break;
+
+            case 'copy':
+                $to = trim((string) ($_POST['to'] ?? ''));
+                if ($to === '') {
+                    throw new RuntimeException('The copy needs a name.');
+                }
+                if (ghostd_squad($variant, $to) !== null) {
+                    throw new RuntimeException('"' . $to . '" already exists.');
+                }
+                ghostd_orbat_edit($variant, static function (array &$doc) use ($name, $to) {
+                    $groups = is_array($doc['groups'] ?? null) ? $doc['groups'] : [];
+                    foreach ($groups as $g) {
+                        if ((string) ($g[0] ?? '') === $name) {
+                            $copy = $g;
+                            $copy[0] = $to;
+                            $groups[] = $copy;
+                            break;
+                        }
+                    }
+                    $doc['groups'] = $groups;
+                });
+                ghostd_radio_edit(static function (array &$items) use ($name, $to) {
+                    foreach (['srSquadChannel', 'tfarNets'] as $list) {
+                        $rows = is_array($items[$list] ?? null) ? $items[$list] : [];
+                        foreach ($rows as $r) {
+                            if (is_array($r) && (string) ($r[0] ?? '') === $name) {
+                                $copy = $r;
+                                $copy[0] = $to;
+                                $rows[] = $copy;
+                                break;
+                            }
+                        }
+                        $items[$list] = $rows;
+                    }
+                });
+                header('Location: ?page=squad&sq=' . urlencode($to) . ($variant !== '' ? '&v=' . urlencode($variant) : '') . '&copied=1');
+                exit;
+
+            case 'delete':
+                ghostd_orbat_edit($variant, static function (array &$doc) use ($name) {
+                    $groups = is_array($doc['groups'] ?? null) ? $doc['groups'] : [];
+                    $doc['groups'] = array_values(array_filter($groups,
+                        static fn($g) => (string) ($g[0] ?? '') !== $name));
+                    // And out of the platoons that listed it.
+                    $ps = is_array($doc['platoons'] ?? null) ? $doc['platoons'] : [];
+                    foreach ($ps as $pi => $p) {
+                        $ps[$pi][4] = array_values(array_filter((array) ($p[4] ?? []),
+                            static fn($s) => (string) $s !== $name));
+                    }
+                    $doc['platoons'] = $ps;
+                });
+                ghostd_radio_edit(static function (array &$items) use ($name) {
+                    ghostd_channel_set($items, 'srSquadChannel', $name, null);
+                    ghostd_channel_set($items, 'tfarNets', $name, null);
+                });
+                header('Location: ?page=orbat&s=squads' . ($variant !== '' ? '&v=' . urlencode($variant) : ''));
+                exit;
+
+            default:
+                throw new RuntimeException('Nothing said which section to save.');
+        }
+    } catch (Throwable $e) {
+        $err = $e->getMessage();
+    }
+}
+
+// ---- new ------------------------------------------------------------------
+if ($new) {
+    ghostd_head('New squad', 'orbat');
+    if ($err !== null) { ghostd_flash('bad', $err); }
+    ?>
+    <p class="dim"><a href="?page=orbat&amp;s=squads<?= $vq ?>">&larr; Squads</a></p>
+    <h2>A new squad</h2>
+    <p class="note">The name is what a platoon lists it by and what the group menu
+    shows. Its slots, channels and arsenal come next, on its own page.</p>
+    <form method="post">
+      <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+      <input type="hidden" name="v" value="<?= h($variant) ?>">
+      <input type="hidden" name="what" value="create">
+      <div class="fields">
+        <label>Name <span class="dim">GHOST 6, BANSHEE 1-1</span>
+          <input type="text" name="newname" required></label>
+      </div>
+      <div class="actions">
+        <button type="submit">Create it</button>
+        <a class="btnlink" href="?page=orbat&amp;s=squads<?= $vq ?>">Cancel</a>
+      </div>
+    </form>
+    <?php
+    ghostd_foot();
+    return;
+}
+
+$sq = ghostd_squad($variant, $name);
+if ($sq === null) {
+    ghostd_head('Squad', 'orbat');
+    ghostd_flash('bad', 'No squad called "' . h($name) . '" in this ORBAT.');
+    echo '<p><a href="?page=orbat&amp;s=squads' . $vq . '">Back to the squads</a></p>';
+    ghostd_foot();
+    return;
+}
+
+$radio = ghostd_radio_items();
+$acre  = ghostd_acre_of($radio)[$name] ?? null;
+$tfar  = ghostd_tfar_of($radio)[$name] ?? [0, 0];
+
+$roleIds = ghostd_role_ids();
+$roleNames = [];
+foreach ($roleIds as $rid) {
+    $rr = ghostd_role($rid);
+    $roleNames[$rid] = $rr['name'] !== '' ? $rr['name'] : $rid;
+}
+
+// How many slots to draw. The count field posts it back; otherwise as many as
+// there are, and at least one so a new squad has somewhere to start.
+$want = (int) ($_GET['n'] ?? max(1, count($sq['roles'])));
+$want = max(1, min(40, $want));
+
+// Which platoon claims it - the question the ORBAT is always half answering.
+$inPlatoon = [];
+foreach (ghostd_orbat($variant)['platoons'] as $p) {
+    if (in_array($name, (array) ($p[4] ?? []), true)) {
+        $inPlatoon[] = (string) ($p[1] ?? $p[0] ?? '');
+    }
+}
+
+$arsenalVar = ghostd_squad_variant($name);
+$arsenalHas = ghostd_variant_summary('arsenal', $arsenalVar);
+
+$csrf = ghostd_csrf_token();
+$open = static function (string $what) use ($csrf, $name, $variant) {
+    echo '<form method="post">'
+       . '<input type="hidden" name="csrf" value="' . h($csrf) . '">'
+       . '<input type="hidden" name="sq" value="' . h($name) . '">'
+       . '<input type="hidden" name="v" value="' . h($variant) . '">'
+       . '<input type="hidden" name="what" value="' . h($what) . '">';
+};
+
+ghostd_head($name, 'orbat');
+if ($msg !== null) { ghostd_flash('good', $msg); }
+if ($err !== null) { ghostd_flash('bad', $err); }
+if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its platoon, nets and channels.'); }
+if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came with it - change them.'); }
+?>
+<p class="dim"><a href="?page=orbat&amp;s=squads<?= $vq ?>">&larr; Squads</a> &middot;
+<code><?= h(ghostd_orbat_doc_id($variant)) ?></code> &middot;
+<?= $inPlatoon === []
+      ? '<span class="bad">no platoon lists it - it will not appear in the group menu</span>'
+      : 'in ' . h(implode(', ', $inPlatoon)) ?></p>
+
+<nav class="sections onebar">
+  <a href="#identity">Identity</a>
+  <a href="#slots">Slots</a>
+  <a href="#radio">Radio</a>
+  <a href="#arsenal">Arsenal</a>
+</nav>
+
+<!-- ------------------------------------------------------------ identity -->
+<section class="tsection" id="identity">
+  <h2>Identity</h2>
+  <?php $open('identity'); ?>
+    <div class="fields">
+      <label>Name <span class="dim">renaming takes its platoon, nets and channels with it</span>
+        <input type="text" name="newname" value="<?= h($sq['name']) ?>" required></label>
+      <label>Shown when <span class="dim">an SQF condition; <code>true</code> is always</span>
+        <input type="text" name="cond" value="<?= h($sq['cond']) ?>"></label>
+    </div>
+    <div class="actions"><button type="submit">Save identity</button></div>
+  </form>
+</section>
+
+<!-- --------------------------------------------------------------- slots -->
+<section class="tsection" id="slots">
+  <h2>Slots <span class="dim"><?= count($sq['roles']) ?> filled</span></h2>
+  <p class="dim">In order - slot 1 is the squad leader's, and the game fills
+  them in this order.</p>
+
+  <form method="get" class="inline">
+    <input type="hidden" name="page" value="squad">
+    <input type="hidden" name="sq" value="<?= h($name) ?>">
+    <?php if ($variant !== ''): ?><input type="hidden" name="v" value="<?= h($variant) ?>"><?php endif; ?>
+    <label for="n">Number of roles</label>
+    <input type="number" id="n" name="n" min="1" max="40" value="<?= $want ?>" style="min-width:5rem">
+    <button type="submit">Set</button>
+    <span class="dim">Fewer drops the slots off the end, more adds empty ones.
+    Nothing is written until you save the slots.</span>
+  </form>
+
+  <?php if ($roleIds === []): ?>
+    <p class="note readonly">No role documents exist, so there is nothing to
+    choose. <a href="?page=role&amp;id=%2B">Create a role</a> first.</p>
+  <?php endif; ?>
+
+  <?php $open('slots'); ?>
+    <table class="grid">
+      <thead><tr><th>Slot</th><th>Role</th><th></th></tr></thead>
+      <tbody>
+      <?php for ($i = 0; $i < $want; $i++): ?>
+        <?php $sel = (string) ($sq['roles'][$i] ?? ''); ?>
+        <tr>
+          <td><strong><?= $i + 1 ?></strong><?= $i === 0 ? ' <span class="dim">lead</span>' : '' ?></td>
+          <td>
+            <select name="roles[<?= $i ?>]" style="min-width:20rem">
+              <option value="">- empty -</option>
+              <?php foreach ($roleIds as $rid): ?>
+                <option value="<?= h($rid) ?>" <?= $sel === $rid ? 'selected' : '' ?>>
+                  <?= h($roleNames[$rid]) ?> (<?= h($rid) ?>)</option>
+              <?php endforeach; ?>
+              <?php if ($sel !== '' && !in_array($sel, $roleIds, true)): ?>
+                <option value="<?= h($sel) ?>" selected><?= h($sel) ?> - no document</option>
+              <?php endif; ?>
+            </select>
+          </td>
+          <td class="dim">
+            <?php if ($sel !== '' && in_array($sel, $roleIds, true)): ?>
+              <a href="?page=role&amp;id=<?= urlencode($sel) ?>">edit the role</a>
+            <?php endif; ?>
+          </td>
+        </tr>
+      <?php endfor; ?>
+      </tbody>
+    </table>
+    <div class="actions"><button type="submit">Save slots</button></div>
+  </form>
+</section>
+
+<!-- --------------------------------------------------------------- radio -->
+<section class="tsection" id="radio">
+  <h2>Radio</h2>
+  <p class="dim">Written to <code><?= h(ghostd_radio_doc_id()) ?></code>, which is
+  where the mod reads it. Set the frequencies themselves on the
+  <a href="?page=orbat&amp;s=radio<?= $vq ?>">Radio tab</a>.</p>
+  <?php $open('radio'); ?>
+    <div class="fields">
+      <label>ACRE short range <span class="dim">the channel number on the 148/152; blank for none</span>
+        <input type="number" name="acre" min="0" value="<?= h($acre === null ? '' : (string) $acre) ?>"></label>
+      <label>TFAR short range <span class="dim">slot number, 1 to 8</span>
+        <input type="number" name="tfar_sw" min="0" max="8" value="<?= h((string) ($tfar[0] ?: '')) ?>"></label>
+      <label>TFAR long range
+        <input type="number" name="tfar_lr" min="0" max="8" value="<?= h((string) ($tfar[1] ?: '')) ?>"></label>
+    </div>
+    <div class="actions"><button type="submit">Save channels</button></div>
+  </form>
+</section>
+
+<!-- ------------------------------------------------------------- arsenal -->
+<section class="tsection" id="arsenal">
+  <h2>Arsenal</h2>
+  <p class="note">Everyone in this squad draws from it, on top of the common
+  arsenal and their platoon's. It is one document,
+  <code><?= h(ghostd_template_doc_id('arsenal', $arsenalVar)) ?></code>, named
+  after the squad - so renaming the squad means creating it again under the new
+  name.</p>
+  <table class="kv">
+    <tr><th>Holds</th><td><?= $arsenalHas === ''
+          ? '<span class="dim">nothing yet - the squad draws the common arsenal only</span>'
+          : h($arsenalHas) ?></td></tr>
+  </table>
+  <p class="actions">
+    <a class="btnlink" href="?page=configedit&amp;t=arsenal&amp;v=<?= urlencode($arsenalVar) ?>">
+      <?= $arsenalHas === '' ? 'Create the squad arsenal' : 'Open the squad arsenal' ?></a>
+    <a class="btnlink" href="?page=configedit&amp;t=arsenal">Common arsenal</a>
+  </p>
+</section>
+
+<!-- ---------------------------------------------------------------- copy -->
+<section class="tsection">
+  <h2>Copy</h2>
+  <p class="dim">Takes its slots, its condition and its channels. Four rifle
+  squads differ by a digit; this is how you make the other three.</p>
+  <?php $open('copy'); ?>
+    <div class="fields">
+      <label>Copy to <span class="dim">the new squad's name</span>
+        <input type="text" name="to" required></label>
+    </div>
+    <div class="actions"><button type="submit">Copy <?= h($name) ?></button></div>
+  </form>
+</section>
+
+<section class="tsection">
+  <h2>Remove</h2>
+  <form method="post" class="danger">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <input type="hidden" name="sq" value="<?= h($name) ?>">
+    <input type="hidden" name="v" value="<?= h($variant) ?>">
+    <input type="hidden" name="what" value="delete">
+    <p class="dim">Takes it out of its platoons and its nets, and drops its
+    channels. The squad arsenal document is left alone.</p>
+    <button type="submit" class="hot">Delete <?= h($name) ?></button>
+  </form>
+</section>
+<?php
+ghostd_foot();

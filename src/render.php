@@ -86,7 +86,7 @@ function ghostd_head(string $title, string $active = ''): void
             'config'       => 'Templates',
             'orbat'        => 'ORBAT',
             'templates'    => 'Report deck',
-            'documents'    => 'Documents',
+            'documents'    => 'Mongo docs',
             'branding'     => 'Branding',
             // An admin is a member too - they have a record like anybody else,
             // and dropping this left them no way to reach their own details.

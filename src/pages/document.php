@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $doc = ghostd_get($id);
 
-ghostd_head('Document', 'documents');
+ghostd_head('Mongo doc', 'documents');
 echo '<p class="dim"><code>' . h($id) . '</code></p>';
 
 if ($msg !== null) { ghostd_flash('good', $msg); }

@@ -1,0 +1,411 @@
+<?php
+/**
+ * A role, as a record - the thing behind every slot in the ORBAT.
+ *
+ * ONE DOCUMENT PER ROLE, <unit>.role.<id>, holding {section, id, role:{...}}.
+ * That is the mod's arrangement, not a choice here: adding a role is writing a
+ * new document, so it never rewrites the others and two people editing two
+ * roles never collide.
+ *
+ * THE FIELD NAMES ARE THE MISSION'S, verbatim. ghostD_groups_fnc_roleFields is
+ * the contract - name, description, icon, nets, tiles, traits, customVariables,
+ * defaultLoadout, groupArsenal and the four arsenal lists - plus what TAC//PAC
+ * adds on top (minRank, requiredSkills, uids, arsenalWhitelist, defaultSkills,
+ * slotTag). A role written in a config file and a role kept here are the same
+ * record with the same keys, which is the only reason the mod can read either.
+ *
+ * ANYTHING NOT LISTED HERE RIDES ALONG UNTOUCHED. A save merges over the stored
+ * record rather than replacing it, so a field the mod grows before this page
+ * knows about it is not deleted by the next edit.
+ */
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/templates.php';
+
+/**
+ * The live tiles a role may be given, from ghostD_tacpad_apps_fnc_tileData.
+ *
+ * A LIST, NOT FREE TEXT. A tile id that matches nothing is a permission that
+ * grants nothing, and the band simply comes up short with nobody able to say
+ * why. Kept here because the mod has no registry to read - the ids are written
+ * into tileData itself.
+ */
+const GHOSTD_TILES = [
+    'drones'  => 'Drone picture - contacts, bearing, range',
+    'jam'     => 'Jamming state',
+    'hack'    => 'Hacking suite',
+    'weather' => 'Weather and light',
+    'timer'   => 'Mission timer',
+    'radio'   => 'Radio state',
+    'intel'   => 'Intel take',
+    'support' => 'Supports available',
+    'pac'     => 'The PAC tile',
+];
+
+/** Which parts of a role are edited together. Drives the sections on the page. */
+const GHOSTD_ROLE_SECTIONS = [
+    'identity' => 'Identity',
+    'gates'    => 'Who may take it',
+    'nets'     => 'Messaging nets',
+    'tiles'    => 'TAC//PAD tiles',
+    'traits'   => 'Traits',
+    'vars'     => 'Custom variables',
+    'loadout'  => 'Default loadout',
+    'arsenal'  => 'Arsenal',
+];
+
+function ghostd_role_doc_id(string $id): string
+{
+    return ghostd_config()['unit'] . '.role.' . $id;
+}
+
+/** A role id is a Dynamic_Roles class name - it has to be one in a config file. */
+function ghostd_role_id_ok(string $id): bool
+{
+    return (bool) preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $id);
+}
+
+/** Every role id the unit has, sorted. */
+function ghostd_role_ids(): array
+{
+    $prefix = ghostd_config()['unit'] . '.role.';
+    $out = [];
+    try {
+        foreach (ghostd_keys() as $k) {
+            if (str_starts_with($k, $prefix)) {
+                $out[] = substr($k, strlen($prefix));
+            }
+        }
+    } catch (Throwable $e) {
+        return [];
+    }
+    sort($out);
+    return $out;
+}
+
+/**
+ * Rows of pairs or triples - nets, tiles, traits, customVariables - normalised.
+ *
+ * The mod writes them as arrays and reads them positionally, and a row short of
+ * its values is read as empty rather than as an error. Padding here means every
+ * caller can index without checking.
+ */
+function ghostd_role_rows($v, int $width): array
+{
+    $out = [];
+    foreach ((array) $v as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $row = array_values($row);
+        $name = trim((string) ($row[0] ?? ''));
+        if ($name === '') {
+            continue;
+        }
+        $r = [$name];
+        for ($i = 1; $i < $width; $i++) {
+            $x = $row[$i] ?? '';
+            // Numbers stay numbers - ace_medical_medicClass is 1, not "1", and
+            // the mod's setVariable would put a string on the man.
+            $r[] = is_int($x) || is_float($x) ? $x : (string) $x;
+        }
+        $out[] = $r;
+    }
+    return $out;
+}
+
+/** One role's record, every field present and the right shape. */
+function ghostd_role(string $id): array
+{
+    $doc = null;
+    try {
+        $doc = ghostd_get(ghostd_role_doc_id($id));
+    } catch (Throwable $e) {
+        $doc = null;
+    }
+    $r = is_array($doc['role'] ?? null) ? $doc['role'] : [];
+
+    $str  = static fn($k, $d = '') => (string) ($r[$k] ?? $d);
+    $list = static fn($k) => array_values(array_filter(
+        array_map(static fn($x) => trim((string) $x), (array) ($r[$k] ?? [])),
+        static fn($x) => $x !== ''
+    ));
+
+    return [
+        'id'              => $id,
+        'name'            => $str('name'),
+        'description'     => $str('description'),
+        'icon'            => $str('icon'),
+        'slotTag'         => $str('slotTag', $id),
+        'minRank'         => $str('minRank'),
+        'groupArsenal'    => $str('groupArsenal'),
+        'requiredSkills'  => $list('requiredSkills'),
+        'defaultSkills'   => $list('defaultSkills'),
+        'uids'            => $list('uids'),
+        'nets'            => ghostd_role_rows($r['nets'] ?? [], 2),
+        'tiles'           => ghostd_role_rows($r['tiles'] ?? [], 2),
+        'traits'          => ghostd_role_rows($r['traits'] ?? [], 2),
+        'customVariables' => ghostd_role_rows($r['customVariables'] ?? [], 3),
+        'defaultLoadout'  => is_array($r['defaultLoadout'] ?? null) ? $r['defaultLoadout'] : [],
+        'arsenalWeapons'   => $list('arsenalWeapons'),
+        'arsenalMagazines' => $list('arsenalMagazines'),
+        'arsenalItems'     => $list('arsenalItems'),
+        'arsenalBackpacks' => $list('arsenalBackpacks'),
+        'arsenalWhitelist' => $list('arsenalWhitelist'),
+        'exists'          => is_array($doc),
+    ];
+}
+
+/**
+ * Write some fields of a role, leaving the rest of the record alone.
+ *
+ * MERGE, NOT REPLACE. Each section of the editor posts only itself, so a save
+ * that wrote the whole record would blank every field the form did not carry -
+ * and would drop any field the mod has that this page does not know.
+ */
+function ghostd_role_save(string $id, array $fields): void
+{
+    if (!ghostd_role_id_ok($id)) {
+        throw new RuntimeException('A role id is a config class name: letters, digits and underscore, starting with a letter.');
+    }
+    $docId = ghostd_role_doc_id($id);
+
+    $doc = ghostd_get($docId);
+    $doc = is_array($doc) ? $doc : [];
+    unset($doc['_id']);
+
+    $role = is_array($doc['role'] ?? null) ? $doc['role'] : [];
+    foreach ($fields as $k => $v) {
+        $role[$k] = $v;
+    }
+    $role['id'] = $id;
+
+    $doc['section']   = 'role';
+    $doc['id']        = $id;
+    $doc['role']      = $role;
+    $doc['from']      = 'DIVINER_Web';
+    $doc['updatedAt'] = gmdate('Y-m-d H:i:s');
+
+    ghostd_put($docId, $doc);
+}
+
+/** Rename a role: the document moves, and every squad slot naming it follows. */
+function ghostd_role_rename(string $from, string $to): int
+{
+    if ($from === $to) {
+        return 0;
+    }
+    if (!ghostd_role_id_ok($to)) {
+        throw new RuntimeException('A role id is a config class name: letters, digits and underscore, starting with a letter.');
+    }
+    if (in_array($to, ghostd_role_ids(), true)) {
+        throw new RuntimeException('A role called "' . $to . '" already exists.');
+    }
+
+    $doc = ghostd_get(ghostd_role_doc_id($from));
+    if (!is_array($doc)) {
+        throw new RuntimeException('No role called "' . $from . '".');
+    }
+    unset($doc['_id']);
+    $doc['id'] = $to;
+    if (is_array($doc['role'] ?? null)) {
+        $doc['role']['id'] = $to;
+    }
+    $doc['updatedAt'] = gmdate('Y-m-d H:i:s');
+    ghostd_put(ghostd_role_doc_id($to), $doc);
+
+    // The squads that asked for the old id would silently stop filling those
+    // slots, so they are moved with it - across every version of the ORBAT.
+    // COPIED, MOVED, THEN REMOVED, in that order: a failure part way leaves the
+    // old role still there rather than a squad pointing at nothing.
+    $moved = ghostd_orbat_role_rename($from, $to);
+    ghostd_doc_delete(ghostd_role_doc_id($from));
+    return $moved;
+}
+
+/**
+ * Point every squad slot naming $from at $to, in every version of the ORBAT.
+ *
+ * Returns how many slots moved.
+ */
+function ghostd_orbat_role_rename(string $from, string $to): int
+{
+    $unit = ghostd_config()['unit'];
+    $moved = 0;
+    foreach (ghostd_keys() as $k) {
+        if ($k !== $unit . '.orbat' && !str_starts_with($k, $unit . '.orbat.')) {
+            continue;
+        }
+        $doc = ghostd_get($k);
+        if (!is_array($doc) || !is_array($doc['groups'] ?? null)) {
+            continue;
+        }
+        $touched = false;
+        foreach ($doc['groups'] as $gi => $g) {
+            foreach ((array) ($g[1] ?? []) as $si => $slot) {
+                if ((string) $slot === $from) {
+                    $doc['groups'][$gi][1][$si] = $to;
+                    $touched = true;
+                    $moved++;
+                }
+            }
+        }
+        if ($touched) {
+            unset($doc['_id']);
+            $doc['updatedAt'] = gmdate('Y-m-d H:i:s');
+            ghostd_put($k, $doc);
+        }
+    }
+    return $moved;
+}
+
+/**
+ * Remove a document outright.
+ *
+ * db.php has ghostd_unset_path for a field; a role IS a document, so removing
+ * one needs this. It goes through the same write guard as every other write.
+ */
+function ghostd_doc_delete(string $id): bool
+{
+    ghostd_guard_write();
+    $bulk = new MongoDB\Driver\BulkWrite();
+    $bulk->delete(['_id' => $id], ['limit' => 1]);
+    $res = ghostd_manager()->executeBulkWrite(ghostd_ns(), $bulk);
+    return $res->getDeletedCount() > 0;
+}
+
+// ---------------------------------------------------------------------------
+// The default loadout, in the shape a config file writes it.
+//
+// WHY THE CONFIG FORM AND NOT JSON. The array is copied out of a mission's
+// config_*.hpp and pasted back into one; showing it in braces means copy and
+// paste both work without anybody editing brackets. JSON is accepted too, so a
+// paste from getUnitLoadout's output is not rejected.
+// ---------------------------------------------------------------------------
+
+/** A nested array of strings and numbers, written the way a config file does. */
+function ghostd_sqf_encode($v, int $depth = 0): string
+{
+    if (is_array($v)) {
+        $flat = true;
+        foreach ($v as $x) {
+            if (is_array($x)) { $flat = false; break; }
+        }
+        $parts = [];
+        foreach ($v as $x) {
+            $parts[] = ghostd_sqf_encode($x, $depth + 1);
+        }
+        // A row of plain values stays on its line; a list that holds lists is
+        // broken up, so a loadout reads as one line per slot.
+        if ($flat || $depth > 1) {
+            return '{' . implode(',', $parts) . '}';
+        }
+        $pad = str_repeat('    ', $depth + 1);
+        return "{\n" . $pad . implode(",\n" . $pad, $parts) . "\n" . str_repeat('    ', $depth) . '}';
+    }
+    if (is_bool($v)) {
+        return $v ? 'true' : 'false';
+    }
+    if (is_int($v) || is_float($v)) {
+        return (string) $v;
+    }
+    return '"' . str_replace('"', '""', (string) $v) . '"';
+}
+
+/**
+ * The same text back into an array.
+ *
+ * Braces become brackets and the whole thing goes through the JSON parser -
+ * which is exact for what a loadout holds (strings, numbers and lists) and
+ * refuses anything it is not, rather than half-parsing it. A brace inside a
+ * string would break that, so strings are lifted out first.
+ */
+function ghostd_sqf_decode(string $text): array
+{
+    $text = trim($text);
+    if ($text === '') {
+        return [];
+    }
+
+    // Config files double a quote to escape it; JSON backslashes it.
+    $strings = [];
+    $lifted = preg_replace_callback('/"((?:[^"]|"")*)"/', static function ($m) use (&$strings) {
+        $strings[] = str_replace('""', '"', $m[1]);
+        return "\x01" . (count($strings) - 1) . "\x01";
+    }, $text);
+    if ($lifted === null) {
+        throw new RuntimeException('That loadout has an unclosed quote.');
+    }
+
+    $lifted = strtr($lifted, ['{' => '[', '}' => ']']);
+    // Comments, and the trailing semicolon a config line carries.
+    $lifted = preg_replace('#//[^\n]*#', '', $lifted) ?? $lifted;
+    $lifted = preg_replace('#/\*.*?\*/#s', '', $lifted) ?? $lifted;
+    $lifted = trim($lifted);
+    $lifted = rtrim($lifted, "; \t\n\r");
+    // A trailing comma before a closing bracket is legal in a config and not in
+    // JSON, and it is the single most common thing to be left behind by a cut.
+    $lifted = preg_replace('/,\s*([\]])/', '$1', $lifted) ?? $lifted;
+
+    $lifted = preg_replace_callback('/\x01(\d+)\x01/', static function ($m) use ($strings) {
+        return json_encode($strings[(int) $m[1]], JSON_UNESCAPED_SLASHES);
+    }, $lifted);
+
+    $out = json_decode((string) $lifted, true);
+    if (!is_array($out)) {
+        throw new RuntimeException('That is not a loadout array. It should start with { and end with } '
+            . '(or [ and ]) and hold only classnames, numbers and nested lists. '
+            . (json_last_error() !== JSON_ERROR_NONE ? json_last_error_msg() . '.' : ''));
+    }
+    return $out;
+}
+
+/**
+ * What a loadout actually puts on a man, in English.
+ *
+ * The array is unreadable and always will be; this is the check that the paste
+ * went in the right way round. The order is getUnitLoadout's, which is the
+ * order the config writes.
+ */
+function ghostd_loadout_summary(array $l): array
+{
+    $name = static function ($x) {
+        if (is_array($x)) {
+            return trim((string) ($x[0] ?? ''));
+        }
+        return trim((string) $x);
+    };
+    $slots = [
+        0 => 'Primary', 1 => 'Secondary', 2 => 'Handgun', 3 => 'Uniform',
+        4 => 'Vest', 5 => 'Backpack', 6 => 'Headgear', 7 => 'Facewear',
+        8 => 'Binoculars', 9 => 'Linked items',
+    ];
+    $out = [];
+    foreach ($slots as $i => $label) {
+        if (!array_key_exists($i, $l)) {
+            continue;
+        }
+        if ($i === 9) {
+            $items = array_values(array_filter(array_map('strval', (array) $l[9]), static fn($x) => $x !== ''));
+            if ($items !== []) {
+                $out[] = [$label, implode(', ', $items)];
+            }
+            continue;
+        }
+        $n = $name($l[$i]);
+        if ($n === '') {
+            continue;
+        }
+        // A container slot carries what is in it; say how much rather than list it.
+        $extra = '';
+        if (in_array($i, [3, 4, 5], true) && is_array($l[$i]) && is_array($l[$i][1] ?? null)) {
+            $c = count($l[$i][1]);
+            $extra = ' - ' . $c . ' item' . ($c === 1 ? '' : 's') . ' in it';
+        }
+        $out[] = [$label, $n . $extra];
+    }
+    return $out;
+}
