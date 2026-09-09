@@ -2,21 +2,16 @@
 /**
  * The site's colour schemes come from the unit's TAC//PAD schemes.
  *
- * ONE SET OF COLOURS FOR THE UNIT (user, 2026-09-09). <unit>.schemes is what
- * the TAC//PAD is painted with in game; the site had five presets of its own
- * with no relation to it, so the same unit looked like two different products.
- * The document is the list now, and the site's own presets are only the
- * fallback for a unit that has not written one.
+ * THE DOCUMENT IS THE LIST. <unit>.schemes is what the TAC//PAD is painted
+ * with in game and what the site is painted with here. There is no list in this
+ * file: a scheme the site knows about and the document does not is exactly the
+ * drift this is meant to remove.
  *
- * A SCHEME IS THREE COLOURS - ground, ink, accent - because that is what the
- * game stores. The site needs six, so panel, line and hot are derived from
- * those three the same way the branding override derives them: shade the
- * ground for panels and lines, and keep the site's warning red, which is a
- * signal rather than a style.
+ * A scheme stores ground, ink and accent. The site needs a few more - panel,
+ * line, dim - so those are shaded from the three rather than stored.
  *
- * THE BRANDING OVERRIDE STILL WINS. ghostd_branding_css() is emitted after
- * these and is at least as specific, so a unit that has set its own colours
- * keeps them whatever scheme is picked.
+ * The branding override still wins: it is emitted after these and is at least
+ * as specific.
  */
 
 declare(strict_types=1);
@@ -24,26 +19,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/branding.php';
-
-/**
- * THE GAME'S OWN SIX, for a unit with no schemes document.
- *
- * Taken from ghostD_tacpad_fnc_theme - the same ids, the same names and the
- * same colours the TAC//PAD paints itself with, converted from its 0-1 RGB to
- * hex. The site had five presets of its own invention; a unit looking at the
- * pad and the site should not be looking at two different products.
- *
- * If a colour changes in fnc_theme, change it here. Nothing checks that they
- * agree, which is exactly why the unit's <unit>.schemes document beats both.
- */
-const GHOSTD_GAME_SCHEMES = [
-    'light'      => ['name' => 'LIGHT',       'ground' => '#f3f2f2', 'ink' => '#201e1d', 'accent' => '#ec3013'],
-    'olive'      => ['name' => 'OLIVE',       'ground' => '#e8e7e2', 'ink' => '#16281d', 'accent' => '#b5cc4a'],
-    'sand'       => ['name' => 'SAND',        'ground' => '#efece4', 'ink' => '#2b2119', 'accent' => '#d99427'],
-    'dark'       => ['name' => 'DARK',        'ground' => '#141514', 'ink' => '#e6e5e2', 'accent' => '#ff563c'],
-    'nightOlive' => ['name' => 'NIGHT OLIVE', 'ground' => '#101411', 'ink' => '#d9e0d4', 'accent' => '#9cb43c'],
-    'nightSand'  => ['name' => 'NIGHT SAND',  'ground' => '#161310', 'ink' => '#e5e0d6', 'accent' => '#c78221'],
-];
 
 /**
  * The unit's schemes, as [id => [name, ground, ink, accent]].
@@ -57,9 +32,7 @@ function ghostd_schemes(): array
         return $cache;
     }
 
-    // THE GAME'S SIX ARE ALWAYS THERE. The unit's document adds its own and
-    // replaces any that share an id, which is the same order the pad uses.
-    $cache = GHOSTD_GAME_SCHEMES;
+    $cache = [];
     try {
         $doc = ghostd_get(ghostd_config()['unit'] . '.schemes');
     } catch (Throwable $e) {
