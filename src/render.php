@@ -202,10 +202,7 @@ function ghostd_foot(): void
 </main>
 <?= ghostd_wiki_panel($active) ?>
 </div>
-<footer class="dim">
-  <?= h(ghostd_unit_name()) ?> - reads and writes the same MongoDB documents the
-  game server does. Every write is copied to the backup collection first.
-</footer>
+<footer class="dim"><?= h(ghostd_unit_name()) ?></footer>
 <script>
 (function () {
   var html = document.documentElement;

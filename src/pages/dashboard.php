@@ -171,9 +171,7 @@ foreach (array_slice(array_reverse($log), 0, 8) as $l) {
 
 <h2>Order of battle</h2>
 <table class="kv">
-  <tr><th>Faction</th>
-      <td><?= cell($orbat['faction'] ?? null) ?>
-      <span class="dim">- <a href="?page=orbat&amp;s=versions">set on the ORBAT page</a></span></td></tr>
+  <tr><th>Faction</th><td><?= cell($orbat['faction'] ?? null) ?></td></tr>
   <tr><th>Platoons</th><td><?= count((array) ($orbat['platoons'] ?? [])) ?></td></tr>
   <tr><th>Squads</th><td><?= count((array) ($orbat['groups'] ?? [])) ?></td></tr>
   <tr><th>Radio nets</th><td><?= count((array) ($orbat['radioNets'] ?? [])) ?></td></tr>
@@ -183,28 +181,33 @@ foreach (array_slice(array_reverse($log), 0, 8) as $l) {
       echo $slots;
   ?></td></tr>
 </table>
-<p class="dim"><a href="?page=orbat">Edit the order of battle</a> &middot;
-<a href="?page=config">Config templates</a></p>
+<p class="actions"><a class="btnlink" href="?page=orbat">ORBAT</a>
+<a class="btnlink" href="?page=config">Templates</a></p>
 
-<?php if ($lastLog !== []): ?>
+<?php if ($lastLog !== [] && ghostd_is_admin()): ?>
   <h2>Last admin actions</h2>
-  <p class="dim">From the store's own log - what the game recorded, newest first.</p>
   <table class="grid">
     <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
     <tbody>
     <?php foreach ($lastLog as $l): ?>
+      <?php
+        // POSITIONAL, not keyed: [id, when, byUid, byName, type, targetUid,
+        // target, detail] - the same row the in-game log reads. Reading it by
+        // string key gave a table of empty rows.
+        $when   = (string) ($l[1] ?? '');
+        $who    = (string) ($l[3] ?? '');
+        $type   = (string) ($l[4] ?? '');
+        $target = (string) ($l[6] ?? '');
+        $detail = (string) ($l[7] ?? '');
+      ?>
       <tr>
-        <td class="dim"><?= h((string) ($l['date'] ?? $l['at'] ?? '')) ?></td>
-        <td><?= h((string) ($l['byName'] ?? $l['by'] ?? '')) ?></td>
-        <td><?= h((string) ($l['detail'] ?? $l['text'] ?? $l['type'] ?? '')) ?></td>
+        <td class="dim"><?= h($when) ?></td>
+        <td><?= h($who) ?></td>
+        <td><?= h(trim($type . ' ' . $target . ' ' . $detail)) ?></td>
       </tr>
     <?php endforeach; ?>
     </tbody>
   </table>
 <?php endif; ?>
-
-<p class="note">The game rewrites the store when an admin presses SAVE and at
-mission end, so an edit made here mid-mission is lost. Change the roster in
-game, or between sessions.</p>
 <?php
 ghostd_foot();
