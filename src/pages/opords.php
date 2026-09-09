@@ -45,23 +45,13 @@ try {
     $dbErr = $e->getMessage();
 }
 
-$current = '';
-try {
-    $settings = ghostd_get(ghostd_config()['unit'] . '.settings');
-    $items = (is_array($settings['items'] ?? null)) ? $settings['items'] : $settings;
-    $current = (string) ($items['currentOpord'] ?? '');
-} catch (Throwable $e) {
-    // Not knowing which is current is cosmetic.
-}
-
 ghostd_head('Operation orders', 'opords');
 if ($msg !== null) { ghostd_flash('good', $msg); }
 if ($err !== null) { ghostd_flash('bad', $err); }
 if ($dbErr !== null) { ghostd_flash('bad', 'Orders could not be read: ' . $dbErr); ghostd_foot(); return; }
 ?>
-<p class="note">One document per order - <code><?= h(ghostd_config()['unit']) ?>.opord.&lt;id&gt;</code>.
-The game reads them at mission start, and the <strong>currentOpord</strong>
-setting decides which one the compose cards fill from.</p>
+<p class="dim">The mission picks which order is on, with
+<code>currentOpord</code> in its config.</p>
 
 <details class="card" <?= $ids === [] ? 'open' : '' ?>>
   <summary><strong>Start a new order</strong></summary>
@@ -79,7 +69,7 @@ setting decides which one the compose cards fill from.</p>
   <p class="dim">No orders yet.</p>
 <?php else: ?>
 <table class="grid">
-  <thead><tr><th>Id</th><th>Title</th><th>Date</th><th>Written</th><th>Current</th></tr></thead>
+  <thead><tr><th>Id</th><th>Title</th><th>Date</th><th>Written</th></tr></thead>
   <tbody>
   <?php foreach ($ids as $oid): ?>
     <?php
@@ -98,7 +88,6 @@ setting decides which one the compose cards fill from.</p>
       <td><a href="?page=opord&amp;id=<?= urlencode($oid) ?>"><?= h((string) ($o['header']['title'] ?? '')) ?></a></td>
       <td><?= h((string) ($o['header']['date'] ?? '')) ?></td>
       <td class="dim"><?= $done ?>/<?= $total ?> fields</td>
-      <td><?= $current === $oid ? '<span class="pill">current</span>' : '<span class="dim">-</span>' ?></td>
     </tr>
   <?php endforeach; ?>
   </tbody>

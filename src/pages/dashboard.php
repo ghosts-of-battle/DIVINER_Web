@@ -169,21 +169,6 @@ foreach (array_slice(array_reverse($log), 0, 8) as $l) {
   <tr><th>Mongo docs</th><td><?= count(ghostd_keys()) ?> in total</td></tr>
 </table>
 
-<h2>Order of battle</h2>
-<table class="kv">
-  <tr><th>Faction</th><td><?= cell($orbat['faction'] ?? null) ?></td></tr>
-  <tr><th>Platoons</th><td><?= count((array) ($orbat['platoons'] ?? [])) ?></td></tr>
-  <tr><th>Squads</th><td><?= count((array) ($orbat['groups'] ?? [])) ?></td></tr>
-  <tr><th>Radio nets</th><td><?= count((array) ($orbat['radioNets'] ?? [])) ?></td></tr>
-  <tr><th>Slots in total</th><td><?php
-      $slots = 0;
-      foreach ((array) ($orbat['groups'] ?? []) as $g) { $slots += count((array) ($g[1] ?? [])); }
-      echo $slots;
-  ?></td></tr>
-</table>
-<p class="actions"><a class="btnlink" href="?page=orbat">ORBAT</a>
-<a class="btnlink" href="?page=config">Templates</a></p>
-
 <?php if ($lastLog !== [] && ghostd_is_admin()): ?>
   <h2>Last admin actions</h2>
   <table class="grid">

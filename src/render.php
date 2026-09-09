@@ -8,14 +8,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/wiki.php';
 require_once __DIR__ . '/branding.php';
 
-/** The colour schemes offered in the bar. Keys match [data-theme] in style.css. */
-const GHOSTD_THEMES = [
-    'ghost'    => 'Ghost',
-    'phosphor' => 'Phosphor',
-    'amber'    => 'Amber',
-    'slate'    => 'Slate',
-    'daylight' => 'Daylight',
-];
+// The colour schemes are the unit's own - <unit>.schemes, the same document the
+// TAC//PAD is painted from in game. See src/schemes.php.
+require_once __DIR__ . '/schemes.php';
 
 function h(?string $s): string
 {
@@ -128,7 +123,7 @@ function ghostd_head(string $title, string $active = ''): void
     // have gone - a warning on every "Not configured" page.
     $who = session_status() === PHP_SESSION_ACTIVE ? ghostd_identity() : null;
 
-    $default = ghostd_config()['theme'];
+    $default = ghostd_default_theme();
     ?><!doctype html>
 <html lang="en" data-theme="<?= h($default) ?>">
 <head>
@@ -136,7 +131,7 @@ function ghostd_head(string $title, string $active = ''): void
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= h($title) ?> - <?= h(ghostd_unit_name()) ?></title>
 <link rel="stylesheet" href="style.css">
-<?= ghostd_branding_css() ?>
+<?= ghostd_schemes_css() ?><?= ghostd_branding_css() ?>
 <script>
 /* Applied before first paint, or the page flashes the default scheme first. */
 (function () {
@@ -177,7 +172,7 @@ function ghostd_head(string $title, string $active = ''): void
   <label class="themepick" title="Colour scheme">
     <span class="vh">Colour scheme</span>
     <select id="themepick">
-      <?php foreach (GHOSTD_THEMES as $k => $label): ?>
+      <?php foreach (ghostd_themes() as $k => $label): ?>
         <option value="<?= h($k) ?>"><?= h($label) ?></option>
       <?php endforeach; ?>
     </select>
