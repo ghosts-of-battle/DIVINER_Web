@@ -644,3 +644,10 @@ textarea.short { min-height: 5rem; }
 }
 .editor-status.ok { color: var(--accent); }
 .editor-status.bad { color: var(--hot); }
+
+/* A ticket thread: each entry a card, its header quiet so the text leads. */
+.reply { padding: var(--s3) var(--s4); }
+.reply p { max-width: none; margin: 0; }
+.replyhead { font-size: .74rem; margin-bottom: var(--s2) !important; }
+.replyhead strong { color: var(--ink); margin-right: var(--s2); }
+p.dim a.on { color: var(--accent); }
