@@ -84,12 +84,18 @@ time, switched on or off.</p>
   </label>
 
   <h2>Layout</h2>
-  <?php foreach (GHOSTD_HOME_LAYOUTS as $lk => [$llabel, $ldesc]): ?>
-    <label class="inlinelabel">
-      <input type="radio" name="layout" value="<?= h($lk) ?>" <?= $home['layout'] === $lk ? 'checked' : '' ?>>
-      <strong><?= h($llabel) ?></strong> <span class="dim"><?= h($ldesc) ?></span>
-    </label>
-  <?php endforeach; ?>
+  <div class="layoutpick">
+    <?php foreach (GHOSTD_HOME_LAYOUTS as $lk => [$llabel, $ldesc]): ?>
+      <label class="layoutopt">
+        <?= ghostd_home_wireframe($lk) ?>
+        <span class="layoutname">
+          <input type="radio" name="layout" value="<?= h($lk) ?>" <?= $home['layout'] === $lk ? 'checked' : '' ?>>
+          <strong><?= h($llabel) ?></strong>
+        </span>
+        <span class="dim"><?= h($ldesc) ?></span>
+      </label>
+    <?php endforeach; ?>
+  </div>
 
   <label>Position <span class="dim">where the card sits across the window, for any layout</span></label>
   <div class="fieldrow">

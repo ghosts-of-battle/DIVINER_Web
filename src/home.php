@@ -196,3 +196,59 @@ function ghostd_html_clean(string $html): string
     }
     return trim($out);
 }
+
+/**
+ * A wireframe of one layout, as inline SVG, for the picker on Web settings.
+ * A circle is the logo, a short bar the name, long bars the words, two small
+ * boxes the buttons - the same five parts the real page has, where that
+ * layout puts them. Coloured by the wf-* classes in style.css, so it follows
+ * the theme like everything else.
+ */
+function ghostd_home_wireframe(string $layout): string
+{
+    $rect = static fn(float $x, float $y, float $w, float $h, string $cls): string =>
+        '<rect x="' . $x . '" y="' . $y . '" width="' . $w . '" height="' . $h . '" rx="1" class="' . $cls . '"/>';
+    $circle = static fn(float $cx, float $cy, float $r): string =>
+        '<circle cx="' . $cx . '" cy="' . $cy . '" r="' . $r . '" class="wf-shape"/>';
+    $line = static fn(float $x1, float $y1, float $x2, float $y2): string =>
+        '<line x1="' . $x1 . '" y1="' . $y1 . '" x2="' . $x2 . '" y2="' . $y2 . '" class="wf-rule"/>';
+    /** Words: bars of text, the last one short. */
+    $words = static function (float $x, float $y, float $w, int $n) use ($rect): string {
+        $s = '';
+        for ($i = 0; $i < $n; $i++) {
+            $s .= $rect($x, $y + $i * 6, $i === $n - 1 ? $w * 0.6 : $w, 2.5, 'wf-line');
+        }
+        return $s;
+    };
+    /** The two buttons side by side, centred on $cx. */
+    $buttons = static fn(float $cx, float $y): string =>
+        $rect($cx - 36, $y, 34, 8, 'wf-btn') . $rect($cx + 2, $y, 34, 8, 'wf-alt');
+
+    $card = $rect(4, 4, 112, 72, 'wf-card');
+    switch ($layout) {
+        case 'split':
+            $body = $card . $circle(28, 22, 7) . $rect(16, 34, 24, 3, 'wf-shape')
+                  . $rect(14, 46, 28, 7, 'wf-btn') . $rect(14, 57, 28, 7, 'wf-alt')
+                  . $line(50, 12, 50, 68) . $words(56, 16, 50, 5);
+            break;
+        case 'splitleft':
+            $body = $card . $words(14, 16, 50, 5) . $line(70, 12, 70, 68)
+                  . $circle(92, 22, 7) . $rect(80, 34, 24, 3, 'wf-shape')
+                  . $rect(78, 46, 28, 7, 'wf-btn') . $rect(78, 57, 28, 7, 'wf-alt');
+            break;
+        case 'banner':
+            $body = $card . $circle(20, 18, 7) . $rect(32, 14, 38, 3, 'wf-shape') . $rect(32, 20, 26, 2, 'wf-line')
+                  . $line(12, 30, 108, 30) . $words(14, 37, 92, 3) . $buttons(60, 62);
+            break;
+        case 'cards':
+            $body = $rect(4, 4, 112, 24, 'wf-card') . $circle(60, 12, 5) . $rect(46, 21, 28, 3, 'wf-shape')
+                  . $rect(4, 32, 112, 26, 'wf-card') . $words(14, 38, 92, 3)
+                  . $rect(4, 62, 112, 14, 'wf-card') . $buttons(60, 65);
+            break;
+        default:    // stack
+            $body = $card . $circle(60, 18, 7) . $rect(42, 30, 36, 3, 'wf-shape')
+                  . $words(14, 40, 92, 3) . $buttons(60, 62);
+    }
+    return '<svg class="wireframe" viewBox="0 0 120 80" width="120" height="80" aria-hidden="true" focusable="false">'
+         . $body . '</svg>';
+}

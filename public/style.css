@@ -935,3 +935,23 @@ td.rowacts > *:last-child { margin-right: 0; }
 .l-cards .homewords > .homeblock:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 .l-cards .homeactions { padding: var(--s4) var(--s6); }
 .l-cards .gatehelp { margin: 0; }
+
+/* Web settings: the layout picker, each layout as a wireframe. The SVG is
+   drawn by ghostd_home_wireframe(); these classes colour its parts. */
+.layoutpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--s3); margin: var(--s2) 0 var(--s3); }
+.layoutopt {
+  display: grid; gap: var(--s2); padding: var(--s3); cursor: pointer; text-align: center;
+  border: 1px solid var(--line-dim); border-radius: var(--r); background: var(--panel);
+}
+.layoutopt:hover { border-color: var(--line); }
+.layoutopt:has(input:checked) { border-color: var(--accent); background: var(--well); }
+.layoutopt .wireframe { width: 100%; height: auto; display: block; }
+.layoutopt .layoutname { display: flex; align-items: center; justify-content: center; gap: var(--s2); }
+.layoutopt input[type=radio] { width: auto; min-width: 0; margin: 0; }
+.layoutopt .dim { font-size: .74rem; line-height: 1.4; }
+.wireframe .wf-card { fill: var(--well); stroke: var(--line); stroke-width: 1; }
+.wireframe .wf-shape { fill: var(--dim); }
+.wireframe .wf-line { fill: var(--faint); }
+.wireframe .wf-rule { stroke: var(--line); stroke-width: 1; }
+.wireframe .wf-btn { fill: var(--accent); }
+.wireframe .wf-alt { fill: none; stroke: var(--line); stroke-width: 1; }
