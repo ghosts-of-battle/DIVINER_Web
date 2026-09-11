@@ -93,6 +93,17 @@ function ghostd_head_sent(?bool $set = null): bool
     return $sent;
 }
 
+/**
+ * A public file's URL with its modification time on it, so a changed
+ * stylesheet or script is fetched rather than served from the browser's
+ * cache - the home page went live with the old style.css for exactly that.
+ */
+function ghostd_asset(string $file): string
+{
+    $t = @filemtime(__DIR__ . '/../public/' . $file);
+    return $file . ($t ? '?v=' . $t : '');
+}
+
 function ghostd_head(string $title, string $active = ''): void
 {
     ghostd_active($active);
@@ -126,13 +137,14 @@ function ghostd_head(string $title, string $active = ''): void
     $who = session_status() === PHP_SESSION_ACTIVE ? ghostd_identity() : null;
 
     $default = ghostd_default_theme();
+    $gate = $active === '' || $active === 'home';   // no bar, no title: the card is the page
     ?><!doctype html>
 <html lang="en" data-theme="<?= h($default) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= h($title) ?> - <?= h(ghostd_unit_name()) ?></title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="<?= h(ghostd_asset('style.css')) ?>">
 <?= ghostd_schemes_css() ?><?= ghostd_branding_css() ?>
 <script>
 /* Applied before first paint, or the page flashes the default scheme first. */
@@ -147,8 +159,8 @@ function ghostd_head(string $title, string $active = ''): void
 })();
 </script>
 </head>
-<body class="p-<?= $active !== '' ? h($active) : 'gate' ?><?= ($active === '' && ghostd_brand_asset('background') !== null) ? ' hasbg' : '' ?>">
-<?php if ($active === '' && ghostd_brand_asset('background') !== null): ?>
+<body class="p-<?= $gate ? 'gate' : h($active) ?><?= $active === 'home' ? ' p-home' : '' ?><?= ($gate && ghostd_brand_asset('background') !== null) ? ' hasbg' : '' ?>">
+<?php if ($gate && ghostd_brand_asset('background') !== null): ?>
 <style>
   body.hasbg {
     background-image: url("<?= ghostd_asset_url('background') ?>");
@@ -231,7 +243,7 @@ function ghostd_foot(): void
   }
 })();
 </script>
-<script src="editor.js"></script>
+<script src="<?= h(ghostd_asset('editor.js')) ?>"></script>
 </body>
 </html><?php
 }

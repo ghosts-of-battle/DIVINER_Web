@@ -27,6 +27,22 @@ const GHOSTD_HOME_BLOCKS = [
     'about' => 'About',
 ];
 
+/** The layouts an admin may pick: key => [label, what it looks like]. The key is the card's l-* class. */
+const GHOSTD_HOME_LAYOUTS = [
+    'stack'  => ['Stacked', 'the logo and name on top, the words under them, the buttons at the bottom'],
+    'split'     => ['Split, words right', 'the logo, name and buttons in a column on the left, the words in a box on the right'],
+    'splitleft' => ['Split, words left', 'the words in a box on the left, the logo, name and buttons in a column on the right'],
+    'banner' => ['Banner', 'the logo beside the name across the top, the words below, the buttons at the bottom'],
+    'cards'  => ['Cards', 'the logo and name in one panel, the words in a second, the buttons in a third'],
+];
+
+/** Where the card sits across the window, for any layout: key => label. */
+const GHOSTD_HOME_ALIGNS = ['left' => 'Left', 'center' => 'Centre', 'right' => 'Right'];
+
+/** Width of the page as a percentage of the window, and its height. */
+const GHOSTD_HOME_WIDTH  = ['min' => 30, 'max' => 100, 'default' => 60];
+const GHOSTD_HOME_HEIGHT = ['min' => 0,  'max' => 100, 'default' => 0];   // 0: as tall as the words
+
 /** Longest HTML one block may hold; a page, not a wiki. */
 const GHOSTD_HOME_BLOCK_MAX = 20000;
 
@@ -41,8 +57,9 @@ const GHOSTD_HTML_TAGS = [
 const GHOSTD_HTML_VOID = ['br', 'hr', 'img'];
 
 /**
- * The home document with defaults filled in:
- * ['enabled' => bool, 'headings' => [key => string], 'blocks' => [key => html]].
+ * The home document with defaults filled in: ['enabled' => bool,
+ * 'layout' => key, 'align' => left|center|right, 'width' => %, 'height' => %, 'headings' => [key =>
+ * string], 'blocks' => [key => html]].
  * Never fatal - a visitor must reach the sign-in page even if the database
  * is down, so a failed read is an empty, disabled page.
  */
@@ -52,7 +69,15 @@ function ghostd_home(): array
     if ($home !== null) {
         return $home;
     }
-    $home = ['enabled' => false, 'headings' => [], 'blocks' => []];
+    $home = [
+        'enabled'  => false,
+        'layout'   => 'stack',
+        'align'    => 'center',
+        'width'    => GHOSTD_HOME_WIDTH['default'],
+        'height'   => GHOSTD_HOME_HEIGHT['default'],
+        'headings' => [],
+        'blocks'   => [],
+    ];
     foreach (GHOSTD_HOME_BLOCKS as $key => $label) {
         $home['headings'][$key] = $label;
         $home['blocks'][$key]   = '';
@@ -66,6 +91,14 @@ function ghostd_home(): array
         return $home;
     }
     $home['enabled'] = (bool) ($doc['enabled'] ?? false);
+    if (isset(GHOSTD_HOME_LAYOUTS[(string) ($doc['layout'] ?? '')])) {
+        $home['layout'] = (string) $doc['layout'];
+    }
+    if (isset(GHOSTD_HOME_ALIGNS[(string) ($doc['align'] ?? '')])) {
+        $home['align'] = (string) $doc['align'];
+    }
+    $home['width']  = max(GHOSTD_HOME_WIDTH['min'],  min(GHOSTD_HOME_WIDTH['max'],  (int) ($doc['width']  ?? $home['width'])));
+    $home['height'] = max(GHOSTD_HOME_HEIGHT['min'], min(GHOSTD_HOME_HEIGHT['max'], (int) ($doc['height'] ?? $home['height'])));
     foreach (GHOSTD_HOME_BLOCKS as $key => $label) {
         if (isset($doc['headings'][$key]) && is_string($doc['headings'][$key])) {
             $home['headings'][$key] = $doc['headings'][$key];

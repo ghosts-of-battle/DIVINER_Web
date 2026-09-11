@@ -50,7 +50,7 @@ if ($msg !== null) { ghostd_flash('good', $msg); }
 if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
 <?php require __DIR__ . '/_versions.php'; ?>
-<link rel="stylesheet" href="wysi.min.css">
+<link rel="stylesheet" href="<?= h(ghostd_asset('wysi.min.css')) ?>">
 
 <form method="post" class="fields">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
@@ -82,7 +82,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 
   <div class="actions"><button type="submit">Save welcome screen</button></div>
 </form>
-<script src="wysi.min.js"></script>
-<script src="wysi-site.js"></script>
+<script src="<?= h(ghostd_asset('wysi.min.js')) ?>"></script>
+<script src="<?= h(ghostd_asset('wysi-site.js')) ?>"></script>
 <?php
 ghostd_foot();

@@ -30,7 +30,18 @@ $err = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ghostd_csrf_check();
     try {
-        $doc = ['section' => 'web', 'enabled' => isset($_POST['enabled']), 'headings' => [], 'blocks' => []];
+        $layout = (string) ($_POST['layout'] ?? 'stack');
+        $align  = (string) ($_POST['align'] ?? 'center');
+        $doc = [
+            'section'  => 'web',
+            'enabled'  => isset($_POST['enabled']),
+            'layout'   => isset(GHOSTD_HOME_LAYOUTS[$layout]) ? $layout : 'stack',
+            'align'    => isset(GHOSTD_HOME_ALIGNS[$align]) ? $align : 'center',
+            'width'    => max(GHOSTD_HOME_WIDTH['min'],  min(GHOSTD_HOME_WIDTH['max'],  (int) ($_POST['width']  ?? GHOSTD_HOME_WIDTH['default']))),
+            'height'   => max(GHOSTD_HOME_HEIGHT['min'], min(GHOSTD_HOME_HEIGHT['max'], (int) ($_POST['height'] ?? GHOSTD_HOME_HEIGHT['default']))),
+            'headings' => [],
+            'blocks'   => [],
+        ];
         foreach (GHOSTD_HOME_BLOCKS as $key => $label) {
             $doc['headings'][$key] = mb_substr(trim((string) ($_POST['h_' . $key] ?? '')), 0, 80);
             $html = (string) ($_POST['b_' . $key] ?? '');
@@ -61,7 +72,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 and logo from Branding. <a href="?page=home&amp;preview=1">Preview</a> it any
 time, switched on or off.</p>
 
-<link rel="stylesheet" href="wysi.min.css">
+<link rel="stylesheet" href="<?= h(ghostd_asset('wysi.min.css')) ?>">
 <form method="post" class="card fields">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
 
@@ -71,6 +82,38 @@ time, switched on or off.</p>
     Show the home page before sign-in
     <span class="dim">off: visitors land on the sign-in card, as before</span>
   </label>
+
+  <h2>Layout</h2>
+  <?php foreach (GHOSTD_HOME_LAYOUTS as $lk => [$llabel, $ldesc]): ?>
+    <label class="inlinelabel">
+      <input type="radio" name="layout" value="<?= h($lk) ?>" <?= $home['layout'] === $lk ? 'checked' : '' ?>>
+      <strong><?= h($llabel) ?></strong> <span class="dim"><?= h($ldesc) ?></span>
+    </label>
+  <?php endforeach; ?>
+
+  <label>Position <span class="dim">where the card sits across the window, for any layout</span></label>
+  <div class="fieldrow">
+    <?php foreach (GHOSTD_HOME_ALIGNS as $ak => $alabel): ?>
+      <label class="inlinelabel">
+        <input type="radio" name="align" value="<?= h($ak) ?>" <?= $home['align'] === $ak ? 'checked' : '' ?>>
+        <?= h($alabel) ?>
+      </label>
+    <?php endforeach; ?>
+  </div>
+
+  <label for="width">Width <span class="dim">of the window, in percent - small screens always get the full width</span></label>
+  <div class="scalerow">
+    <input type="range" id="width" name="width" min="<?= GHOSTD_HOME_WIDTH['min'] ?>" max="<?= GHOSTD_HOME_WIDTH['max'] ?>" step="5"
+           value="<?= (int) $home['width'] ?>" oninput="this.nextElementSibling.value = this.value + '%'">
+    <output><?= (int) $home['width'] ?>%</output>
+  </div>
+
+  <label for="height">Height <span class="dim">of the window, in percent - 0 is as tall as the words; taller pins the buttons to the bottom</span></label>
+  <div class="scalerow">
+    <input type="range" id="height" name="height" min="<?= GHOSTD_HOME_HEIGHT['min'] ?>" max="<?= GHOSTD_HOME_HEIGHT['max'] ?>" step="5"
+           value="<?= (int) $home['height'] ?>" oninput="this.nextElementSibling.value = this.value == 0 ? 'fit' : this.value + '%'">
+    <output><?= (int) $home['height'] === 0 ? 'fit' : (int) $home['height'] . '%' ?></output>
+  </div>
 
   <?php foreach (GHOSTD_HOME_BLOCKS as $key => $label): ?>
     <h2><?= h($label) ?></h2>
@@ -86,7 +129,7 @@ time, switched on or off.</p>
   file's link from Media.</p>
   <button type="submit">Save</button>
 </form>
-<script src="wysi.min.js"></script>
-<script src="wysi-site.js"></script>
+<script src="<?= h(ghostd_asset('wysi.min.js')) ?>"></script>
+<script src="<?= h(ghostd_asset('wysi-site.js')) ?>"></script>
 <?php
 ghostd_foot();

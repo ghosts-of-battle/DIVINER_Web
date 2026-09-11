@@ -856,19 +856,82 @@ td.rowacts > *:last-child { margin-right: 0; }
 .wysi-wrapper .wysi-editor img { max-width: 100%; height: auto; }
 .wysi-wrapper .wysi-listbox, .wysi-wrapper .wysi-popover { background-color: var(--panel); color: var(--ink); }
 
-/* The public home page: the gate's look, twice the width, blocks below the mark. */
-.p-gate main:has(> .home) { width: 60%; max-width: 54rem; }
-@media (max-width: 60rem) { .p-gate main:has(> .home) { width: 92%; } }
-.home { display: grid; gap: var(--s3); }
-.homeactions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s3); margin-top: var(--s4); }
-.homeactions .applybtn { margin-top: 0; padding: var(--s2) var(--s4); }
-.homeblock { text-align: left; padding: var(--s4) var(--s5); }
-.homeblock h2 { margin: 0 0 var(--s3); font-size: .82rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
-.homebody { color: var(--ink); line-height: 1.6; font-size: .92rem; }
-.homebody p { max-width: none; }
+/* The public home page. One card, as wide as Web settings says (a percent of
+   the window - small screens always get 92%), as tall as it says (a
+   min-height the page writes in its own <style>), in one of four layouts by
+   its l-* class. The card is a column, the words take the spare height, so
+   a tall card pins Sign in and Apply to the bottom. */
+.p-home main { width: 60%; }
+@media (max-width: 60rem) { .p-home main { width: 92% !important; } }
+.home { display: flex; flex-direction: column; }
+.home .gatemark { margin-bottom: var(--s2); }
+.homewords { flex: 1; }
+.homeblock {
+  text-align: left; margin-top: var(--s5); padding-top: var(--s4);
+  border-top: 1px solid var(--line-dim);
+}
+.homeblock h2 { margin: 0 0 var(--s3); font-size: .76rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.homebody { color: var(--ink); line-height: 1.65; font-size: .95rem; }
+.homebody p { max-width: none; margin: 0 0 var(--s3); }
+.homebody p:last-child { margin-bottom: 0; }
 .homebody img { max-width: 100%; height: auto; }
 .homebody a { color: var(--accent); }
-.homebody h1, .homebody h2, .homebody h3, .homebody h4 { color: var(--ink); margin: var(--s3) 0 var(--s2); text-transform: none; letter-spacing: 0; }
+.homebody h1, .homebody h2, .homebody h3, .homebody h4 { color: var(--ink); margin: var(--s3) 0 var(--s2); font-size: 1.05rem; text-transform: none; letter-spacing: 0; }
+.homebody ul, .homebody ol { margin: 0 0 var(--s3); padding-left: 1.4rem; }
 .homebody blockquote { margin: var(--s3) 0; padding: var(--s2) var(--s4); border-left: 3px solid var(--accent); color: var(--dim); }
 .homebody table { border-collapse: collapse; }
 .homebody th, .homebody td { border: 1px solid var(--line); padding: .3rem .6rem; }
+.homeactions {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s3);
+  margin-top: var(--s5); padding-top: var(--s5); border-top: 1px solid var(--line-dim);
+}
+.homeactions .btnlink { min-width: 12rem; text-align: center; padding: var(--s3) var(--s4); }
+.homeactions .btnlink.alt { background: transparent; color: var(--ink); border-color: var(--line); }
+.homeactions .btnlink.alt:hover { border-color: var(--accent); color: var(--accent); }
+.home .gatehelp { margin-top: var(--s4); }
+
+/* Split: the mark and the buttons stack in one column, the words fill the
+   other - words right (l-split) or words left (l-splitleft). Below 60rem
+   both are the stacked layout: two columns on a phone is two unreadable
+   columns. */
+@media (min-width: 60rem) {
+  .home.l-split, .home.l-splitleft {
+    display: grid; grid-template-rows: auto auto 1fr;
+    column-gap: var(--s6); align-items: start;
+  }
+  .home.l-split     { grid-template-columns: minmax(15rem, 2fr) 3fr; }
+  .home.l-splitleft { grid-template-columns: 3fr minmax(15rem, 2fr); }
+  .l-split .gatemark, .l-splitleft .gatemark { grid-row: 1; margin: 0; }
+  .l-split .homeactions, .l-splitleft .homeactions {
+    grid-row: 2; flex-direction: column; align-items: stretch;
+    margin: var(--s4) 0 0; padding: 0; border: 0;
+  }
+  .l-split .homewords, .l-splitleft .homewords { grid-row: 1 / span 3; }
+  .l-split .gatemark, .l-split .homeactions { grid-column: 1; }
+  .l-split .homewords { grid-column: 2; border-left: 1px solid var(--line-dim); padding-left: var(--s6); }
+  .l-splitleft .gatemark, .l-splitleft .homeactions { grid-column: 2; }
+  .l-splitleft .homewords { grid-column: 1; border-right: 1px solid var(--line-dim); padding-right: var(--s6); }
+  .l-split .homewords > .homeblock:first-child, .l-splitleft .homewords > .homeblock:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .l-split .gatehelp, .l-splitleft .gatehelp { grid-column: 1 / -1; }
+}
+
+/* Banner: the logo beside the name across the top, the words under a rule. */
+.l-banner .gatemark {
+  display: flex; align-items: center; gap: var(--s5); text-align: left;
+  margin: 0; padding-bottom: var(--s4); border-bottom: 1px solid var(--line-dim);
+}
+.l-banner .gatelogo { margin: 0; height: calc(var(--logo-login) * .75); flex: none; }
+.l-banner .gatename { margin: 0 0 var(--s1); }
+.l-banner .gatetag { margin: 0; }
+.l-banner .homewords > .homeblock:first-child { margin-top: var(--s4); padding-top: 0; border-top: 0; }
+
+/* Cards: the one card comes apart into three panels with the background
+   showing between them. */
+.home.l-cards { background: none; border: 0; padding: 0; box-shadow: none; gap: var(--s3); }
+.l-cards .gatemark, .l-cards .homewords, .l-cards .homeactions {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  padding: var(--s5) var(--s6); margin: 0; box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+}
+.l-cards .homewords > .homeblock:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.l-cards .homeactions { padding: var(--s4) var(--s6); }
+.l-cards .gatehelp { margin: 0; }
