@@ -834,3 +834,40 @@ td.rowacts > *:last-child { margin-right: 0; }
 .vbar { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
 .vbar a, .vbar > span.on { padding: .1rem .45rem; border-radius: 3px; }
 .vbar > span.on { background: var(--accent); color: #fff; font-weight: 600; }
+
+/* Web settings: the HTML editor (htmleditor.js). The textarea is the form
+   field; the box is what is edited. [hidden] must win over .fields textarea. */
+.hted { border: 1px solid var(--line); border-radius: var(--r); background: var(--well); margin-bottom: var(--s2); }
+.hted [hidden] { display: none !important; }
+.htedbar { display: flex; flex-wrap: wrap; gap: 2px; padding: var(--s1); border-bottom: 1px solid var(--line-dim); }
+.htedbar button {
+  background: none; color: var(--dim); border: 1px solid transparent;
+  padding: .2rem .5rem; font-size: .7rem; letter-spacing: .04em;
+}
+.htedbar button:hover { color: var(--ink); border-color: var(--line); }
+.hted.src .htedbar button:not(:last-child) { opacity: .35; }
+.htedbox { min-height: 10rem; padding: var(--s3); color: var(--ink); line-height: 1.55; outline: none; }
+.htedbox:focus { box-shadow: inset 0 0 0 1px var(--accent); }
+.htedbox img { max-width: 100%; height: auto; }
+.htedbox p { max-width: none; }
+.hted textarea.htedsrc {
+  display: block; width: 100%; min-height: 12rem; border: 0; border-radius: 0 0 var(--r) var(--r);
+  font-family: var(--mono); font-size: .82rem;
+}
+
+/* The public home page: the gate's look, twice the width, blocks below the mark. */
+.p-gate main:has(> .home) { width: 60%; max-width: 54rem; }
+@media (max-width: 60rem) { .p-gate main:has(> .home) { width: 92%; } }
+.home { display: grid; gap: var(--s3); }
+.homeactions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s3); margin-top: var(--s4); }
+.homeactions .applybtn { margin-top: 0; padding: var(--s2) var(--s4); }
+.homeblock { text-align: left; padding: var(--s4) var(--s5); }
+.homeblock h2 { margin: 0 0 var(--s3); font-size: .82rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.homebody { color: var(--ink); line-height: 1.6; font-size: .92rem; }
+.homebody p { max-width: none; }
+.homebody img { max-width: 100%; height: auto; }
+.homebody a { color: var(--accent); }
+.homebody h1, .homebody h2, .homebody h3, .homebody h4 { color: var(--ink); margin: var(--s3) 0 var(--s2); text-transform: none; letter-spacing: 0; }
+.homebody blockquote { margin: var(--s3) 0; padding: var(--s2) var(--s4); border-left: 3px solid var(--accent); color: var(--dim); }
+.homebody table { border-collapse: collapse; }
+.homebody th, .homebody td { border: 1px solid var(--line); padding: .3rem .6rem; }

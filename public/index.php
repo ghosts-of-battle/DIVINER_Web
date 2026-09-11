@@ -146,6 +146,23 @@ if ($page === 'logout') {
     exit;
 }
 
+// ---- the home page ---------------------------------------------------------
+// Off by default: a visitor lands on the sign-in card as before. The switch on
+// Web settings puts the public home page first instead; an admin can preview
+// it either way with ?page=home&preview=1.
+require_once __DIR__ . '/../src/home.php';
+if ($page === 'home' || (!isset($_GET['page']) && !ghostd_logged_in())) {
+    $home = ghostd_home();
+    if ($home['enabled'] || ($page === 'home' && isset($_GET['preview']) && ghostd_is_admin())) {
+        require __DIR__ . '/../src/pages/home.php';
+        exit;
+    }
+    if ($page === 'home') {
+        header('Location: ?page=login');
+        exit;
+    }
+}
+
 ghostd_require_login();
 
 // ---- what this session may open ------------------------------------------
@@ -153,7 +170,7 @@ $adminPages  = ['dashboard', 'roster', 'player', 'templates', 'template_edit', '
                 'branding', 'applications', 'questions', 'tickets', 'ticket', 'opords', 'opord',
                 'config', 'configedit', 'orbat', 'role', 'squad', 'platoon', 'arsenal', 'schemes',
                 'opord_section', 'ticket_kind', 'pylon', 'records', 'record', 'backup', 'crate',
-                'recimg', 'media'];
+                'recimg', 'media', 'websettings'];
 // MEMBERS SHARE TOO - a folder only admins can put things in is not a share.
 $memberPages = ['me', 'apply', 'tickets', 'ticket', 'media'];
 
