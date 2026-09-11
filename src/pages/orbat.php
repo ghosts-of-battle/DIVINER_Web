@@ -35,6 +35,10 @@ const GHOSTD_ORBAT_TABS = [
     'roles'    => 'Roles',
     'squads'   => 'Squads',
     'platoons' => 'Platoons',
+    // THE VARIABLES A ROLE SETS. They were on the Configs page; a variable is
+    // something a ROLE puts on a man, and roles live here, so this is where it
+    // belongs (user, 2026-09-09: "this should be part of the orbat").
+    'variables' => 'Variables',
 ];
 
 // COMMON FIRST, because it is what the order of battle IS - who this unit is

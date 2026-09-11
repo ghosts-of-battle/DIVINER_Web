@@ -83,30 +83,64 @@ const GHOSTD_TRAIT_COEFS = [
 ];
 
 /**
- * The unit's OWN traits, from <unit>.traits - name => [label, kind, help].
+ * ACE3's OWN VARIABLES - setVariable, names ACE defines and reads.
  *
- * Everything not in GHOSTD_ENGINE_TRAITS needs setUnitTrait's custom flag set,
- * and that is the whole reason this list exists: a role ticks a name off it and
- * the flag is decided by which list the name came from, rather than by somebody
- * remembering.
+ * THE SECOND OF THREE GROUPS, and the reason they are listed here rather than
+ * typed into the unit's list: ACE spells them, not this unit, so a unit cannot
+ * invent one and cannot get one wrong. Every role on the reference unit sets
+ * all three.
  */
-function ghostd_custom_traits(): array
+const GHOSTD_ACE_VARS = [
+    'ace_medical_medicClass' => ['kind' => 'number',
+        'help' => '0 none, 1 combat lifesaver, 2 medic - what ACE medical lets him do'],
+    'ace_isEngineer'         => ['kind' => 'number',
+        'help' => '0 none, 1 engineer, 2 advanced - repairs and mine work'],
+    'ace_isEOD'              => ['kind' => 'bool',
+        'help' => 'may defuse ACE explosives'],
+];
+
+/**
+ * THE UNIT'S OWN VARIABLES, from <unit>.traits - name => [label, kind, help].
+ *
+ * THE THIRD OF THREE GROUPS. There are exactly three kinds of thing a role can
+ * put on a man and they are not mixed (user, 2026-09-09: "there are 4 defaul
+ * game s one then there ace3 customvarables then there are cutomer varables we
+ * add"):
+ *
+ *   1. GHOSTD_ENGINE_TRAITS   setUnitTrait  - the game's four, a fixed list
+ *   2. GHOSTD_ACE_VARS        setVariable   - ACE3's, a fixed list
+ *   3. this                   setVariable   - the ones this unit invented
+ *
+ * THERE IS NO SUCH THING AS A CUSTOM TRAIT. This function used to return a
+ * "where" saying trait or variable, as though a unit could invent a trait; on
+ * the reference unit all twelve entries said "variable" and not one ever said
+ * "trait", because a trait is only ever one of the four. The field is gone.
+ *
+ * The engine's and ACE's names are filtered out, so what comes back is only
+ * the unit's own even if somebody typed one of the built-ins into the list.
+ */
+function ghostd_unit_vars(): array
 {
     $out = [];
     try {
         require_once __DIR__ . '/records.php';
         foreach (ghostd_record_items('traits') as $id => $t) {
+            $id = (string) $id;
+            // ACE spells its own three and they get their own group; skip them
+            // here so they are not listed twice.
+            //
+            // AN ENGINE TRAIT NAME IS NOT SKIPPED. UAVHacker is one of the four
+            // AND a variable 57 roles set - config_co.hpp carries it in both
+            // lists - so filtering engine names out of here dropped it off the
+            // variables screen entirely (2026-09-09).
+            if (isset(GHOSTD_ACE_VARS[$id])) {
+                continue;
+            }
             $kind = strtolower(trim((string) ($t['kind'] ?? 'bool')));
-            // WHERE IT GOES ON THE MAN. setVariable for most of them - a unit
-            // flag like draWhitelisted - and setUnitTrait for the few that are
-            // really traits. Two different things, two different lists on a
-            // role, and getting it wrong is silent.
-            $where = strtolower(trim((string) ($t['where'] ?? 'variable')));
-            $out[(string) $id] = [
-                'label' => trim((string) ($t['label'] ?? '')) ?: (string) $id,
+            $out[$id] = [
+                'label' => trim((string) ($t['label'] ?? '')) ?: $id,
                 'kind'  => $kind === 'number' ? 'number' : 'bool',
                 'help'  => trim((string) ($t['help'] ?? '')),
-                'where' => $where === 'trait' ? 'trait' : 'variable',
             ];
         }
     } catch (Throwable $e) {
@@ -151,6 +185,25 @@ function ghostd_pac_owned(): array
     return array_values(array_unique($names));
 }
 
+/**
+ * Every variable a role may set: ACE3's, then the unit's own.
+ *
+ * ONE LIST FOR THE SCREEN AND THE SAVE, so a name that is offered is a name
+ * that is written. Each entry keeps `group` so the editor can head them
+ * separately - ACE3 spells its three, the unit spells the rest.
+ */
+function ghostd_role_vars(): array
+{
+    $out = [];
+    foreach (GHOSTD_ACE_VARS as $n => $m) {
+        $out[$n] = ['label' => $n, 'kind' => $m['kind'], 'help' => $m['help'], 'group' => 'ace'];
+    }
+    foreach (ghostd_unit_vars() as $n => $m) {
+        $out[$n] = $m + ['group' => 'unit'];
+    }
+    return $out;
+}
+
 /** Which parts of a role are edited together. Drives the sections on the page. */
 const GHOSTD_ROLE_SECTIONS = [
     'identity' => 'Identity',
@@ -158,7 +211,7 @@ const GHOSTD_ROLE_SECTIONS = [
     'nets'     => 'Messaging nets',
     'tiles'    => 'TAC//PAD tiles',
     'traits'   => 'Traits',
-    'vars'     => 'Custom variables',
+    'vars'     => 'Variables',
     'loadout'  => 'Default loadout',
     'arsenal'  => 'Arsenal',
     'remove'   => 'Remove',
@@ -214,9 +267,11 @@ function ghostd_role_rows($v, int $width): array
         }
         $r = [$name];
         for ($i = 1; $i < $width; $i++) {
-            // A row written short means "the default", and for the flag in the
-            // third column that default is false - the engine's own traits.
-            $x = $row[$i] ?? ($i === 2 ? 'false' : '');
+            // A row written short means "the default". The only three-wide
+            // field left is customVariables, whose third column is the GLOBAL
+            // flag, and its default is true - the same default
+            // ghostD_pac_fnc_roleFieldParse uses, so the two ends agree.
+            $x = $row[$i] ?? ($i === 2 ? 'true' : '');
             // Numbers stay numbers - ace_medical_medicClass is 1, not "1", and
             // the mod's setVariable would put a string on the man.
             $r[] = is_int($x) || is_float($x) ? $x : (string) $x;
@@ -259,7 +314,14 @@ function ghostd_role(string $id): array
         // name is a custom one, and dropping it made every custom trait a
         // name the engine throws away without a word. Default "false", which
         // is what the mission files write when they omit it.
-        'traits'          => ghostd_role_rows($r['traits'] ?? [], 3),
+        // TWO WIDE - {name, value}, exactly what a config file writes:
+        //     traits[] = { {"UAVHacker","true"} };
+        // The third column was setUnitTrait's "custom" flag, and since a
+        // trait is only ever one of the engine's four it was always false.
+        // ghostD_groups_fnc_setupPlayer already defaults it - params
+        // ["_trait","_value",["_custom","false"]] - so a pair applies the
+        // same and the storage matches the file (user, 2026-09-09).
+        'traits'          => ghostd_role_rows($r['traits'] ?? [], 2),
         'customVariables' => ghostd_role_rows($r['customVariables'] ?? [], 3),
         'defaultLoadout'  => is_array($r['defaultLoadout'] ?? null) ? $r['defaultLoadout'] : [],
         'arsenalWeapons'   => $list('arsenalWeapons'),

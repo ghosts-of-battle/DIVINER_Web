@@ -246,7 +246,19 @@ chmod 644 /var/www/DIVINER_Web/public/*
 # src/ holds the database password - FPM only, never the web server
 chmod 750 /var/www/DIVINER_Web/src /var/www/DIVINER_Web/src/pages
 find /var/www/DIVINER_Web/src -type f -exec chmod 640 {} \;
+
+# The media folder is the ONE place the app writes. Group apache is PHP-FPM;
+# nginx is not in that group, which is what makes a "site only" file site only.
+mkdir -p /var/www/DIVINER_Web/media
+chown root:apache /var/www/DIVINER_Web/media
+chmod 770 /var/www/DIVINER_Web/media
 ```
+
+Shared files live in `media/`, **not** under `public/`. Nothing in there is
+served by the web server: every read goes through `?page=file`, which checks
+the file's visibility first (`public` = anyone with the link, `site` = signed
+in). Check it with `sudo -u nginx ls .../media` (must fail) and
+`sudo -u apache ls .../media` (must work).
 
 Do **not** blanket the tree with `chmod -R o=`: on RHEL that locks the nginx
 user out of the docroot, every static file falls through `try_files` to

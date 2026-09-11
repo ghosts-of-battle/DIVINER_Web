@@ -15,7 +15,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../roles.php';
 
-$customTraits = ghostd_custom_traits();
+$customTraits = ghostd_unit_vars();
 
 $roles = ghostd_role_ids();
 

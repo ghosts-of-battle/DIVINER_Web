@@ -15,6 +15,11 @@ ghostd_head('Configs', 'records');
 The PAC's admin pages edit the same documents.</p>
 
 <?php foreach (GHOSTD_RECORDS as $sec => $meta): ?>
+  <?php // THE VARIABLES ARE ON THE ORBAT. A variable is what a ROLE puts on a
+        // man, and roles live under ORBAT, so it is edited there and not
+        // listed twice (2026-09-09: "this should be part of the orbat"). The
+        // registry entry stays - it is what the editor reads.
+        if ($sec === 'traits') { continue; } ?>
 <?php $items = ghostd_record_items((string) $sec); ?>
 <details class="card">
   <summary>

@@ -49,6 +49,45 @@ if ($page === 'asset') {
     exit;
 }
 
+// ---- a shared file ---------------------------------------------------------
+// BEFORE THE LOGIN GATE, because "public" has to mean public - a link a member
+// sends to somebody outside the unit must open. A "site only" file calls the
+// gate itself, one line down, so the default is still closed.
+if ($page === 'file') {
+    require_once __DIR__ . '/../src/media.php';
+    $f = ghostd_media_one((string) ($_GET['id'] ?? ''));
+    if ($f === null) {
+        http_response_code(404);
+        exit;
+    }
+    if ($f['visibility'] !== 'public') {
+        ghostd_require_login();
+    }
+    $path = ghostd_media_path($f);
+    if (!is_file($path) || !is_readable($path)) {
+        http_response_code(404);
+        exit;
+    }
+    $etag = '"' . md5($f['id'] . '-' . filemtime($path)) . '"';
+    if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? '') === $etag) {
+        http_response_code(304);
+        exit;
+    }
+    header('Content-Type: ' . $f['mime']);
+    header('Content-Length: ' . (string) filesize($path));
+    header('ETag: ' . $etag);
+    // NEVER let a browser run an upload as part of this site: an SVG or an
+    // HTML-ish text file served inline is script running on our origin.
+    header('X-Content-Type-Options: nosniff');
+    header("Content-Security-Policy: default-src 'none'; sandbox");
+    $inline = str_starts_with($f['mime'], 'image/') && $f['ext'] !== 'svg';
+    header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment')
+        . '; filename="' . str_replace('"', '', $f['name']) . '"');
+    header('Cache-Control: ' . ($f['visibility'] === 'public' ? 'public' : 'private') . ', max-age=300');
+    readfile($path);
+    exit;
+}
+
 // A deployment with neither gate configured is not open to the world.
 if (!ghostd_configured()) {
     ghostd_head('Not configured');
@@ -114,8 +153,9 @@ $adminPages  = ['dashboard', 'roster', 'player', 'templates', 'template_edit', '
                 'branding', 'applications', 'questions', 'tickets', 'ticket', 'opords', 'opord',
                 'config', 'configedit', 'orbat', 'role', 'squad', 'platoon', 'arsenal', 'schemes',
                 'opord_section', 'ticket_kind', 'pylon', 'records', 'record', 'backup', 'crate',
-                'recimg'];
-$memberPages = ['me', 'apply', 'tickets', 'ticket'];
+                'recimg', 'media'];
+// MEMBERS SHARE TOO - a folder only admins can put things in is not a share.
+$memberPages = ['me', 'apply', 'tickets', 'ticket', 'media'];
 
 if (ghostd_is_admin() || !ghostd_is_member()) {
     // Admins get everything; a password session gets the admin pages read-only.

@@ -17,7 +17,16 @@ declare(strict_types=1);
 require_once __DIR__ . '/../records.php';
 require_once __DIR__ . '/../promotion.php';
 
-$sec = (string) ($_GET['s'] ?? ($_POST['s'] ?? ''));
+// EMBEDDED? The ORBAT page draws this grid inside its Variables tab rather
+// than sending you to another page for it (user, 2026-09-09: custom variables
+// "should be part of the orbat"). $recordEmbed is set by the page doing the
+// embedding, which also sets $sec; the head, the foot and the breadcrumb are
+// its job, not ours, and the forms post HERE and come back there.
+$recordEmbed = $recordEmbed ?? false;
+$recordFrom  = (string) ($_GET['from'] ?? ($_POST['from'] ?? ''));
+$recordBack  = $recordFrom === 'orbat' ? '?page=orbat&s=variables' : '';
+
+$sec = $recordEmbed ? $sec : (string) ($_GET['s'] ?? ($_POST['s'] ?? ''));
 if (!isset(GHOSTD_RECORDS[$sec])) {
     ghostd_head('Configs', 'records');
     ghostd_flash('bad', 'No such record set.');
@@ -186,6 +195,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $e) {
         $err = $e->getMessage();
     }
+
+    // BACK WHERE IT WAS EDITED. A save made from the ORBAT's Variables tab
+    // posts here, because this is where the logic lives - so it has to send
+    // you back there rather than leaving you on a page you did not open.
+    // Post/redirect/get, so a refresh does not re-save.
+    if ($err === null && $recordBack !== '') {
+        $_SESSION['ghostd_flash'] = $msg;
+        header('Location: ' . $recordBack);
+        return;
+    }
 }
 
 $items = ghostd_record_items($sec);
@@ -207,23 +226,32 @@ foreach ($meta['fields'] as $f => $fm) {
     }
 }
 
-ghostd_head($meta['label'], 'records');
+if (!$recordEmbed) { ghostd_head($meta['label'], 'records'); }
 if ($msg !== null) { ghostd_flash('good', $msg); }
 if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
+<?php if (!$recordEmbed): ?>
 <p><a href="?page=records">&larr; Configs</a> &middot;
 <code><?= h(ghostd_record_doc_id($sec)) ?></code></p>
+<?php else: ?>
+<p class="dim"><code><?= h(ghostd_record_doc_id($sec)) ?></code> &middot;
+<?= h($meta['blurb']) ?></p>
+<?php endif; ?>
 
 <h2><?= h($meta['label']) ?> <span class="dim"><?= count($items) ?></span></h2>
 <p class="dim"><?= $meta['blurb'] ?> Clearing an id removes it.</p>
 
-<form method="post" id="rowdel">
+<?php // ACTION IS EXPLICIT so the grid works when another page draws it -
+      // without it the post goes to whatever page is in the address bar. ?>
+<form method="post" id="rowdel" action="?page=record&amp;s=<?= urlencode($sec) ?><?= $recordFrom !== '' ? '&amp;from=' . urlencode($recordFrom) : '' ?>">
+  <input type="hidden" name="from" value="<?= h($recordFrom) ?>">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
   <input type="hidden" name="s" value="<?= h($sec) ?>">
   <input type="hidden" name="what" value="delete">
 </form>
 
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" action="?page=record&amp;s=<?= urlencode($sec) ?><?= $recordFrom !== '' ? '&amp;from=' . urlencode($recordFrom) : '' ?>">
+  <input type="hidden" name="from" value="<?= h($recordFrom) ?>">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
   <input type="hidden" name="s" value="<?= h($sec) ?>">
 
@@ -361,4 +389,4 @@ if ($err !== null) { ghostd_flash('bad', $err); }
   </datalist>
 <?php endforeach; ?>
 <?php
-ghostd_foot();
+if (!$recordEmbed) { ghostd_foot(); }

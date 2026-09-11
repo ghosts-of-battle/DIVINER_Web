@@ -11,8 +11,16 @@
  *
  * TWO DOCUMENTS, DELIBERATELY. <unit>.web is small - names, colours, flags -
  * and is read on every page. <unit>.web.assets holds the logo and background
- * as data, and is read only by the asset route. A megabyte of picture must not
- * be fetched to draw a table.
+ * as data, and is read from the database once per upload, not once per page:
+ * ghostd_brand_assets() caches it in the temp directory, keyed by the assetsAt
+ * stamp the branding page writes. A megabyte of picture must not be fetched
+ * to draw a table.
+ *
+ * WHY THE CACHE. On 2026-09-11 the site served 504s with nothing wrong on the
+ * box: the 2 MB assets document read at 100 KB/s from Atlas, 20 s a time, and
+ * the gate page asked for it three times per visit. One visitor exceeded
+ * nginx's 60 s, and a scanner burst filled php-fpm to max_children. The temp
+ * directory is not the docroot and is not served, so the rule above holds.
  *
  * NOTHING HERE IS REQUIRED. With no document at all the site looks exactly as
  * it did before any of this existed.
@@ -193,25 +201,94 @@ const GHOSTD_ASSET_TYPES = [
     'image/svg+xml' => 'svg',
 ];
 
+/**
+ * The assets document, as ['logo' => ['mime', 'data'], ...] for the slots that
+ * hold a valid picture. Read from the database at most once per stamp, and
+ * memoised for the request.
+ *
+ * The cache file is named by unit and by <unit>.web's assetsAt stamp, which
+ * the branding page bumps on every upload and removal - so a change is a new
+ * file, and nothing here has to be told to expire. Concurrent cold requests
+ * take a lock so only one of them pays for the database read; the rest wait
+ * for it and read the file. A failed read is memoised for the request but
+ * never written to disk, so the next request tries the database again.
+ */
+function ghostd_brand_assets(): array
+{
+    static $doc = null;
+    if ($doc !== null) {
+        return $doc;
+    }
+    $unit  = (string) ghostd_config()['unit'];
+    $stamp = (string) ghostd_branding()['assetsAt'];
+    $clean = static fn(string $s): string => (string) preg_replace('/[^A-Za-z0-9._-]/', '_', $s);
+    $dir   = rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'ghostd-assets';
+    $base  = $dir . DIRECTORY_SEPARATOR . $clean($unit) . '.';
+    $file  = $base . ($stamp !== '' ? $clean($stamp) : 'unstamped') . '.json';
+
+    $read = static function () use ($file): ?array {
+        $raw = is_file($file) ? file_get_contents($file) : false;
+        $d   = is_string($raw) ? json_decode($raw, true) : null;
+        return is_array($d) ? $d : null;
+    };
+    $hit = $read();
+    if ($hit !== null) {
+        return $doc = $hit;
+    }
+
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0700, true);
+    }
+    $lock = @fopen($dir . DIRECTORY_SEPARATOR . 'lock', 'c');
+    if ($lock !== false) {
+        flock($lock, LOCK_EX);
+        $hit = $read();                 // filled by whoever held the lock before us
+        if ($hit !== null) {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+            return $doc = $hit;
+        }
+    }
+
+    $d  = [];
+    $ok = true;
+    try {
+        $full = ghostd_get($unit . '.web.assets');
+        foreach (GHOSTD_ASSET_SLOTS as $which) {
+            $a = is_array($full) ? ($full[$which] ?? null) : null;
+            if (is_array($a) && isset($a['mime'], $a['data']) && isset(GHOSTD_ASSET_TYPES[(string) $a['mime']])) {
+                $d[$which] = ['mime' => (string) $a['mime'], 'data' => (string) $a['data']];
+            }
+        }
+    } catch (Throwable $e) {
+        $ok = false;
+    }
+
+    if ($ok) {
+        foreach (glob($base . '*.json') ?: [] as $old) {   // earlier stamps of this unit
+            if ($old !== $file) {
+                @unlink($old);
+            }
+        }
+        $tmp = $file . '.' . getmypid() . '.tmp';
+        if (@file_put_contents($tmp, json_encode($d, JSON_UNESCAPED_SLASHES)) === false || !@rename($tmp, $file)) {
+            @unlink($tmp);
+        }
+    }
+    if ($lock !== false) {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+    return $doc = $d;
+}
+
 /** One stored picture: ['mime' => ..., 'data' => base64], or null. */
 function ghostd_brand_asset(string $which): ?array
 {
     if (!in_array($which, GHOSTD_ASSET_SLOTS, true)) {
         return null;
     }
-    try {
-        $doc = ghostd_get(ghostd_config()['unit'] . '.web.assets');
-    } catch (Throwable $e) {
-        return null;
-    }
-    $a = $doc[$which] ?? null;
-    if (!is_array($a) || !isset($a['mime'], $a['data'])) {
-        return null;
-    }
-    if (!isset(GHOSTD_ASSET_TYPES[(string) $a['mime']])) {
-        return null;
-    }
-    return ['mime' => (string) $a['mime'], 'data' => (string) $a['data']];
+    return ghostd_brand_assets()[$which] ?? null;
 }
 
 /** Whether a picture exists, without fetching it. */

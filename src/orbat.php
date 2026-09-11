@@ -428,8 +428,15 @@ function ghostd_squad(string $variant, string $name): ?array
 /** A platoon's row in the ORBAT, or null. */
 function ghostd_platoon(string $variant, string $pid): ?array
 {
-    foreach (ghostd_orbat($variant)['platoons'] as $p) {
-        if ((string) ($p[0] ?? '') === $pid) {
+    // THE POOL, NOT THE ORDER OF BATTLE. A platoon exists in <unit>.platoons;
+    // an order of battle only says which ones it RUNS. Looking it up inside
+    // one meant the list offered all ten and opening any that the current
+    // order of battle did not run answered "No platoon called C2Tropical in
+    // this ORBAT" - every tropical platoon, because the default is vanilla
+    // (2026-09-09). ghostd_platoon_pool() prefers this variant's own copy,
+    // so an order of battle that overrides a platoon still wins.
+    foreach (ghostd_platoon_pool($variant) as $pid2 => $p) {
+        if ((string) $pid2 === $pid) {
             return [
                 'id'       => (string) ($p[0] ?? ''),
                 'name'     => (string) ($p[1] ?? ''),

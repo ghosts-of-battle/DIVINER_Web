@@ -40,6 +40,8 @@ $sec = (string) ($_GET['s'] ?? ($_POST['s'] ?? 'identity'));
 if (!isset(GHOSTD_ROLE_SECTIONS[$sec])) {
     $sec = 'identity';
 }
+// $roleSections - the ones this role actually has - is worked out below, once
+// the trait catalogue has been read; $sec is checked against it there.
 
 $msg = null;
 $err = null;
@@ -80,6 +82,24 @@ $arsenals = ghostd_template_variants('arsenal');
 // a setting the mod skips, and nothing in game says so - which is exactly the
 // kind of thing an editor should refuse to let you do quietly.
 $pacOwned = ghostd_pac_owned();
+
+// ---- IS THERE A TRAITS PAGE AT ALL? ---------------------------------------
+// A trait is either one of the engine's four or one this unit invented, and a
+// skill can own either. When skills own all four and the unit has invented
+// none, the page has nothing to tick - it drew two headings, "All four are set
+// by skills", "None defined yet" and a Save button that saved nothing (user,
+// 2026-09-09: "thidss why have this fucking page"). So it is not a tab then.
+$traitsOffered = array_filter(
+    array_keys(GHOSTD_ENGINE_TRAITS),
+    static fn($t) => !in_array(strtolower((string) $t), $pacOwned, true)
+);
+$roleSections = GHOSTD_ROLE_SECTIONS;
+if ($traitsOffered === []) {
+    unset($roleSections['traits']);
+}
+if (!isset($roleSections[$sec])) {
+    $sec = 'identity';
+}
 
 // ---- saving ----------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -188,19 +208,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'traits':
                 $on   = (array) ($_POST['t_on'] ?? []);
                 $nums = (array) ($_POST['t_num'] ?? []);
-                $custom = array_filter(ghostd_custom_traits(), static fn($m) => $m['where'] === 'trait');
+                // THE FOUR, AND ONLY THE FOUR. setUnitTrait's third argument
+                // says the name is a custom one; none of these are, so it is
+                // always false. A unit cannot invent a trait - what it invents
+                // is a VARIABLE, saved on the next screen.
+                // {name, value} - the pair a config file writes. No third
+                // column: setUnitTrait's custom flag is only ever false here,
+                // and setupPlayer defaults it.
                 $out = [];
-                foreach (array_merge(array_keys(GHOSTD_ENGINE_TRAITS), array_keys($custom)) as $t) {
-                    $isCustom = !isset(GHOSTD_ENGINE_TRAITS[$t]);
-                    $kind = $isCustom ? $custom[$t]['kind'] : (str_ends_with($t, 'Coef') ? 'number' : 'bool');
-                    if ($kind === 'number') {
-                        $v = trim((string) ($nums[$t] ?? ''));
-                        if ($v === '') {
-                            continue;            // not set is not the same as zero
-                        }
-                        $out[] = [$t, is_numeric($v) ? $v + 0 : $v, $isCustom ? 'true' : 'false'];
-                    } elseif (in_array($t, $on, true)) {
-                        $out[] = [$t, 'true', $isCustom ? 'true' : 'false'];
+                foreach (array_keys(GHOSTD_ENGINE_TRAITS) as $t) {
+                    if (in_array($t, $on, true)) {
+                        $out[] = [$t, 'true'];
                     }
                 }
                 ghostd_role_save($id, ['traits' => $out]);
@@ -219,10 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $wasGlobal[(string) $row[0]] = (string) ($row[2] ?? 'true');
                 }
                 $out = [];
-                foreach (ghostd_custom_traits() as $vn => $meta) {
-                    if ($meta['where'] !== 'variable') {
-                        continue;
-                    }
+                foreach (ghostd_role_vars() as $vn => $meta) {
                     $g = $wasGlobal[$vn] ?? 'true';
                     if ($meta['kind'] === 'number') {
                         $v = trim((string) ($nums[$vn] ?? ''));
@@ -355,7 +370,7 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
 <?= $usedBy === [] ? 'used by nothing' : 'in ' . h(implode(', ', $usedBy)) ?></p>
 
 <nav class="subrail">
-  <?php foreach (GHOSTD_ROLE_SECTIONS as $k => $label): ?>
+  <?php foreach ($roleSections as $k => $label): ?>
     <a class="<?= $sec === $k ? 'on' : '' ?>"
        href="?page=role&amp;id=<?= urlencode($id) ?>&amp;s=<?= h($k) ?>"><?= h($label) ?></a>
   <?php endforeach; ?>
@@ -521,19 +536,15 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
 <!-- -------------------------------------------------------------- traits -->
 <?php if ($sec === 'traits'): ?>
 <section class="tsection" id="traits">
-  <h2>Traits</h2>
-  <p class="note"><strong>Three different things, and they are not mixed.</strong>
-  <em>Traits</em> are <code>setUnitTrait</code> - what is on this page.
-  <em>Custom variables</em> are <code>setVariable</code>, on their own page.
-  <em>Skills</em> are TAC//PAC's catalogue, under "Who may take it" - and PAC
-  applies those <strong>after</strong> the role, so anything a skill owns is
-  skipped here whatever you tick.</p>
+  <h2>Traits <span class="dim">the four the game has</span></h2>
+  <p class="note"><strong>A trait is one of these four and nothing else.</strong>
+  They are <code>setUnitTrait</code>. Anything else this unit puts on a man is a
+  <em>variable</em> - <code>setVariable</code> - on the next screen, whether it
+  is one of ACE3's or one of your own. <em>Skills</em> are TAC//PAC's catalogue,
+  under "Who may take it", and PAC applies those <strong>after</strong> the
+  role, so a name a skill owns is skipped here whatever you tick.</p>
 
   <?php
-    // Only the names marked as TRAITS. The rest are variables and belong on
-    // the other screen; one list, two destinations, said once in the catalogue.
-    $customTraits = array_filter(ghostd_custom_traits(), static fn($m) => $m['where'] === 'trait');
-    // What the role has now, by name, so a tick knows whether it is on.
     $has = [];
     foreach ($r['traits'] as $row) {
         $has[(string) $row[0]] = $row[1];
@@ -543,97 +554,58 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
   ?>
 
   <?php $open('traits'); ?>
-
-    <?php $engineLeft = array_filter(array_keys(GHOSTD_ENGINE_TRAITS),
-            static fn($t) => !in_array(strtolower($t), $pacOwned, true)); ?>
-    <h3>The engine's own <span class="dim">every unit in Arma has these</span></h3>
-    <?php if ($engineLeft === []): ?>
-      <p class="dim">All four are set by skills.</p>
-    <?php endif; ?>
     <div class="checkgrid">
       <?php foreach (GHOSTD_ENGINE_TRAITS as $t => $desc): ?>
-        <?php
-          // A NAME A SKILL SETS IS NOT OFFERED HERE. PAC applies it after the
-          // role and the role's copy is skipped, so a box for it is a box that
-          // does nothing (user, 2026-09-09: the label saying so was "just extra
-          // confusing words"). Where each name is set is on the Configs page,
-          // Custom traits, in the "Set by a skill" column.
-          if (in_array(strtolower($t), $pacOwned, true)) { continue; }
-          $number = str_ends_with($t, 'Coef');
-        ?>
+        <?php // A name a skill sets is not offered: PAC applies it after the
+              // role and the role's copy is skipped, so a box for it does
+              // nothing. Where each is set is on Configs > Skills. ?>
+        <?php if (in_array(strtolower($t), $pacOwned, true)) { continue; } ?>
         <label class="inlinelabel">
-          <?php if ($number): ?>
-            <input type="number" step="0.01" name="t_num[<?= h($t) ?>]"
-                   value="<?= h(isset($has[$t]) ? (string) $has[$t] : '') ?>">
-          <?php else: ?>
-            <input type="checkbox" name="t_on[]" value="<?= h($t) ?>"
-                   <?= $isOn($t) ? 'checked' : '' ?>>
-          <?php endif; ?>
+          <input type="checkbox" name="t_on[]" value="<?= h($t) ?>"
+                 <?= $isOn($t) ? 'checked' : '' ?>>
           <span><strong><?= h($t) ?></strong>
             <span class="dim"><?= h($desc) ?></span></span>
         </label>
       <?php endforeach; ?>
     </div>
-
-    <h3>This unit's own <span class="dim"><?= count($customTraits) ?></span></h3>
-    <?php if ($customTraits === []): ?>
-      <p class="note readonly">None defined yet. Add them under
-      <a href="?page=orbat&amp;s=roles">ORBAT &rarr; Roles</a>, so every role
-      can tick the same names rather than each one typing its own.</p>
-    <?php else: ?>
-      <div class="checkgrid">
-        <?php foreach ($customTraits as $t => $meta): ?>
-          <?php if (in_array(strtolower($t), $pacOwned, true)) { continue; } ?>
-          <label class="inlinelabel">
-            <?php if ($meta['kind'] === 'number'): ?>
-              <input type="number" step="0.01" name="t_num[<?= h($t) ?>]"
-                     value="<?= h(isset($has[$t]) ? (string) $has[$t] : '') ?>">
-            <?php else: ?>
-              <input type="checkbox" name="t_on[]" value="<?= h($t) ?>"
-                     <?= $isOn($t) ? 'checked' : '' ?>>
-            <?php endif; ?>
-            <span><strong><?= h($meta['label']) ?></strong>
-              <code><?= h($t) ?></code>
-              <span class="dim"><?= h($meta['help']) ?></span></span>
-          </label>
-        <?php endforeach; ?>
-      </div>
-    <?php endif; ?>
-
     <div class="actions"><button type="submit">Save traits</button></div>
   </form>
 
   <?php
-    // A trait the role carries that is on neither list is one nobody can see
-    // here, so it would be silently dropped by the next save. Say so.
+    // A trait the role carries that is not one of the four is one this screen
+    // cannot show, so the next save would drop it silently. Say so.
     $stray = [];
     foreach ($r['traits'] as $row) {
         $t = (string) $row[0];
-        if (!isset(GHOSTD_ENGINE_TRAITS[$t]) && !isset($customTraits[$t])) {
-            $stray[] = $t;
-        }
+        if (!isset(GHOSTD_ENGINE_TRAITS[$t])) { $stray[] = $t; }
     }
   ?>
   <?php if ($stray !== []): ?>
-    <p class="flash bad">This role carries traits that are on neither list:
-    <?= h(implode(', ', $stray)) ?>. <strong>Saving this page drops them.</strong>
-    Add them under <a href="?page=orbat&amp;s=roles">ORBAT &rarr; Roles</a> first
-    if you want to keep them.</p>
+    <p class="flash bad">This role carries <?= h(implode(', ', $stray)) ?> as a
+    <em>trait</em>, and none of those are one of the four.
+    <strong>Saving this page drops them.</strong> They are variables - add them
+    under <a href="?page=records&amp;s=traits">Configs &rarr; Custom
+    variables</a> and tick them on the next screen instead.</p>
   <?php endif; ?>
 </section>
 <?php endif; ?>
 
 <?php if ($sec === 'vars'): ?>
 <section class="tsection" id="vars">
-  <h2>Custom variables</h2>
+  <h2>Variables <span class="dim">setVariable</span></h2>
   <p class="note">Put on the man with <code>setVariable</code> when he slots in.
-  These are the names <strong>this unit</strong> uses - the ones the engine has
-  never heard of - and they are kept in one list so every role ticks the same
-  spellings. Add one under <a href="?page=orbat&amp;s=roles">ORBAT &rarr;
-  Common</a>.</p>
+  <strong>Two groups:</strong> ACE3 spells its own, and this unit spells the
+  rest. Neither is a trait - traits are the four on the previous screen. Add to
+  your own under <a href="?page=records&amp;s=traits">Configs &rarr; Custom
+  variables</a>, so every role ticks the same spelling.</p>
 
   <?php
-    $cat = array_filter(ghostd_custom_traits(), static fn($m) => $m['where'] === 'variable');
+    // A NAME A SKILL SETS IS NOT OFFERED. Filter here rather than inside the
+    // loop: skipping rows underneath a heading that is already on screen is
+    // how a group ends up as a title with nothing under it.
+    $cat = array_filter(ghostd_role_vars(),
+        static fn($m, $n) => !in_array(strtolower((string) $n), $pacOwned, true),
+        ARRAY_FILTER_USE_BOTH);
     $has = [];
     foreach ($r['customVariables'] as $row) { $has[(string) $row[0]] = $row[1]; }
     $isOn = static fn($n) => isset($has[$n])
@@ -641,13 +613,17 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
   ?>
 
   <?php if ($cat === []): ?>
-    <p class="note readonly">The list is empty, so there is nothing to tick.
-    Add names under <a href="?page=orbat&amp;s=roles">ORBAT &rarr; Roles</a>.</p>
+    <p class="note readonly">Nothing to tick - every variable this unit has is
+    set by a skill, or the list is empty. Add names under
+    <a href="?page=records&amp;s=traits">Configs &rarr; Custom variables</a>.</p>
   <?php else: ?>
     <?php $open('vars'); ?>
+      <?php foreach (['ace' => "ACE3's", 'unit' => "This unit's own"] as $grp => $grpLabel): ?>
+      <?php $inGrp = array_filter($cat, static fn($m) => ($m['group'] ?? 'unit') === $grp); ?>
+      <?php if ($inGrp === []) { continue; } ?>
+      <h3><?= h($grpLabel) ?> <span class="dim"><?= count($inGrp) ?></span></h3>
       <div class="checkgrid">
-        <?php foreach ($cat as $vn => $meta): ?>
-          <?php if (in_array(strtolower($vn), $pacOwned, true)) { continue; } ?>
+        <?php foreach ($inGrp as $vn => $meta): ?>
           <label class="inlinelabel">
             <?php if ($meta['kind'] === 'number'): ?>
               <input type="number" step="1" name="v_num[<?= h($vn) ?>]"
@@ -662,7 +638,8 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
           </label>
         <?php endforeach; ?>
       </div>
-      <div class="actions"><button type="submit">Save custom variables</button></div>
+      <?php endforeach; ?>
+      <div class="actions"><button type="submit">Save variables</button></div>
     </form>
   <?php endif; ?>
 
@@ -676,8 +653,8 @@ $open = static function (string $what) use ($csrf, $id, $sec) {
   <?php if ($stray !== []): ?>
     <p class="flash bad">This role sets variables that are not on the list:
     <?= h(implode(', ', $stray)) ?>. <strong>Saving this page drops them.</strong>
-    Add them under <a href="?page=orbat&amp;s=roles">ORBAT &rarr; Roles</a> first
-    if you want to keep them.</p>
+    Add them under <a href="?page=records&amp;s=traits">Configs &rarr; Custom
+    variables</a> first if you want to keep them.</p>
   <?php endif; ?>
 </section>
 <?php endif; ?>
