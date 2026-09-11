@@ -822,6 +822,7 @@ textarea.blockbox { min-height: 9rem; width: 100%; }
           margin: 0 0 var(--s2); }
 .tagbar button { font-size: .78rem; padding: var(--s2) var(--s3); }
 .tagbar input[type=color] { width: 2.6rem; height: 1.9rem; min-width: 0; padding: 2px; }
+.tagbar .dim { font-size: .78rem; }
 
 /* A row with more than one button in its last cell - Edit beside Delete. They
    sit on one line and do not stretch the row. */
@@ -835,25 +836,25 @@ td.rowacts > *:last-child { margin-right: 0; }
 .vbar a, .vbar > span.on { padding: .1rem .45rem; border-radius: 3px; }
 .vbar > span.on { background: var(--accent); color: #fff; font-weight: 600; }
 
-/* Web settings: the HTML editor (htmleditor.js). The textarea is the form
-   field; the box is what is edited. [hidden] must win over .fields textarea. */
-.hted { border: 1px solid var(--line); border-radius: var(--r); background: var(--well); margin-bottom: var(--s2); }
-.hted [hidden] { display: none !important; }
-.htedbar { display: flex; flex-wrap: wrap; gap: 2px; padding: var(--s1); border-bottom: 1px solid var(--line-dim); }
-.htedbar button {
-  background: none; color: var(--dim); border: 1px solid transparent;
-  padding: .2rem .5rem; font-size: .7rem; letter-spacing: .04em;
+/* Wysi (public/wysi.min.js, MIT, vendored) follows the theme: its three
+   variables and its surfaces are the site's own colours, and wysi-site.js
+   flips its dark mode with the theme picker. */
+.wysi-wrapper {
+  --wysi-primary: var(--accent); --wysi-hover: var(--raise); --wysi-highlight: var(--accent-dim);
+  outline-color: var(--line); background: var(--well); color: var(--ink);
+  font: inherit; font-size: .92rem; line-height: 1.55; border-radius: var(--r); margin-bottom: var(--s2);
 }
-.htedbar button:hover { color: var(--ink); border-color: var(--line); }
-.hted.src .htedbar button:not(:last-child) { opacity: .35; }
-.htedbox { min-height: 10rem; padding: var(--s3); color: var(--ink); line-height: 1.55; outline: none; }
-.htedbox:focus { box-shadow: inset 0 0 0 1px var(--accent); }
-.htedbox img { max-width: 100%; height: auto; }
-.htedbox p { max-width: none; }
-.hted textarea.htedsrc {
-  display: block; width: 100%; min-height: 12rem; border: 0; border-radius: 0 0 var(--r) var(--r);
-  font-family: var(--mono); font-size: .82rem;
+.wysi-wrapper .wysi-toolbar, .wysi-darkmode .wysi-toolbar { background-color: var(--panel); color: var(--ink); }
+.wysi-wrapper .wysi-toolbar button, .wysi-darkmode .wysi-toolbar button:not([aria-pressed=true]) {
+  color: var(--dim); text-transform: none; letter-spacing: 0; font-weight: 400;
 }
+.wysi-wrapper .wysi-toolbar button:hover, .wysi-wrapper .wysi-toolbar button:focus,
+.wysi-darkmode .wysi-toolbar > button:hover, .wysi-darkmode .wysi-toolbar > button:focus,
+.wysi-darkmode .wysi-toolbar > div > button:hover, .wysi-darkmode .wysi-toolbar > div > button:focus { background-color: var(--raise); color: var(--ink); }
+.wysi-wrapper .wysi-editor { color: var(--ink); }
+.wysi-wrapper .wysi-editor p { max-width: none; }
+.wysi-wrapper .wysi-editor img { max-width: 100%; height: auto; }
+.wysi-wrapper .wysi-listbox, .wysi-wrapper .wysi-popover { background-color: var(--panel); color: var(--ink); }
 
 /* The public home page: the gate's look, twice the width, blocks below the mark. */
 .p-gate main:has(> .home) { width: 60%; max-width: 54rem; }

@@ -78,9 +78,9 @@ function ghostd_home(): array
 }
 
 /**
- * HTML reduced to the tags in GHOSTD_HTML_TAGS, with only href, src, alt,
- * colspan and rowspan kept, no javascript: or data: addresses, and every
- * tag closed - an unclosed <div> in a block must not swallow the footer.
+ * HTML reduced to the tags in GHOSTD_HTML_TAGS, with only href, target, src,
+ * alt, colspan, rowspan and a text-align style kept (what the Wysi editor
+ * writes), no javascript: or data: addresses, and every tag closed - an unclosed <div> in a block must not swallow the footer.
  *
  * Regular expressions rather than DOMDocument because the dom extension is a
  * separate package on the Red Hat family and DEPLOY.md does not install it;
@@ -120,10 +120,20 @@ function ghostd_html_clean(string $html): string
                 foreach ($attrs as $a) {
                     $name  = strtolower($a[1]);
                     $value = html_entity_decode(($a[2] ?? '') !== '' ? $a[2] : (($a[3] ?? '') !== '' ? $a[3] : ($a[4] ?? '')), ENT_QUOTES, 'UTF-8');
-                    $ok = ($tag === 'a' && $name === 'href')
+                    $ok = ($tag === 'a' && ($name === 'href' || $name === 'target'))
                        || ($tag === 'img' && ($name === 'src' || $name === 'alt'))
-                       || (($tag === 'td' || $tag === 'th') && ($name === 'colspan' || $name === 'rowspan'));
+                       || (($tag === 'td' || $tag === 'th') && ($name === 'colspan' || $name === 'rowspan'))
+                       || ($name === 'style' && in_array($tag, ['p', 'h1', 'h2', 'h3', 'h4', 'div', 'li', 'ul', 'ol', 'blockquote'], true));
                     if (!$ok) {
+                        continue;
+                    }
+                    if ($name === 'style') {
+                        if (!preg_match('/^\s*text-align\s*:\s*(left|center|right|justify)\s*;?\s*$/i', $value, $al)) {
+                            continue;               // the one style a block may carry
+                        }
+                        $value = 'text-align: ' . strtolower($al[1]);
+                    }
+                    if ($name === 'target' && $value !== '_blank') {
                         continue;
                     }
                     if ($name === 'href' || $name === 'src') {

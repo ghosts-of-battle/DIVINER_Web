@@ -5,7 +5,7 @@
  * ONE SWITCH AND ONE BLOCK. Off, the site opens on the sign-in card as it
  * always has. On, a visitor lands on the home page first, with Sign in and
  * Apply buttons on it. Each block is a heading and a piece of HTML written in
- * the editor below (htmleditor.js - no library, like the rest of the site);
+ * the Wysi editor below (vendored, public/wysi.min.*, see wysi-site.js);
  * an empty block is not drawn. The HTML is cleaned on save - see home.php.
  *
  * Stored in <unit>.web.home, beside Branding's <unit>.web, for the same
@@ -61,6 +61,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 and logo from Branding. <a href="?page=home&amp;preview=1">Preview</a> it any
 time, switched on or off.</p>
 
+<link rel="stylesheet" href="wysi.min.css">
 <form method="post" class="card fields">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
 
@@ -78,13 +79,14 @@ time, switched on or off.</p>
     <input type="text" id="h_<?= h($key) ?>" name="h_<?= h($key) ?>" maxlength="80"
            value="<?= h($home['headings'][$key]) ?>">
     <label for="b_<?= h($key) ?>">Content <span class="dim">empty: the block is not shown</span></label>
-    <textarea id="b_<?= h($key) ?>" name="b_<?= h($key) ?>" rows="8" data-html-editor><?= h($home['blocks'][$key]) ?></textarea>
+    <textarea id="b_<?= h($key) ?>" name="b_<?= h($key) ?>" rows="8" data-wysi="html"><?= h($home['blocks'][$key]) ?></textarea>
   <?php endforeach; ?>
 
   <p class="dim">Links and pictures take an address: paste one, or a public
   file's link from Media.</p>
   <button type="submit">Save</button>
 </form>
-<script src="htmleditor.js"></script>
+<script src="wysi.min.js"></script>
+<script src="wysi-site.js"></script>
 <?php
 ghostd_foot();
