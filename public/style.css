@@ -867,6 +867,7 @@ td.rowacts > *:last-child { margin-right: 0; }
 @media (max-width: 60rem) { .p-home main { width: 92% !important; } }
 .home { display: flex; flex-direction: column; }
 .home .gatemark { margin-bottom: var(--s2); }
+.home .gatelogo { height: var(--logo-home, var(--logo-login)); }
 .homewords { flex: 1; }
 .homeblock {
   text-align: left; margin-top: var(--s5); padding-top: var(--s4);
@@ -922,7 +923,7 @@ td.rowacts > *:last-child { margin-right: 0; }
   display: flex; align-items: center; gap: var(--s5); text-align: left;
   margin: 0; padding-bottom: var(--s4); border-bottom: 1px solid var(--line-dim);
 }
-.l-banner .gatelogo { margin: 0; height: calc(var(--logo-login) * .75); flex: none; }
+.l-banner .gatelogo { margin: 0; height: calc(var(--logo-home, var(--logo-login)) * .75); flex: none; }
 .l-banner .gatename { margin: 0 0 var(--s1); }
 .l-banner .gatetag { margin: 0; }
 .l-banner .homewords > .homeblock:first-child { margin-top: var(--s4); padding-top: 0; border-top: 0; }
@@ -942,6 +943,7 @@ td.rowacts > *:last-child { margin-right: 0; }
    drawn by ghostd_home_wireframe(); these classes colour its parts. */
 button.btnquiet { background: transparent; color: var(--ink); border-color: var(--line); }
 button.btnquiet:hover { border-color: var(--accent); color: var(--accent); }
+.sectionhead { margin-top: var(--s6); padding-top: var(--s4); border-top: 1px solid var(--line-dim); }
 .posrow { display: flex; flex-wrap: wrap; gap: var(--s4); }
 .posrow .inlinelabel { margin: 0; }
 .layoutpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--s3); margin: var(--s2) 0 var(--s3); }

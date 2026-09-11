@@ -122,7 +122,6 @@ function ghostd_head(string $title, string $active = ''): void
             'media'        => 'Media',
             'documents'    => 'Mongo docs',
             'backup'       => 'Backup',
-            'branding'     => 'Branding',
             'websettings'  => 'Web settings',
             // An admin is a member too - they have a record like anybody else,
             // and dropping this left them no way to reach their own details.

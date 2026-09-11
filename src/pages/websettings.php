@@ -1,6 +1,7 @@
 <?php
 /**
- * The public home page's words: what a visitor reads before signing in.
+ * The public home page and the branding, on one page: everything about how
+ * the site looks, for the admin who is looking for exactly that.
  *
  * ONE SWITCH AND ONE BLOCK. Off, the site opens on the sign-in card as it
  * always has. On, a visitor lands on the home page first, with Sign in and
@@ -15,6 +16,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../home.php';
+require_once __DIR__ . '/_branding.php';
 
 $cfg   = ghostd_config();
 $docId = $cfg['unit'] . '.web.home';
@@ -30,13 +32,18 @@ $err = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ghostd_csrf_check();
     try {
-        $doc = ghostd_home_from_post($_POST);
-        $doc['section']   = 'web';
-        $doc['updatedAt'] = gmdate('Y-m-d H:i:s');
-        ghostd_put($docId, $doc);
-        $msg = $doc['enabled']
-            ? 'Saved. Visitors now land on the home page.'
-            : 'Saved. The home page is off; visitors land on the sign-in card.';
+        $what = (string) ($_POST['what'] ?? 'home');
+        if (in_array($what, ['identity', 'upload', 'remove'], true)) {
+            $msg = ghostd_branding_post($what);          // the Branding section's forms
+        } else {
+            $doc = ghostd_home_from_post($_POST);
+            $doc['section']   = 'web';
+            $doc['updatedAt'] = gmdate('Y-m-d H:i:s');
+            ghostd_put($docId, $doc);
+            $msg = $doc['enabled']
+                ? 'Saved. Visitors now land on the home page.'
+                : 'Saved. The home page is off; visitors land on the sign-in card.';
+        }
     } catch (Throwable $e) {
         $err = $e->getMessage();
     }
@@ -50,12 +57,13 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
 <p class="note">The public page a visitor sees before signing in, stored in the
 <code><?= h($docId) ?></code> document. It wears the login page's background
-and logo from Branding. <a href="?page=home&amp;preview=1">See the saved page</a>
+and logo from Branding, below. <a href="?page=home&amp;preview=1">See the saved page</a>
 any time, switched on or off; Preview below shows the form as it stands.</p>
 
 <link rel="stylesheet" href="<?= h(ghostd_asset('wysi.min.css')) ?>">
 <form method="post" class="card fields">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+  <input type="hidden" name="what" value="home">
 
   <h2>Home page</h2>
   <label class="inlinelabel">
@@ -110,6 +118,13 @@ any time, switched on or off; Preview below shows the form as it stands.</p>
     <output><?= (int) $home['height'] === 0 ? 'fit' : (int) $home['height'] . '%' ?></output>
   </div>
 
+  <label for="logoScale">Logo size <span class="dim">on this page only - 100% is 96px tall; the login card and the bar have their own, under Branding</span></label>
+  <div class="scalerow">
+    <input type="range" id="logoScale" name="logoScale" min="<?= GHOSTD_HOME_LOGO['min'] ?>" max="<?= GHOSTD_HOME_LOGO['max'] ?>" step="5"
+           value="<?= (int) $home['logoScale'] ?>" oninput="this.nextElementSibling.value = this.value + '%'">
+    <output><?= (int) $home['logoScale'] ?>%</output>
+  </div>
+
   <?php foreach (GHOSTD_HOME_BLOCKS as $key => $label): ?>
     <h2><?= h($label) ?></h2>
     <p class="dim"><?= h($hints[$key]) ?></p>
@@ -128,6 +143,8 @@ any time, switched on or off; Preview below shows the form as it stands.</p>
     <span class="dim">Preview opens the page in a new tab with what is in this form, saved or not.</span>
   </div>
 </form>
+
+<?php ghostd_branding_forms(); ?>
 <script src="<?= h(ghostd_asset('wysi.min.js')) ?>"></script>
 <script src="<?= h(ghostd_asset('wysi-site.js')) ?>"></script>
 <?php

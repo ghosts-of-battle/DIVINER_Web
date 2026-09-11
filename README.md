@@ -148,8 +148,7 @@ browser, so a LAN box works.
 | **ORBAT** | the orders of battle, communications, roles, squads and platoons |
 | **Mongo docs** | every document, filterable, each openable as JSON |
 | **Backup** | the nightly copy of the database, read only, admins only |
-| **Branding** | the site's own name, colours and pictures - the one thing that is web only |
-| **Web settings** | the public home page shown before sign-in: the logo, the name and an About block written in an HTML editor, four layouts to pick from, width and height sliders (Wysi, MIT, vendored in `public/` - the welcome screen's editor is the same one) |
+| **Web settings** | branding - the site's own name, colours and pictures, the one thing that is web only - and the public home page shown before sign-in: the logo, the name and an About block written in an HTML editor, four layouts to pick from, width and height sliders (Wysi, MIT, vendored in `public/` - the welcome screen's editor is the same one) |
 
 Every page here has its opposite number in the game's TAC//PAC, and both write
 the same documents, with four exceptions still to be built in game: the

@@ -42,6 +42,9 @@ const GHOSTD_HOME_ALIGNS = ['left' => 'Left', 'center' => 'Centre', 'right' => '
 /** Where the card sits down the window: key => label. */
 const GHOSTD_HOME_VALIGNS = ['top' => 'Top', 'center' => 'Centre', 'bottom' => 'Bottom'];
 
+/** The logo on the home page, as a percentage of 96px - its own scale, not the login card's. */
+const GHOSTD_HOME_LOGO = ['min' => 20, 'max' => 400, 'default' => 100];
+
 /** Width of the page as a percentage of the window, and its height. */
 const GHOSTD_HOME_WIDTH  = ['min' => 30, 'max' => 100, 'default' => 60];
 const GHOSTD_HOME_HEIGHT = ['min' => 0,  'max' => 100, 'default' => 0];   // 0: as tall as the words
@@ -62,7 +65,7 @@ const GHOSTD_HTML_VOID = ['br', 'hr', 'img'];
 /**
  * The home document with defaults filled in: ['enabled' => bool,
  * 'layout' => key, 'align' => left|center|right, 'valign' => top|center|bottom,
- * 'width' => %, 'height' => %, 'headings' => [key =>
+ * 'width' => %, 'height' => %, 'logoScale' => %, 'headings' => [key =>
  * string], 'blocks' => [key => html]].
  * Never fatal - a visitor must reach the sign-in page even if the database
  * is down, so a failed read is an empty, disabled page.
@@ -80,6 +83,7 @@ function ghostd_home(): array
         'valign'   => 'center',
         'width'    => GHOSTD_HOME_WIDTH['default'],
         'height'   => GHOSTD_HOME_HEIGHT['default'],
+        'logoScale' => GHOSTD_HOME_LOGO['default'],
         'headings' => [],
         'blocks'   => [],
     ];
@@ -107,6 +111,7 @@ function ghostd_home(): array
     }
     $home['width']  = max(GHOSTD_HOME_WIDTH['min'],  min(GHOSTD_HOME_WIDTH['max'],  (int) ($doc['width']  ?? $home['width'])));
     $home['height'] = max(GHOSTD_HOME_HEIGHT['min'], min(GHOSTD_HOME_HEIGHT['max'], (int) ($doc['height'] ?? $home['height'])));
+    $home['logoScale'] = max(GHOSTD_HOME_LOGO['min'], min(GHOSTD_HOME_LOGO['max'], (int) ($doc['logoScale'] ?? $home['logoScale'])));
     foreach (GHOSTD_HOME_BLOCKS as $key => $label) {
         if (isset($doc['headings'][$key]) && is_string($doc['headings'][$key])) {
             $home['headings'][$key] = $doc['headings'][$key];
@@ -135,6 +140,7 @@ function ghostd_home_from_post(array $post): array
         'valign'   => isset(GHOSTD_HOME_VALIGNS[$valign]) ? $valign : 'center',
         'width'    => max(GHOSTD_HOME_WIDTH['min'],  min(GHOSTD_HOME_WIDTH['max'],  (int) ($post['width']  ?? GHOSTD_HOME_WIDTH['default']))),
         'height'   => max(GHOSTD_HOME_HEIGHT['min'], min(GHOSTD_HOME_HEIGHT['max'], (int) ($post['height'] ?? GHOSTD_HOME_HEIGHT['default']))),
+        'logoScale' => max(GHOSTD_HOME_LOGO['min'], min(GHOSTD_HOME_LOGO['max'], (int) ($post['logoScale'] ?? GHOSTD_HOME_LOGO['default']))),
         'headings' => [],
         'blocks'   => [],
     ];

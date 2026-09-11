@@ -44,6 +44,7 @@ $justify = ['top' => 'flex-start', 'bottom' => 'flex-end', 'center' => 'center']
 <style>
   body.p-home { justify-content: <?= h($justify) ?>; }
   .p-home main { width: <?= (int) $home['width'] ?>%; margin: <?= h($margin) ?>; }
+  .home { --logo-home: <?= (int) round(96 * (int) $home['logoScale'] / 100) ?>px; }
   <?php if ((int) $home['height'] > 0): ?>
   .home { min-height: <?= (int) $home['height'] ?>vh; }
   <?php endif; ?>
