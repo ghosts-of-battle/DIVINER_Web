@@ -17,6 +17,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../system.php';
 
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../records.php';   // ghostd_rank_insignia()
 
 $cfg     = ghostd_config();
 $storeId = $cfg['unit'];
@@ -111,7 +112,7 @@ $statusNames = $labels('statuses');
 ?>
 <div class="tiles">
   <div class="tile"><span class="n"><?= h((string) ($me['operatorId'] ?? '-')) ?></span>operator id</div>
-  <div class="tile"><span class="n"><?= h($rankNames[(string) ($me['rankId'] ?? '')] ?? '-') ?></span>rank</div>
+  <div class="tile"><span class="n"><?= ghostd_rank_insignia((string) ($me['rankId'] ?? '')) ?><?= h($rankNames[(string) ($me['rankId'] ?? '')] ?? '-') ?></span>rank</div>
   <div class="tile"><span class="n"><?= h($statusNames[(string) ($me['statusId'] ?? '')] ?? '-') ?></span>status</div>
   <div class="tile"><span class="n"><?= h((string) ($me['enlistedAt'] ?? '-')) ?></span>enlisted</div>
 </div>
@@ -171,7 +172,7 @@ rest is what you choose to share.</p>
 <h2>What only an admin can change</h2>
 <table class="kv">
   <tr><th>Name</th><td><?= cell($me['name'] ?? null) ?></td></tr>
-  <tr><th>Rank</th><td><?= h($rankNames[(string) ($me['rankId'] ?? '')] ?? (string) ($me['rankId'] ?? '')) ?></td></tr>
+  <tr><th>Rank</th><td><?= ghostd_rank_insignia((string) ($me['rankId'] ?? '')) ?><?= h($rankNames[(string) ($me['rankId'] ?? '')] ?? (string) ($me['rankId'] ?? '')) ?></td></tr>
   <tr><th>Role</th><td><?= cell($me['roleId'] ?? null) ?></td></tr>
   <tr><th>Group</th><td><?= cell($me['groupId'] ?? null) ?></td></tr>
   <tr><th>Skills</th><td><?= is_array($me['skillIds'] ?? null) ? count($me['skillIds']) : 0 ?></td></tr>

@@ -80,7 +80,6 @@ ghostd_head('Media', 'media');
 if ($msg !== null) { ghostd_flash('good', $msg); }
 if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
-<h1>Media</h1>
 <p class="dim">Files the unit shares. They are kept outside the web root and
 handed out by this app, never by the web server - so <strong>site only</strong>
 really is site only. <?= count($files) ?> file<?= count($files) === 1 ? '' : 's' ?>.</p>
@@ -91,7 +90,7 @@ really is site only. <?= count($files) ?> file<?= count($files) === 1 ? '' : 's'
   <code>sudo mkdir -p <?= h($dir) ?> &amp;&amp; sudo chown root:apache <?= h($dir) ?> &amp;&amp; sudo chmod 750 <?= h($dir) ?></code></p>
 <?php endif; ?>
 
-<form method="post" enctype="multipart/form-data" class="fieldbox">
+<form method="post" enctype="multipart/form-data" class="fieldbox uploadbox">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
   <input type="hidden" name="what" value="upload">
   <label class="stacked">Add files

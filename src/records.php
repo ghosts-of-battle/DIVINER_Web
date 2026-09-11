@@ -298,17 +298,50 @@ function ghostd_record_image(string $key): ?array
     return (is_array($a) && ($a['data'] ?? '') !== '') ? $a : null;
 }
 
-/** Write one, or remove it when $mime is null. The rest are left alone. */
+/**
+ * Write one, or remove it when $mime is null. The rest are left alone.
+ *
+ * THE DOCUMENT IS MADE FIRST. ghostd_set_path() is an update matched on the
+ * id, not an upsert: on a unit that had never stored a picture there was no
+ * <unit>.web.images to match, every upload wrote nothing, and nothing said
+ * so (user, 2026-09-11: "the images saved to the web rank field do not seem
+ * to save"). So the first picture creates the document, and a write that
+ * still matches nothing is an error rather than a shrug.
+ */
 function ghostd_record_image_put(string $key, ?string $mime, string $bytes = ''): void
 {
     $id = ghostd_record_images_id();
     if ($mime === null) {
         ghostd_unset_path($id, 'images.' . $key);
     } else {
-        ghostd_set_path($id, 'images.' . $key,
+        if (ghostd_get($id) === null) {
+            ghostd_put($id, ['section' => 'web', 'images' => []]);
+        }
+        $res = ghostd_set_path($id, 'images.' . $key,
             ['mime' => $mime, 'data' => base64_encode($bytes), 'at' => gmdate('Y-m-d H:i:s')]);
+        if (($res['matched'] ?? 0) < 1) {
+            throw new RuntimeException('The picture was not stored: ' . $id . ' could not be written.');
+        }
     }
     ghostd_record_images(true);
+}
+
+/**
+ * A rank's insignia as an <img>, or '' when none was uploaded on Configs >
+ * Ranks. Drawn wherever a rank is named - the roster, a player's file, My
+ * details - which is what uploading it is for.
+ */
+function ghostd_rank_insignia(string $rankId): string
+{
+    if ($rankId === '') {
+        return '';
+    }
+    $key = ghostd_record_image_key('ranks', $rankId, 'insignia');
+    if (ghostd_record_image($key) === null) {
+        return '';
+    }
+    return '<img class="rankimg" src="?page=recimg&amp;k=' . htmlspecialchars(urlencode($key), ENT_QUOTES, 'UTF-8')
+         . '" alt="" title="' . htmlspecialchars($rankId, ENT_QUOTES, 'UTF-8') . '">';
 }
 
 // ---- where the two lists meet ---------------------------------------------

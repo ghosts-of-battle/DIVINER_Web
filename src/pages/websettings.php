@@ -30,27 +30,8 @@ $err = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ghostd_csrf_check();
     try {
-        $layout = (string) ($_POST['layout'] ?? 'stack');
-        $align  = (string) ($_POST['align'] ?? 'center');
-        $doc = [
-            'section'  => 'web',
-            'enabled'  => isset($_POST['enabled']),
-            'layout'   => isset(GHOSTD_HOME_LAYOUTS[$layout]) ? $layout : 'stack',
-            'align'    => isset(GHOSTD_HOME_ALIGNS[$align]) ? $align : 'center',
-            'width'    => max(GHOSTD_HOME_WIDTH['min'],  min(GHOSTD_HOME_WIDTH['max'],  (int) ($_POST['width']  ?? GHOSTD_HOME_WIDTH['default']))),
-            'height'   => max(GHOSTD_HOME_HEIGHT['min'], min(GHOSTD_HOME_HEIGHT['max'], (int) ($_POST['height'] ?? GHOSTD_HOME_HEIGHT['default']))),
-            'headings' => [],
-            'blocks'   => [],
-        ];
-        foreach (GHOSTD_HOME_BLOCKS as $key => $label) {
-            $doc['headings'][$key] = mb_substr(trim((string) ($_POST['h_' . $key] ?? '')), 0, 80);
-            $html = (string) ($_POST['b_' . $key] ?? '');
-            if (strlen($html) > GHOSTD_HOME_BLOCK_MAX) {
-                throw new RuntimeException($label . ' is ' . round(strlen($html) / 1024) . ' KB; the limit is '
-                    . round(GHOSTD_HOME_BLOCK_MAX / 1024) . ' KB. Pictures belong in Media, linked from here.');
-            }
-            $doc['blocks'][$key] = ghostd_html_clean($html);
-        }
+        $doc = ghostd_home_from_post($_POST);
+        $doc['section']   = 'web';
         $doc['updatedAt'] = gmdate('Y-m-d H:i:s');
         ghostd_put($docId, $doc);
         $msg = $doc['enabled']
@@ -69,8 +50,8 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 ?>
 <p class="note">The public page a visitor sees before signing in, stored in the
 <code><?= h($docId) ?></code> document. It wears the login page's background
-and logo from Branding. <a href="?page=home&amp;preview=1">Preview</a> it any
-time, switched on or off.</p>
+and logo from Branding. <a href="?page=home&amp;preview=1">See the saved page</a>
+any time, switched on or off; Preview below shows the form as it stands.</p>
 
 <link rel="stylesheet" href="<?= h(ghostd_asset('wysi.min.css')) ?>">
 <form method="post" class="card fields">
@@ -97,12 +78,20 @@ time, switched on or off.</p>
     <?php endforeach; ?>
   </div>
 
-  <label>Position <span class="dim">where the card sits across the window, for any layout</span></label>
-  <div class="fieldrow">
+  <label>Position <span class="dim">where the card sits in the window, for any layout: across, then down</span></label>
+  <div class="fieldrow posrow">
     <?php foreach (GHOSTD_HOME_ALIGNS as $ak => $alabel): ?>
       <label class="inlinelabel">
         <input type="radio" name="align" value="<?= h($ak) ?>" <?= $home['align'] === $ak ? 'checked' : '' ?>>
         <?= h($alabel) ?>
+      </label>
+    <?php endforeach; ?>
+  </div>
+  <div class="fieldrow posrow">
+    <?php foreach (GHOSTD_HOME_VALIGNS as $vk => $vlabel): ?>
+      <label class="inlinelabel">
+        <input type="radio" name="valign" value="<?= h($vk) ?>" <?= $home['valign'] === $vk ? 'checked' : '' ?>>
+        <?= h($vlabel) ?>
       </label>
     <?php endforeach; ?>
   </div>
@@ -133,7 +122,11 @@ time, switched on or off.</p>
 
   <p class="dim">Links and pictures take an address: paste one, or a public
   file's link from Media.</p>
-  <button type="submit">Save</button>
+  <div class="actions">
+    <button type="submit">Save</button>
+    <button type="submit" class="btnquiet" formaction="?page=home&amp;preview=1" formmethod="post" formtarget="_blank">Preview</button>
+    <span class="dim">Preview opens the page in a new tab with what is in this form, saved or not.</span>
+  </div>
 </form>
 <script src="<?= h(ghostd_asset('wysi.min.js')) ?>"></script>
 <script src="<?= h(ghostd_asset('wysi-site.js')) ?>"></script>

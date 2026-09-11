@@ -11,6 +11,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../records.php';   // ghostd_rank_insignia()
+
 $cfg   = ghostd_config();
 $unit  = $cfg['unit'];
 $storeId = $unit;
@@ -171,7 +173,7 @@ at mission end. Edit between sessions, not during one.</p>
       <td><a href="?page=player&amp;uid=<?= urlencode((string) $uid) ?>"><?= h((string) ($p['name'] ?? $uid)) ?></a>
           <?php if (!empty($p['milsimName'])): ?><span class="dim"><?= h((string) $p['milsimName']) ?></span><?php endif; ?>
       </td>
-      <td><?= h($rankNames[(string) ($p['rankId'] ?? '')] ?? (string) ($p['rankId'] ?? '')) ?></td>
+      <td><?= ghostd_rank_insignia((string) ($p['rankId'] ?? '')) ?><?= h($rankNames[(string) ($p['rankId'] ?? '')] ?? (string) ($p['rankId'] ?? '')) ?></td>
       <td><?= cell($p['roleId'] ?? null) ?></td>
       <td><?= cell($p['groupId'] ?? null) ?></td>
       <td><?= h($statusNames[(string) ($p['statusId'] ?? '')] ?? (string) ($p['statusId'] ?? '')) ?></td>

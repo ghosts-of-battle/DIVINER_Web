@@ -813,6 +813,8 @@ textarea.blockbox { min-height: 9rem; width: 100%; }
 
 /* A record's uploaded picture, beside its game path. Small on purpose: it is
    an insignia or a ribbon, and the row has to stay a row. */
+/* A rank's insignia beside its name, wherever a rank is named. */
+.rankimg { height: 1.4em; width: auto; max-width: 3.5em; vertical-align: middle; margin-right: .4em; object-fit: contain; }
 .recthumb { height: 2rem; width: auto; max-width: 6rem; object-fit: contain;
             background: var(--well); border: 1px solid var(--line); border-radius: 3px; }
 
@@ -938,6 +940,10 @@ td.rowacts > *:last-child { margin-right: 0; }
 
 /* Web settings: the layout picker, each layout as a wireframe. The SVG is
    drawn by ghostd_home_wireframe(); these classes colour its parts. */
+button.btnquiet { background: transparent; color: var(--ink); border-color: var(--line); }
+button.btnquiet:hover { border-color: var(--accent); color: var(--accent); }
+.posrow { display: flex; flex-wrap: wrap; gap: var(--s4); }
+.posrow .inlinelabel { margin: 0; }
 .layoutpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--s3); margin: var(--s2) 0 var(--s3); }
 .layoutopt {
   display: grid; gap: var(--s2); padding: var(--s3); cursor: pointer; text-align: center;
@@ -955,3 +961,19 @@ td.rowacts > *:last-child { margin-right: 0; }
 .wireframe .wf-rule { stroke: var(--line); stroke-width: 1; }
 .wireframe .wf-btn { fill: var(--accent); }
 .wireframe .wf-alt { fill: none; stroke: var(--line); stroke-width: 1; }
+
+/* Media: the upload box is one short row - files, who may read, note, Share -
+   capped at a readable width rather than spread across a wide screen, and
+   the Share button sits level with the fields. */
+.uploadbox {
+  display: grid; grid-template-columns: 1.2fr 1fr 1.2fr auto;
+  gap: var(--s3) var(--s4); align-items: end; max-width: 72rem;
+}
+.uploadbox label.stacked { flex: none; min-width: 0; }
+.uploadbox input[type=file] { max-width: 100%; }
+.uploadbox .actions { margin: 0; }
+@media (max-width: 60rem) {
+  .uploadbox { grid-template-columns: 1fr 1fr; }
+  .uploadbox .actions { grid-column: 1 / -1; }
+}
+@media (max-width: 40rem) { .uploadbox { grid-template-columns: 1fr; } }

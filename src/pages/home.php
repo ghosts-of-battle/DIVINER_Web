@@ -20,6 +20,13 @@ require_once __DIR__ . '/../branding.php';
 require_once __DIR__ . '/../steam.php';
 
 $home    = ghostd_home();
+$unsaved = false;
+// Preview from the Web settings form: the posted values, drawn, saved nowhere.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['preview']) && ghostd_is_admin()) {
+    ghostd_csrf_check();
+    $home    = ghostd_home_from_post($_POST);
+    $unsaved = true;
+}
 $brand   = ghostd_branding();
 $tagline = trim((string) $brand['tagline']);
 $logo    = ghostd_login_logo();
@@ -29,9 +36,13 @@ ghostd_head('Home', 'home');
 <?php
 // Where the card sits: the gate centres its main; left and right push it to
 // that side with a little air, and the width rule below is the same one.
-$margin = ['left' => '0 auto 0 4%', 'right' => '0 4% 0 auto', 'center' => '0 auto'][$home['align']] ?? '0 auto';
+$margin  = ['left' => '0 auto 0 4%', 'right' => '0 4% 0 auto', 'center' => '0 auto'][$home['align']] ?? '0 auto';
+// Down the window: the gate's body is a column that centres its content;
+// top and bottom move it to that end.
+$justify = ['top' => 'flex-start', 'bottom' => 'flex-end', 'center' => 'center'][$home['valign']] ?? 'center';
 ?>
 <style>
+  body.p-home { justify-content: <?= h($justify) ?>; }
   .p-home main { width: <?= (int) $home['width'] ?>%; margin: <?= h($margin) ?>; }
   <?php if ((int) $home['height'] > 0): ?>
   .home { min-height: <?= (int) $home['height'] ?>vh; }
@@ -69,7 +80,9 @@ $margin = ['left' => '0 auto 0 4%', 'right' => '0 4% 0 auto', 'center' => '0 aut
     <?php endif; ?>
   </div>
 
-  <?php if (!$home['enabled']): ?>
+  <?php if ($unsaved): ?>
+    <p class="gatehelp">Preview of the Web settings form as it stands - nothing is saved until you press Save.</p>
+  <?php elseif (!$home['enabled']): ?>
     <p class="gatehelp">Preview - the home page is switched off, so only admins see this.</p>
   <?php endif; ?>
 </div>

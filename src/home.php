@@ -39,6 +39,9 @@ const GHOSTD_HOME_LAYOUTS = [
 /** Where the card sits across the window, for any layout: key => label. */
 const GHOSTD_HOME_ALIGNS = ['left' => 'Left', 'center' => 'Centre', 'right' => 'Right'];
 
+/** Where the card sits down the window: key => label. */
+const GHOSTD_HOME_VALIGNS = ['top' => 'Top', 'center' => 'Centre', 'bottom' => 'Bottom'];
+
 /** Width of the page as a percentage of the window, and its height. */
 const GHOSTD_HOME_WIDTH  = ['min' => 30, 'max' => 100, 'default' => 60];
 const GHOSTD_HOME_HEIGHT = ['min' => 0,  'max' => 100, 'default' => 0];   // 0: as tall as the words
@@ -58,7 +61,8 @@ const GHOSTD_HTML_VOID = ['br', 'hr', 'img'];
 
 /**
  * The home document with defaults filled in: ['enabled' => bool,
- * 'layout' => key, 'align' => left|center|right, 'width' => %, 'height' => %, 'headings' => [key =>
+ * 'layout' => key, 'align' => left|center|right, 'valign' => top|center|bottom,
+ * 'width' => %, 'height' => %, 'headings' => [key =>
  * string], 'blocks' => [key => html]].
  * Never fatal - a visitor must reach the sign-in page even if the database
  * is down, so a failed read is an empty, disabled page.
@@ -73,6 +77,7 @@ function ghostd_home(): array
         'enabled'  => false,
         'layout'   => 'stack',
         'align'    => 'center',
+        'valign'   => 'center',
         'width'    => GHOSTD_HOME_WIDTH['default'],
         'height'   => GHOSTD_HOME_HEIGHT['default'],
         'headings' => [],
@@ -97,6 +102,9 @@ function ghostd_home(): array
     if (isset(GHOSTD_HOME_ALIGNS[(string) ($doc['align'] ?? '')])) {
         $home['align'] = (string) $doc['align'];
     }
+    if (isset(GHOSTD_HOME_VALIGNS[(string) ($doc['valign'] ?? '')])) {
+        $home['valign'] = (string) $doc['valign'];
+    }
     $home['width']  = max(GHOSTD_HOME_WIDTH['min'],  min(GHOSTD_HOME_WIDTH['max'],  (int) ($doc['width']  ?? $home['width'])));
     $home['height'] = max(GHOSTD_HOME_HEIGHT['min'], min(GHOSTD_HOME_HEIGHT['max'], (int) ($doc['height'] ?? $home['height'])));
     foreach (GHOSTD_HOME_BLOCKS as $key => $label) {
@@ -106,6 +114,38 @@ function ghostd_home(): array
         if (isset($doc['blocks'][$key]) && is_string($doc['blocks'][$key])) {
             $home['blocks'][$key] = ghostd_html_clean($doc['blocks'][$key]);
         }
+    }
+    return $home;
+}
+
+/**
+ * The home document as the Web settings form posts it, checked and cleaned:
+ * what Save stores, and what Preview shows without storing anything. Throws
+ * when a block is over the size limit.
+ */
+function ghostd_home_from_post(array $post): array
+{
+    $layout = (string) ($post['layout'] ?? 'stack');
+    $align  = (string) ($post['align'] ?? 'center');
+    $valign = (string) ($post['valign'] ?? 'center');
+    $home = [
+        'enabled'  => isset($post['enabled']),
+        'layout'   => isset(GHOSTD_HOME_LAYOUTS[$layout]) ? $layout : 'stack',
+        'align'    => isset(GHOSTD_HOME_ALIGNS[$align]) ? $align : 'center',
+        'valign'   => isset(GHOSTD_HOME_VALIGNS[$valign]) ? $valign : 'center',
+        'width'    => max(GHOSTD_HOME_WIDTH['min'],  min(GHOSTD_HOME_WIDTH['max'],  (int) ($post['width']  ?? GHOSTD_HOME_WIDTH['default']))),
+        'height'   => max(GHOSTD_HOME_HEIGHT['min'], min(GHOSTD_HOME_HEIGHT['max'], (int) ($post['height'] ?? GHOSTD_HOME_HEIGHT['default']))),
+        'headings' => [],
+        'blocks'   => [],
+    ];
+    foreach (GHOSTD_HOME_BLOCKS as $key => $label) {
+        $home['headings'][$key] = mb_substr(trim((string) ($post['h_' . $key] ?? '')), 0, 80);
+        $html = (string) ($post['b_' . $key] ?? '');
+        if (strlen($html) > GHOSTD_HOME_BLOCK_MAX) {
+            throw new RuntimeException($label . ' is ' . round(strlen($html) / 1024) . ' KB; the limit is '
+                . round(GHOSTD_HOME_BLOCK_MAX / 1024) . ' KB. Pictures belong in Media, linked from here.');
+        }
+        $home['blocks'][$key] = ghostd_html_clean($html);
     }
     return $home;
 }

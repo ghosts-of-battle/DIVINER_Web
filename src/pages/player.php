@@ -13,6 +13,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../orbat.php';
 require_once __DIR__ . '/../roles.php';
+require_once __DIR__ . '/../records.php';   // ghostd_rank_insignia()
 
 $cfg     = ghostd_config();
 $storeId = $cfg['unit'];
@@ -248,7 +249,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 
 <div class="tiles">
   <div class="tile"><span class="n"><?= h((string) ($p['operatorId'] ?? '-')) ?></span>operator id</div>
-  <div class="tile"><span class="n"><?= h($rankNames[(string) ($p['rankId'] ?? '')] ?? '-') ?></span>rank</div>
+  <div class="tile"><span class="n"><?= ghostd_rank_insignia((string) ($p['rankId'] ?? '')) ?><?= h($rankNames[(string) ($p['rankId'] ?? '')] ?? '-') ?></span>rank</div>
   <div class="tile"><span class="n"><?= h($statusNames[(string) ($p['statusId'] ?? '')] ?? '-') ?></span>status</div>
   <div class="tile"><span class="n"><?= h((string) ($p['enlistedAt'] ?? '-')) ?></span>enlisted</div>
 </div>

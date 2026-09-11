@@ -172,7 +172,7 @@ $adminPages  = ['dashboard', 'roster', 'player', 'templates', 'template_edit', '
                 'opord_section', 'ticket_kind', 'pylon', 'records', 'record', 'backup', 'crate',
                 'recimg', 'media', 'websettings'];
 // MEMBERS SHARE TOO - a folder only admins can put things in is not a share.
-$memberPages = ['me', 'apply', 'tickets', 'ticket', 'media'];
+$memberPages = ['me', 'apply', 'tickets', 'ticket', 'media', 'recimg'];   // recimg: the rank insignia on My details
 
 if (ghostd_is_admin() || !ghostd_is_member()) {
     // Admins get everything; a password session gets the admin pages read-only.

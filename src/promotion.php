@@ -87,7 +87,14 @@ function ghostd_auto_promote(): bool
 
 function ghostd_auto_promote_save(bool $on): void
 {
-    ghostd_set_path(ghostd_config()['unit'] . '.settings', 'items.autoPromote', $on);
+    // Same trap as the record pictures: ghostd_set_path() matches an existing
+    // document and does not make one, so on a unit with no <unit>.settings yet
+    // the switch was never stored. Make the document first.
+    $id = ghostd_config()['unit'] . '.settings';
+    if (ghostd_get($id) === null) {
+        ghostd_put($id, ['section' => 'settings', 'items' => []]);
+    }
+    ghostd_set_path($id, 'items.autoPromote', $on);
 }
 
 /** "2026-09-05 17:44" or "2026-09-05" to minutes, the way the mod stamps. */
