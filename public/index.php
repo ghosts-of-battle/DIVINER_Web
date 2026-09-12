@@ -170,7 +170,7 @@ $adminPages  = ['dashboard', 'roster', 'player', 'templates', 'template_edit', '
                 'branding', 'applications', 'questions', 'tickets', 'ticket', 'opords', 'opord',
                 'config', 'configedit', 'orbat', 'role', 'squad', 'platoon', 'arsenal', 'schemes',
                 'opord_section', 'ticket_kind', 'pylon', 'records', 'record', 'backup', 'crate',
-                'recimg', 'media', 'websettings'];
+                'recimg', 'media', 'websettings', 'reforger'];
 // MEMBERS SHARE TOO - a folder only admins can put things in is not a share.
 $memberPages = ['me', 'apply', 'tickets', 'ticket', 'media', 'recimg'];   // recimg: the rank insignia on My details
 

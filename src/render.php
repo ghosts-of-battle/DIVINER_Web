@@ -104,6 +104,8 @@ function ghostd_asset(string $file): string
     return $file . ($t ? '?v=' . $t : '');
 }
 
+require_once __DIR__ . '/reforger.php';
+
 function ghostd_head(string $title, string $active = ''): void
 {
     ghostd_active($active);
@@ -128,6 +130,15 @@ function ghostd_head(string $title, string $active = ''): void
             'me'           => 'My details',
         ]
         : ['me' => 'My details', 'tickets' => 'PAC requests', 'media' => 'Media', 'apply' => 'Apply'];
+
+    // THE REFORGER TAB IS OFF BY DEFAULT. A unit that plays only Arma 3 never
+    // meets the feature; the switch that turns it on is on Web settings. Slotted
+    // in before "My details" so the admin tabs stay together.
+    if ((ghostd_is_admin() || !ghostd_is_member()) && ghostd_rf_enabled()) {
+        $tail = array_splice($nav, -1);          // 'me'
+        $nav['reforger'] = 'Reforger';
+        $nav += $tail;
+    }
 
     // Only ask who is signed in when a session is already running. This
     // function has begun sending HTML by the time the bar is drawn, and
