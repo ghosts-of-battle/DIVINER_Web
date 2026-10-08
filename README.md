@@ -143,12 +143,34 @@ browser, so a LAN box works.
 | **Applications** | who applied, and the questions they answered |
 | **PAC actions** | the requests players raised |
 | **Orders** | the operation orders, section by section |
+| **Events** | the unit's calendar: operations, training nights, events - a title, a start in the unit's time zone, a length, the server, the order it briefs; public ones are shown to visitors with a countdown to the next |
+| **Wiki** | the unit's own pages - SOPs, guides, the radio plan - written in the HTML editor; a page marked public opens with no sign-in, the rest need a member's session |
 | **Configs** | the unit's own records - ranks, skills, awards, statuses, promotion, training, admins |
 | **Templates** | what a mission's `config\` folder held: the welcome screen, arsenals, motorpool, cosmetics, the vehicle spawner, logistics crates, pylon presets, custom traits, messaging nets - plus the **Report deck** and **System** (the operation order's shape, the request kinds and the colour schemes) |
 | **ORBAT** | the orders of battle, communications, roles, squads and platoons |
 | **Mongo docs** | every document, filterable, each openable as JSON |
 | **Backup** | the nightly copy of the database, read only, admins only |
-| **Web settings** | branding - the site's own name, colours and pictures, the one thing that is web only - and the public home page shown before sign-in: the logo, the name and an About block written in an HTML editor, four layouts to pick from, width and height sliders (Wysi, MIT, vendored in `public/` - the welcome screen's editor is the same one) |
+| **Web settings** | branding - the site's own name, colours and pictures, the one thing that is web only - the public home page shown before sign-in: the logo, the name and an About block written in an HTML editor, four layouts to pick from, width and height sliders (Wysi, MIT, vendored in `public/` - the welcome screen's editor is the same one) - and the public feed's switches |
+
+## The public feed
+
+A unit's own website can read from here with no sign-in, as JSON, once an
+admin turns the feed on under Web settings. It is off until then, and each of
+the four feeds has its own switch:
+
+| Address | What |
+|---|---|
+| `?page=feed&what=roster` | every player on the roster: name (the milsim name when there is one), rank, status, squad, role, skill tags, awards and enlistment date; plus the ranks (with an address for each insignia), skills, statuses, awards and role names to draw them with. Sorted element, squad, slot, name. |
+| `?page=feed&what=orbat` | the live order of battle: each element, its squads, every slot and who fills it |
+| `?page=feed&what=events` | the public events: the next one, the upcoming ones and the last sixty days |
+| `?page=feed&what=wiki` | the public wiki pages |
+| `?page=feed&what=page&slug=<page>` | one public page, as cleaned HTML |
+| `?page=feed&what=image&k=<key>` | a rank's insignia or an award's image |
+
+Nothing else leaves: no Steam or Discord ids, emails, notes, loadouts, admin
+actions or operator ids. A player with `publicHide: true` on their record is
+left out altogether. Times are UTC; the events feed names the unit's zone.
+Answers carry `Access-Control-Allow-Origin: *` and may be cached for a minute.
 
 Every page here has its opposite number in the game's TAC//PAC, and both write
 the same documents, with four exceptions still to be built in game: the
@@ -196,5 +218,14 @@ Set by the mod, not by this site - see `tools/pacdb/README.md` in DIVINER:
 | `<unit>.admins` | a plain `ids` list |
 | `<unit>.role.<class>` | one role |
 | `<unit>.opord.<id>` | one order |
+
+Written by this site alone - the mod never reads them:
+
+| Key | What |
+|---|---|
+| `<unit>.web`, `.web.home`, `.web.images`, `.web.assets` | branding, the home page, the record pictures |
+| `<unit>.web.feed` | the public feed's switches |
+| `<unit>.events` | `{section, timezone, items}` - the calendar |
+| `<unit>.wiki.<slug>` | one wiki page: `{section, id, title, html, public, order}` |
 
 A document edited here is read at the next mission start.

@@ -1015,3 +1015,35 @@ button.btnquiet:hover { border-color: var(--accent); color: var(--accent); }
   content: ""; position: absolute; left: calc(-1 * var(--s4)); top: 50%; width: var(--s4); border-top: 2px solid #111;
 }
 .obsq li:last-child { margin-bottom: 0; }
+
+/* ---- the unit's wiki and its events (src/pages/wiki.php, events.php) ----- */
+/* Prose from the editor, read by members and visitors: a column that is
+   comfortable to read, headings that step down, tables and code that match
+   the rest of the site. The help panel's .wiki* classes are a different thing. */
+.wk-body { max-width: 72ch; line-height: 1.6; }
+.wk-body h1 { font-size: 1.5rem; margin: var(--s6) 0 var(--s3); }
+.wk-body h2 { font-size: 1.25rem; margin: var(--s6) 0 var(--s3); padding-bottom: var(--s1); border-bottom: 1px solid var(--line); }
+.wk-body h3 { font-size: 1.05rem; margin: var(--s5) 0 var(--s2); }
+.wk-body h4 { font-size: .95rem; margin: var(--s4) 0 var(--s2); color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.wk-body p, .wk-body ul, .wk-body ol { margin: 0 0 var(--s4); }
+.wk-body li { margin: var(--s1) 0; }
+.wk-body blockquote { margin: 0 0 var(--s4); padding: var(--s2) var(--s4); border-left: 3px solid var(--accent); color: var(--dim); }
+.wk-body img { max-width: 100%; height: auto; border-radius: var(--r); }
+.wk-body table { width: auto; }
+.wk-body pre { background: var(--well); padding: var(--s3); border-radius: var(--r); overflow-x: auto; }
+.wk-crumbs { margin-bottom: var(--s4); }
+.wk-foot { margin-top: var(--s6); font-size: .8rem; }
+.wk-list { list-style: none; padding: 0; margin: 0 0 var(--s5); max-width: 48rem; }
+.wk-list li { display: flex; gap: var(--s3); align-items: baseline; padding: var(--s2) 0; border-bottom: 1px solid var(--line-dim); }
+.wk-list li a:first-child { font-weight: 600; flex: 1; }
+
+.ev-next { border-left: 3px solid var(--accent); }
+.ev-next h2 { margin: 0 0 var(--s2); }
+.ev-label { margin: 0 0 var(--s1); text-transform: uppercase; letter-spacing: .1em; font-size: .75rem; }
+.ev-nextwhen { margin: 0 0 var(--s2); }
+.ev-count { font-family: var(--mono); font-size: 1.4rem; color: var(--accent); margin: var(--s2) 0 0; font-variant-numeric: tabular-nums; }
+.ev-count:empty { display: none; }
+.ev-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ev-table .dim { font-size: .85rem; }
+.ev-past { opacity: .75; }
+tr.ev-cancelled td strong { text-decoration: line-through; color: var(--dim); }

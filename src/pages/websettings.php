@@ -16,6 +16,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../home.php';
+require_once __DIR__ . '/../feed.php';
 require_once __DIR__ . '/_branding.php';
 
 $cfg   = ghostd_config();
@@ -35,6 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $what = (string) ($_POST['what'] ?? 'home');
         if (in_array($what, ['identity', 'upload', 'remove'], true)) {
             $msg = ghostd_branding_post($what);          // the Branding section's forms
+        } elseif ($what === 'feed') {
+            ghostd_feed_settings_save($_POST);
+            $msg = ghostd_feed_settings()['enabled']
+                ? 'Saved. The feed answers at ' . ghostd_feed_url('roster') . ' and the other addresses below.'
+                : 'Saved. The feed is off; every address below answers 403.';
         } else {
             $doc = ghostd_home_from_post($_POST);
             $doc['section']   = 'web';
@@ -142,6 +148,35 @@ any time, switched on or off; Preview below shows the form as it stands.</p>
     <button type="submit" class="btnquiet" formaction="?page=home&amp;preview=1" formmethod="post" formtarget="_blank">Preview</button>
     <span class="dim">Preview opens the page in a new tab with what is in this form, saved or not.</span>
   </div>
+</form>
+
+<?php $feed = ghostd_feed_settings(); ?>
+<form method="post" class="card fields">
+  <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+  <input type="hidden" name="what" value="feed">
+
+  <h2>Public feed</h2>
+  <p class="dim">What the unit's own website may read from here, as JSON, with
+  no sign-in. Off until you turn it on: a roster on the open web is this unit's
+  decision, not the software's. The roster carries a name, rank, squad, role,
+  skill tags, status and enlistment date and nothing else - no Steam or Discord
+  ids, no notes, no loadouts. Events and wiki pages come through only when
+  marked public. Stored in <code><?= h(ghostd_feed_doc_id()) ?></code>.</p>
+
+  <label class="inlinelabel">
+    <input type="checkbox" name="enabled" <?= $feed['enabled'] ? 'checked' : '' ?>>
+    <strong>Answer the feed</strong> <span class="dim">the master switch</span>
+  </label>
+  <?php foreach (GHOSTD_FEEDS as $fk => $flabel): ?>
+    <label class="inlinelabel">
+      <input type="checkbox" name="feed_<?= h($fk) ?>" <?= $feed[$fk] ? 'checked' : '' ?>>
+      <?= h($flabel) ?>
+      <span class="dim"><code><?= h(ghostd_feed_url($fk)) ?></code></span>
+    </label>
+  <?php endforeach; ?>
+  <p class="dim">A public wiki page is <code><?= h(ghostd_feed_url('page', ['slug' => 'sop'])) ?></code>;
+  a rank's insignia comes with the roster as an address the site can draw.</p>
+  <div class="actions"><button type="submit">Save</button></div>
 </form>
 
 <?php ghostd_branding_forms(); ?>

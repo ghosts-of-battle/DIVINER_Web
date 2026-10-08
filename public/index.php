@@ -163,6 +163,30 @@ if ($page === 'home' || (!isset($_GET['page']) && !ghostd_logged_in())) {
     }
 }
 
+// ---- what a visitor may read ----------------------------------------------
+// The wiki, the events and the public feed sit in front of the gate: a page
+// or an event marked public is meant for people who have not signed in, and
+// the unit's website reads the feed with no session at all. Each page decides
+// for itself what this visitor may see, and only an admin's session edits.
+if (in_array($page, ['feed', 'events', 'wiki'], true)) {
+    try {
+        require __DIR__ . '/../src/pages/' . $page . '.php';
+    } catch (Throwable $e) {
+        if ($page === 'feed') {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => $e->getMessage()]);
+            exit;
+        }
+        if (!ghostd_head_sent()) {
+            ghostd_head('Error', 'error');
+        }
+        ghostd_flash('bad', $e->getMessage());
+        ghostd_foot();
+    }
+    exit;
+}
+
 ghostd_require_login();
 
 // ---- what this session may open ------------------------------------------
@@ -170,9 +194,9 @@ $adminPages  = ['dashboard', 'roster', 'player', 'templates', 'template_edit', '
                 'branding', 'applications', 'questions', 'tickets', 'ticket', 'opords', 'opord',
                 'config', 'configedit', 'orbat', 'role', 'squad', 'platoon', 'arsenal', 'schemes',
                 'opord_section', 'ticket_kind', 'pylon', 'records', 'record', 'backup', 'crate',
-                'recimg', 'media', 'websettings'];
+                'recimg', 'media', 'websettings', 'events', 'wiki', 'wikiedit'];
 // MEMBERS SHARE TOO - a folder only admins can put things in is not a share.
-$memberPages = ['me', 'apply', 'tickets', 'ticket', 'media', 'recimg'];   // recimg: the rank insignia on My details
+$memberPages = ['me', 'apply', 'tickets', 'ticket', 'media', 'recimg', 'events', 'wiki'];   // recimg: the rank insignia on My details
 
 if (ghostd_is_admin() || !ghostd_is_member()) {
     // Admins get everything; a password session gets the admin pages read-only.

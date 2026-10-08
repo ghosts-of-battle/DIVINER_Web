@@ -116,6 +116,8 @@ function ghostd_head(string $title, string $active = ''): void
             'applications' => 'Applications',
             'tickets'      => 'PAC actions',
             'opords'       => 'Orders',
+            'events'       => 'Events',
+            'wiki'         => 'Wiki',
             'records'      => 'Configs',
             'config'       => 'Templates',
             'orbat'        => 'ORBAT',
@@ -127,7 +129,7 @@ function ghostd_head(string $title, string $active = ''): void
             // and dropping this left them no way to reach their own details.
             'me'           => 'My details',
         ]
-        : ['me' => 'My details', 'tickets' => 'PAC requests', 'media' => 'Media', 'apply' => 'Apply'];
+        : ['me' => 'My details', 'events' => 'Events', 'wiki' => 'Wiki', 'tickets' => 'PAC requests', 'media' => 'Media', 'apply' => 'Apply'];
 
     // Only ask who is signed in when a session is already running. This
     // function has begun sending HTML by the time the bar is drawn, and
