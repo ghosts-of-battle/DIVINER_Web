@@ -1,0 +1,1017 @@
+/* TAC//PAC manager - one stylesheet, no framework, no build step.
+ *
+ * TWO TYPEFACES, ON PURPOSE. Everything used to be monospace, which made a
+ * management page read like a log dump: no hierarchy, every word the same
+ * weight. Prose and chrome are now the system UI face; monospace is kept for
+ * the things that are actually data - ids, document keys, counts, JSON - so
+ * the eye can tell a label from a value without reading either.
+ */
+
+:root {
+  /* Surfaces, darkest to lightest. Three is enough to build depth with. */
+  --ground:   #0b0e11;
+  --well:     #070a0c;   /* inputs, code blocks - the recess behind a surface */
+  --panel:    #12161b;
+  --raise:    #171c22;
+  --line:     #242b33;
+  --line-dim: rgba(255, 255, 255, .06);
+
+  --ink:   #e3e9ef;
+  --dim:   #8b97a3;
+  --faint: #5c6773;
+
+  /* Phosphor green is the unit's colour; it stays the accent. */
+  --accent:     #93cf72;
+  --accent-dim: rgba(147, 207, 114, .13);
+  --on-accent:  #0b0e11;
+
+  --hot:      #e4574a;
+  --hot-dim:  rgba(228, 87, 74, .12);
+  --hot-ink:  #f4c4bf;   /* readable text ON a hot-dim background */
+  --warn:     #d9a441;
+  --steam:    #66c0f4;
+
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+
+  --s1: .25rem;  --s2: .5rem;   --s3: .75rem;
+  --s4: 1rem;    --s5: 1.5rem;  --s6: 2rem;   --s7: 3rem;
+
+  --r: 4px;
+
+  /* Logo sizes, overridden per unit from the branding page. */
+  --logo-login: 96px;
+  --logo-bar: 26px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 15px/1.55 var(--ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- the bar ------------------------------------------------------------ */
+
+.bar {
+  display: flex; align-items: center; gap: var(--s5);
+  padding: var(--s3) var(--s5);
+  background: linear-gradient(var(--panel), var(--ground));
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+  position: sticky; top: 0; z-index: 10;
+}
+.brand {
+  font-weight: 700; letter-spacing: .1em; font-size: .9rem;
+  text-transform: uppercase; white-space: nowrap;
+  display: flex; align-items: center;
+}
+.brand .logo { height: var(--logo-bar); width: auto; max-width: 14rem; object-fit: contain; }
+.brand .dim { letter-spacing: .06em; font-weight: 400; }
+
+.bar nav { display: flex; gap: var(--s5); flex: 1; flex-wrap: wrap; align-items: center; }
+.bar nav a {
+  color: var(--dim); text-decoration: none;
+  font-size: .82rem; text-transform: uppercase; letter-spacing: .07em;
+  padding: var(--s2) 0; position: relative;
+}
+.bar nav a:hover { color: var(--ink); }
+/* The active marker sits under the text rather than adding a border to the
+   box, so switching pages never shifts the row by a pixel. */
+.bar nav a.on { color: var(--accent); }
+.bar nav a.on::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  height: 2px; background: var(--accent);
+}
+.bar nav a.right { margin-left: auto; }
+.bar nav .who {
+  margin-left: auto; font-size: .78rem; padding-right: var(--s4);
+  font-family: var(--mono); color: var(--faint);
+}
+.bar nav .who + a.right { margin-left: 0; }
+
+/* ---- page --------------------------------------------------------------- */
+
+/* ONE WIDTH FOR EVERY PAGE (user, 2026-09-09: "no standards, some pages are
+   100% of the page other are radom shit"). Pages inside the wiki shell were
+   full width and the rest capped at 1200px, so the same table was two
+   different widths depending on where it was drawn. Prose is still capped at
+   68ch below, which is what stops a paragraph running the width of a monitor. */
+main { padding: var(--s5); max-width: none; }
+
+h1 {
+  font-size: 1.35rem; letter-spacing: .04em; font-weight: 600;
+  margin: var(--s2) 0 var(--s5); padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--line);
+}
+h2 {
+  font-size: .78rem; letter-spacing: .12em; text-transform: uppercase;
+  margin: var(--s6) 0 var(--s3); color: var(--accent); font-weight: 600;
+}
+h3 {
+  font-size: .74rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--dim); font-weight: 600;
+}
+
+a { color: var(--accent); text-decoration-color: var(--accent-dim); text-underline-offset: 2px; }
+a:hover { text-decoration-color: currentColor; }
+
+code {
+  font-family: var(--mono); font-size: .86em;
+  color: var(--ink); background: rgba(255, 255, 255, .05);
+  padding: .1em .4em; border-radius: 3px;
+}
+pre {
+  font-family: var(--mono); font-size: .82rem;
+  background: var(--well); padding: var(--s4); overflow-x: auto;
+  border: 1px solid var(--line); border-radius: var(--r);
+}
+.dim { color: var(--dim); }
+p { max-width: 68ch; }
+
+/* ---- stat tiles --------------------------------------------------------- */
+
+.tiles {
+  display: grid; gap: var(--s3); margin-bottom: var(--s5);
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+}
+.tile {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--r); padding: var(--s4);
+  color: var(--dim); text-transform: uppercase;
+  font-size: .68rem; letter-spacing: .1em;
+  position: relative; overflow: hidden;
+}
+/* A hairline of accent along the top edge - enough to tie the row together
+   without four solid blocks of green shouting at the reader. */
+.tile::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), transparent 70%);
+  opacity: .5;
+}
+.tile .n {
+  display: block; font-family: var(--mono); font-size: 2rem; line-height: 1.1;
+  color: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  margin-bottom: var(--s1);
+}
+
+/* ---- tables ------------------------------------------------------------- */
+
+table { border-collapse: collapse; width: 100%; margin-bottom: var(--s5); }
+th, td {
+  text-align: left; padding: var(--s3); vertical-align: top;
+  border-bottom: 1px solid var(--line-dim);
+}
+th {
+  color: var(--faint); font-weight: 600; text-transform: uppercase;
+  font-size: .68rem; letter-spacing: .1em;
+  border-bottom: 1px solid var(--line);
+}
+td code, td .mono { font-family: var(--mono); }
+
+table.kv th { width: 13rem; color: var(--dim); text-transform: none;
+              letter-spacing: 0; font-size: .85rem; font-weight: 400; }
+table.kv tr:last-child th, table.kv tr:last-child td { border-bottom: 0; }
+
+table.grid tbody tr:hover { background: var(--raise); }
+/* Wide tables scroll inside themselves rather than pushing the page sideways. */
+table.grid { display: block; overflow-x: auto; white-space: nowrap; }
+table.grid td, table.grid th { white-space: normal; }
+
+ul.cols { columns: 3 15rem; column-gap: var(--s5); list-style: none; padding: 0; }
+ul.cols li { margin-bottom: var(--s2); break-inside: avoid; font-family: var(--mono); font-size: .84rem; }
+
+/* ---- cards, notes, flashes ---------------------------------------------- */
+
+.card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--r); padding: var(--s4) var(--s5); margin-bottom: var(--s3);
+}
+.card.narrow { max-width: 24rem; }
+.card summary { cursor: pointer; padding: var(--s1) 0; }
+.card summary:hover { color: var(--accent); }
+.card summary strong { margin-right: var(--s2); font-family: var(--mono); font-weight: 600; }
+.card summary a.edit { float: right; font-size: .78rem; }
+
+.flash, .note {
+  padding: var(--s3) var(--s4); border-radius: var(--r);
+  border: 1px solid var(--line); border-left-width: 3px;
+  background: var(--panel); margin-bottom: var(--s4);
+}
+.flash.good { border-left-color: var(--accent); background: var(--accent-dim); }
+.flash.bad  { border-left-color: var(--hot); background: var(--hot-dim); color: var(--hot-ink); }
+.note { color: var(--dim); border-left-color: var(--faint); font-size: .9rem; }
+
+.pill {
+  display: inline-block; padding: .1em .5em; margin-left: var(--s2);
+  border: 1px solid var(--accent); border-radius: 2px; color: var(--accent);
+  font-family: var(--mono); font-size: .68rem;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.pill.dimpill { border-color: var(--line); color: var(--dim); }
+.pill.hot { border-color: var(--hot); color: var(--hot); }
+
+/* ---- forms -------------------------------------------------------------- */
+
+label { display: block; margin: var(--s3) 0 var(--s1); font-size: .82rem; color: var(--dim); }
+.fields label .dim { font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+input[type=text], input[type=password], input[type=number], textarea, select {
+  background: var(--well); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 3px;
+  padding: var(--s2) var(--s3); font: inherit; min-width: 12rem;
+}
+input[type=text], input[type=password], input[type=number], textarea { font-family: var(--mono); font-size: .86rem; }
+/* A number box is a box like any other - left to the browser it comes out
+   white on a dark page, which is how the channel index looked like a control
+   of some other kind entirely. */
+input[type=number] { min-width: 5rem; }
+textarea { width: 100%; min-height: 24rem; line-height: 1.5; }
+
+input:focus, textarea:focus, select:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+/* Keyboard users get the same ring on anything focusable, not just fields. */
+a:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px;
+}
+
+form.inline { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; margin: 0 0 var(--s2); }
+form.inline label { min-width: 9rem; margin: 0; font-size: .8rem; }
+
+.fieldrow { margin: var(--s1) 0; }
+.fields { display: grid; gap: var(--s2); margin-top: var(--s3); }
+
+button, a.btnlink {
+  display: inline-block;
+  background: var(--accent); color: var(--on-accent); border: 1px solid var(--accent);
+  border-radius: 3px; padding: var(--s2) var(--s4);
+  font: inherit; font-size: .78rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .07em;
+  cursor: pointer; text-decoration: none;
+}
+button:hover, a.btnlink:hover { filter: brightness(1.12); }
+button:active { transform: translateY(1px); }
+
+/* Destructive actions are outlined, not filled: the eye should have to choose
+   them deliberately, and a page of solid red buttons reads as an error page. */
+button.hot {
+  background: transparent; color: var(--hot); border-color: var(--hot);
+}
+button.hot:hover { background: var(--hot); color: var(--on-accent); filter: none; }
+
+.actions { display: flex; gap: var(--s4); align-items: center; margin-top: var(--s4); flex-wrap: wrap; }
+.confirm { display: block; margin-top: var(--s3); color: var(--hot); font-size: .88rem; }
+form.danger { margin-top: var(--s7); padding-top: var(--s4); border-top: 1px solid var(--line); }
+
+/* ---- template editor ---------------------------------------------------- */
+
+fieldset.line {
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--panel);
+  padding: var(--s3) var(--s4) var(--s4); margin-bottom: var(--s4);
+}
+fieldset.line legend {
+  color: var(--accent); font-size: .74rem; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; padding: 0 var(--s2);
+}
+fieldset.line legend .key { color: var(--faint); font-family: var(--mono); text-transform: none; }
+
+.fieldbox {
+  display: flex; gap: var(--s2); align-items: flex-start; flex-wrap: wrap;
+  padding: var(--s3) 0; border-top: 1px solid var(--line-dim);
+}
+.fieldbox .pill { margin-left: 0; align-self: center; }
+.fieldbox input[type=text] { flex: 1 1 10rem; min-width: 7rem; }
+.fieldbox textarea { flex: 2 1 18rem; min-height: 3.2rem; }
+
+#addline { margin-bottom: var(--s4); }
+
+/* ---- the gate: login, "not configured", "not on the list", errors -------- */
+/* These pages have no navigation to offer, so they are centred and narrow -
+   a door, not a dashboard with the furniture missing. */
+
+/* The gate is a door, not a dashboard: no bar, no panel, one card at 40% of
+   the width, centred, over whatever picture the unit uploaded. */
+.p-gate .bar { display: none; }
+.p-gate .shell { display: block; }
+.p-gate main { width: 40%; min-width: 20rem; margin: 0 auto; padding: 0; }
+.p-gate h1 { display: none; }        /* the card says the unit's name instead */
+.p-gate footer { text-align: center; max-width: none; border: 0; }
+
+body.p-gate {
+  min-height: 100vh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: var(--s6) 0;
+}
+
+/* THE PICTURE GOES ON THE BODY, not behind it. A pseudo-element at a negative
+   z-index paints behind its parent's own background, so the earlier version
+   was always hidden under the opaque --ground colour. */
+body.hasbg {
+  background-position: center; background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+body.hasbg::before {
+  content: ""; position: fixed; inset: 0; background: #000; opacity: .55; z-index: 0;
+}
+body.hasbg > * { position: relative; z-index: 1; }
+
+/* With no picture uploaded the gate is still not a flat slab. */
+body.p-gate:not(.hasbg) {
+  background-image:
+    radial-gradient(1200px 600px at 50% -10%, var(--accent-dim), transparent 70%),
+    linear-gradient(180deg, var(--raise), var(--ground) 60%);
+  background-attachment: fixed;
+}
+
+.gate {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  padding: var(--s6); text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+}
+.gatemark { margin-bottom: var(--s5); }
+/* Centred on its own line, so scaling it up cannot pull it off-centre. */
+.gatelogo {
+  display: block; margin: 0 auto var(--s3);
+  height: var(--logo-login); width: auto;
+  max-width: 100%; object-fit: contain;
+}
+.gatename {
+  color: var(--ink); font-size: 1.1rem; letter-spacing: .12em;
+  text-transform: uppercase; margin: 0 0 var(--s1);
+}
+.gatetag { color: var(--dim); font-size: .84rem; margin: 0; max-width: none; }
+.gatehelp { color: var(--faint); font-size: .78rem; margin: var(--s3) 0 0; max-width: none; }
+.gate .flash { text-align: left; }
+.gate .steam { width: 100%; }
+
+/* The admin way in is present but quiet - it is the exception, not the offer. */
+.gateadmin { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--line-dim); }
+.linkish {
+  background: none; border: 0; padding: 0; color: var(--faint);
+  font: inherit; font-size: .74rem; text-transform: uppercase; letter-spacing: .1em;
+  cursor: pointer;
+}
+.linkish:hover { color: var(--accent); }
+.adminform { margin-top: var(--s4); text-align: left; }
+.adminform label { text-align: left; }
+.adminform input { width: 100%; }
+.adminform button { width: 100%; margin-top: var(--s3); padding: var(--s3); }
+
+@media (max-width: 60rem) { .p-gate main { width: 92%; } }
+
+/* Sign in through Steam. Steam's own blue rather than the site accent - a
+   federated button is recognised by its colour before anyone reads it. */
+.steam {
+  display: block; text-align: center;
+  margin-top: var(--s3); padding: var(--s3) var(--s4);
+  background: #1b2838; border: 1px solid var(--steam); border-radius: 3px;
+  color: #c7d5e0; text-decoration: none; font-weight: 600;
+  text-transform: uppercase; font-size: .78rem; letter-spacing: .07em;
+}
+.steam:hover { background: #2a475e; color: #fff; }
+
+footer {
+  padding: var(--s5); margin-top: var(--s7);
+  border-top: 1px solid var(--line-dim);
+  color: var(--faint); font-size: .78rem; max-width: 68ch;
+}
+
+@media (max-width: 40rem) {
+  main { padding: var(--s4); }
+  .bar { padding: var(--s3) var(--s4); gap: var(--s3); }
+  .bar nav { gap: var(--s4); }
+  table.kv th { width: auto; }
+  form.inline label { min-width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ==========================================================================
+   COLOUR SCHEMES
+   Only the tokens change. Every rule above is written against them, so a
+   scheme is a palette and nothing else - no per-theme component overrides.
+   ========================================================================== */
+
+/* Ghost: taken from ghostsofbattle.com - the rust red #cc4331 the site leans
+   on, its off-white #f9f9f9, and its #1c1c1c panels.
+
+   THE ACCENT IS LIFTED A SHADE. #cc4331 exactly gives 3.9:1 against this
+   ground - fine for a button with white on it, under the 4.5:1 that link-sized
+   text needs. #e05a45 is the same red with the brightness to be read, and
+   still reads as theirs. Swap it back if brand fidelity matters more.
+   
+   WARNINGS GO AMBER, not red: with a red accent, a red warning is just the
+   site's own colour and stops meaning "careful". */
+[data-theme="ghost"] {
+  --ground: #121212; --well: #0a0a0a; --panel: #1c1c1c; --raise: #262626;
+  --line: #333333; --line-dim: rgba(249, 249, 249, .07);
+  --ink: #f9f9f9; --dim: #a8a8a8; --faint: #6f6f6f;
+  --accent: #e05a45; --accent-dim: rgba(204, 67, 49, .18); --on-accent: #f9f9f9;
+  --hot: #e8a33d; --hot-dim: rgba(232, 163, 61, .13); --hot-ink: #f4dcb4;
+  --warn: #e8a33d;
+}
+
+/* Amber: the other phosphor. Same console, different tube. */
+[data-theme="amber"] {
+  --ground: #100c07; --well: #0a0704; --panel: #1a140d; --raise: #201910;
+  --line: #33281a; --line-dim: rgba(255, 200, 120, .09);
+  --ink: #f0e2cb; --dim: #a4917a; --faint: #6f6252;
+  --accent: #f0a835; --accent-dim: rgba(240, 168, 53, .14); --on-accent: #100c07;
+  --hot: #e4574a; --hot-dim: rgba(228, 87, 74, .13); --warn: #f0a835; --hot-ink: #f4c4bf;
+}
+
+/* Slate: cool and quiet, for people who find green tiring. */
+[data-theme="slate"] {
+  --ground: #0d1117; --well: #090d12; --panel: #141a22; --raise: #1a222c;
+  --line: #26303c; --line-dim: rgba(180, 200, 230, .08);
+  --ink: #dde5ef; --dim: #8b9bb0; --faint: #5f6d80;
+  --accent: #7aa2f7; --accent-dim: rgba(122, 162, 247, .15); --on-accent: #0d1117;
+  --hot: #f07171; --hot-dim: rgba(240, 113, 113, .13); --warn: #e0af68; --hot-ink: #f6c9c9;
+}
+
+/* Daylight: for a bright room or a projector. The accent darkens, because a
+   pale green on white is unreadable and fails contrast outright. */
+[data-theme="daylight"] {
+  --ground: #f4f6f8; --well: #ffffff; --panel: #ffffff; --raise: #eef1f5;
+  --line: #d6dce4; --line-dim: rgba(20, 30, 45, .09);
+  --ink: #17202b; --dim: #55636f; --faint: #7d8894;
+  --accent: #2f7d32; --accent-dim: rgba(47, 125, 50, .12); --on-accent: #ffffff;
+  --hot: #b3261e; --hot-dim: rgba(179, 38, 30, .09); --warn: #8a6100; --hot-ink: #7d1d17;
+}
+[data-theme="daylight"] .bar { background: linear-gradient(#ffffff, #f4f6f8); }
+[data-theme="daylight"] .steam { background: #1b2838; color: #e8eef4; }
+
+.themepick { margin-left: auto; display: flex; align-items: center; }
+.themepick select {
+  min-width: 0; padding: var(--s1) var(--s2); font-size: .76rem;
+  background: var(--panel); color: var(--dim); border-color: var(--line);
+}
+.themepick select:hover { color: var(--ink); }
+/* With a nav present the nav's own auto-margin already pushed things right. */
+.bar nav + .themepick { margin-left: var(--s4); }
+
+.vh {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ==========================================================================
+   THE WIKI PANEL
+   ========================================================================== */
+
+/* The measured layout, across the full width:
+     2% edge | 50% the work | 3% gutter | 44% the wiki | 1% edge
+   Grid rather than flex with gaps, because grid track percentages are of the
+   whole width - so each share is the share it says it is, instead of a
+   percentage of whatever is left after padding. Columns 1, 3 and 5 are empty
+   spacers; the two children are placed by hand so nothing auto-flows into them. */
+.shell {
+  display: grid;
+  grid-template-columns: 2% 50% 3% 44% 1%;
+  align-items: start;
+}
+.shell > main { grid-column: 2; min-width: 0; max-width: none; padding: var(--s5) 0; }
+.shell > .wiki { grid-column: 4; }
+
+/* With the panel hidden the work takes the room back rather than sitting in a
+   half-width column beside nothing. */
+html.nowiki .shell { grid-template-columns: 2% 1fr 1%; }
+html.nowiki .shell > main { grid-column: 2; }
+
+.wiki {
+  position: sticky; top: 4.2rem;
+  max-height: calc(100vh - 5.5rem);
+  display: flex; flex-direction: column;
+  margin: var(--s5) 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  overflow: hidden;
+}
+.wikihead {
+  display: flex; align-items: center; gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line); background: var(--raise);
+}
+.wikihead strong { font-size: .82rem; flex: 1; min-width: 0;
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wikimark {
+  font-family: var(--mono); font-size: .6rem; letter-spacing: .14em;
+  color: var(--accent); border: 1px solid var(--accent-dim);
+  padding: .1em .4em; border-radius: 2px;
+}
+.wikiout, .wikitoggle {
+  background: none; border: 0; padding: 0; margin: 0;
+  color: var(--faint); font: inherit; font-size: .72rem;
+  text-transform: uppercase; letter-spacing: .08em; cursor: pointer;
+  text-decoration: none;
+}
+.wikiout:hover, .wikitoggle:hover { color: var(--accent); }
+
+/* Its own type scale: this is reference text beside the work, not the work. */
+.wikibody { overflow-y: auto; padding: var(--s5); font-size: .88rem; line-height: 1.6; }
+.wikibody h2 { font-size: .72rem; margin: var(--s4) 0 var(--s2); }
+.wikibody h3, .wikibody h4, .wikibody h5, .wikibody h6 {
+  font-size: .74rem; color: var(--ink); margin: var(--s4) 0 var(--s1);
+  text-transform: none; letter-spacing: 0; font-weight: 600;
+}
+.wikibody p { margin: 0 0 var(--s3); max-width: none; }
+.wikibody ul, .wikibody ol { margin: 0 0 var(--s3); padding-left: var(--s4); }
+.wikibody li { margin-bottom: var(--s1); }
+.wikibody pre { font-size: .74rem; padding: var(--s3); margin: 0 0 var(--s3); }
+.wikibody code { font-size: .8em; }
+.wikibody blockquote {
+  margin: 0 0 var(--s3); padding-left: var(--s3);
+  border-left: 2px solid var(--line); color: var(--dim);
+}
+.wikibody hr { border: 0; border-top: 1px solid var(--line-dim); margin: var(--s4) 0; }
+.wikibody table.wikitable { font-size: .82rem; margin-bottom: var(--s3); }
+.wikibody table.wikitable th, .wikibody table.wikitable td { padding: var(--s1) var(--s2); }
+.wikistale { font-size: .74rem; font-style: italic; }
+
+/* Hidden by preference, with a way back in the bar. */
+html.nowiki .wiki { display: none; }
+.wikishow { display: none; }
+html.nowiki .wikishow {
+  display: inline-block; background: none; border: 1px solid var(--line);
+  color: var(--faint); padding: var(--s1) var(--s2); font-size: .72rem;
+  text-transform: uppercase; letter-spacing: .08em; cursor: pointer; border-radius: 2px;
+}
+html.nowiki .wikishow:hover { color: var(--accent); border-color: var(--accent); }
+
+/* The gate pages have no panel, so the shell must not reserve room for one. */
+.p-gate .shell { display: block; }
+
+@media (max-width: 68rem) {
+  /* Too narrow for two columns: one column, panel underneath. */
+  .shell, html.nowiki .shell { grid-template-columns: 2% 1fr 2%; }
+  .shell > main, .shell > .wiki { grid-column: 2; }
+  .wiki { position: static; margin: 0 0 var(--s5); max-height: 26rem; }
+}
+
+/* Read-only: a password session can look, but not change. */
+.note.readonly { border-left-color: var(--warn); }
+.note.readonly strong { color: var(--warn); }
+
+/* The Steam button carries its mark: a federated button is recognised by its
+   logo before its words are read. Inline SVG, so it cannot fail to load. */
+.steam { display: flex; align-items: center; justify-content: center; gap: var(--s2); }
+.steammark { flex: 0 0 auto; }
+
+.gatewhy {
+  margin: var(--s4) 0 0; padding: var(--s3) var(--s4);
+  background: var(--well); border: 1px solid var(--line-dim); border-radius: var(--r);
+  color: var(--dim); font-size: .76rem; line-height: 1.55; text-align: left; max-width: none;
+}
+.gatewhy strong { color: var(--ink); }
+
+/* Branding page bits. */
+.colourrow { display: flex; align-items: center; gap: var(--s3); }
+.colourrow input[type=color] { width: 3.5rem; height: 2rem; min-width: 0; padding: 2px; }
+.inlinelabel { display: flex; align-items: center; gap: var(--s2); margin: var(--s2) 0; }
+.inlinelabel input[type=checkbox] { width: auto; min-width: 0; }
+.brandprev { max-width: 100%; max-height: 8rem; background: var(--well); border: 1px solid var(--line); }
+input[type=file] { font-size: .8rem; color: var(--dim); }
+input[type=range] { width: 100%; min-width: 0; }
+
+.scalerow { display: flex; align-items: center; gap: var(--s3); }
+.scalerow input[type=range] { flex: 1; }
+.scalerow output {
+  font-family: var(--mono); font-size: .78rem; color: var(--dim);
+  min-width: 3.5rem; text-align: right;
+}
+
+/* Applying is a real offer on the login page, but not the main one: outlined
+   where the Steam button is filled. */
+.applybtn {
+  display: block; margin-top: var(--s3); padding: var(--s3) var(--s4);
+  border: 1px solid var(--line); border-radius: 3px;
+  color: var(--ink); text-decoration: none; text-align: center;
+  text-transform: uppercase; font-size: .78rem; letter-spacing: .07em; font-weight: 600;
+}
+.applybtn:hover { border-color: var(--accent); color: var(--accent); }
+
+.qhelp { margin: 0 0 var(--s1); font-size: .8rem; }
+textarea.short { min-height: 5rem; }
+/* A list inside a table row - vehicle classes, a crate's contents.
+   Four lines behind a scrollbar is not an editor. */
+.grid textarea.short { min-height: 9rem; resize: vertical; }
+
+/* ---- the JSON editor (public/editor.js) ---------------------------------
+   The highlighted <pre> and the real <textarea> are stacked. EVERY metric
+   that decides where a glyph lands must be identical in both, or the colours
+   drift away from the characters as you type. */
+
+.editor { position: relative; margin-bottom: var(--s2); }
+
+.editor > .editor-hl,
+.editor > textarea {
+  margin: 0;
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  font-family: var(--mono);
+  font-size: .82rem;
+  line-height: 1.5;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+  word-wrap: normal;
+}
+
+.editor > .editor-hl {
+  position: absolute; inset: 0;
+  background: var(--well);
+  color: var(--ink);
+  pointer-events: none;
+  z-index: 0;
+}
+.editor > .editor-hl code { font: inherit; background: none; padding: 0; }
+
+.editor > textarea {
+  position: relative; z-index: 1;
+  display: block; width: 100%; min-height: 28rem;
+  background: transparent;
+  color: transparent;              /* the <pre> underneath supplies the colour */
+  caret-color: var(--accent);
+  resize: vertical;
+}
+.editor > textarea::selection { background: rgba(127, 176, 105, .35); color: transparent; }
+.editor > textarea:focus { box-shadow: none; border-color: var(--accent); }
+
+.j-key { color: var(--accent); }
+.j-str { color: #d9a441; }
+.j-num { color: #7ec9e0; }
+.j-lit { color: #c58fd8; font-style: italic; }
+.j-pun { color: var(--faint); }
+
+.editor-status {
+  margin: 0 0 var(--s4); font-family: var(--mono); font-size: .74rem;
+  color: var(--faint); min-height: 1.1em;
+}
+.editor-status.ok { color: var(--accent); }
+.editor-status.bad { color: var(--hot); }
+
+/* A ticket thread: each entry a card, its header quiet so the text leads. */
+.reply { padding: var(--s3) var(--s4); }
+.reply p { max-width: none; margin: 0; }
+.replyhead { font-size: .74rem; margin-bottom: var(--s2) !important; }
+.replyhead strong { color: var(--ink); margin-right: var(--s2); }
+p.dim a.on { color: var(--accent); }
+
+/* ---- tab bars -------------------------------------------------------------
+   Used for the ORBAT's sections, template versions and list filters. A tab
+   has to look like a tab: the selected one is joined to the panel below it and
+   the rest sit behind a rule, so which one you are on is unmistakable at a
+   glance rather than a colour difference you have to look for. */
+
+.sections {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin: 0 0 var(--s5); padding: 0;
+  max-width: none;
+}
+.sections a {
+  padding: var(--s2) var(--s4);
+  border: 1px solid transparent; border-bottom: 0;
+  border-radius: var(--r) var(--r) 0 0;
+  color: var(--dim); text-decoration: none;
+  font-size: .8rem; letter-spacing: .04em; font-weight: 600;
+  text-transform: uppercase; white-space: nowrap;
+  position: relative; bottom: -1px;
+}
+.sections a:hover { color: var(--ink); background: var(--raise); }
+.sections a.on {
+  background: var(--panel);
+  border-color: var(--line);
+  border-bottom: 1px solid var(--panel);
+  color: var(--accent);
+}
+/* A second row of tabs, for a section that has its own. Kept for pages that
+   still draw one; the ORBAT puts its sub-tabs in the single bar below. */
+.subtabs { border-bottom-style: dashed; margin-bottom: var(--s4); }
+.subtabs a { font-size: .74rem; text-transform: none; letter-spacing: .02em; }
+
+/* ONE BAR, NOT TWO STACKED ONES. A tab, its sub-tabs and the version group all
+   sit on the same rule, so the eye reads a single menu and the sub-tabs are
+   plainly a part of the tab above them rather than a second navigation. The
+   groups are told apart by weight and a hairline, not by being on a new line. */
+.onebar { gap: 0; align-items: stretch; }
+.onebar a { display: flex; align-items: center; }
+/* The hairline between the tabs and their sub-tabs. */
+.onebar .tabdiv {
+  width: 1px; margin: var(--s2) var(--s3) 0;
+  background: var(--line); align-self: stretch;
+}
+/* THE SUB-TABS GO UNDER THE RULE, not on it. On the bar they read as two more
+   tabs of the same rank; under it they are plainly a part of the tab above.
+   No boxes - just the words, with the live one accented and underlined. */
+.subrail {
+  display: flex; flex-wrap: wrap; gap: var(--s4);
+  margin: calc(var(--s5) * -1 + var(--s2)) 0 var(--s5);
+  padding-left: var(--s4);
+}
+.subrail a {
+  color: var(--dim); text-decoration: none;
+  font-size: .74rem; letter-spacing: .06em; font-weight: 600;
+  text-transform: uppercase; white-space: nowrap;
+  padding-bottom: 2px; border-bottom: 2px solid transparent;
+}
+.subrail a:hover { color: var(--ink); }
+.subrail a.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* The label between two groups of tabs - "versions", say. */
+.sections .tabsep {
+  padding: var(--s2) var(--s3); color: var(--faint);
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .1em;
+  align-self: center;
+}
+
+.codebox {
+  width: 100%; font-family: var(--mono); font-size: .82rem; line-height: 1.5;
+  tab-size: 2; white-space: pre; overflow: auto; min-height: 24rem;
+}
+
+/* A template type and its versions. */
+.tsection { margin-bottom: var(--s6); }
+.tsection h2 { margin-bottom: var(--s1); }
+.tsection table { margin-bottom: var(--s2); }
+
+/* The faction sits above every ORBAT tab - it belongs to the whole order of
+   battle, not to one of its sections. */
+.factionbar { margin-bottom: var(--s5); padding-bottom: var(--s4); border-bottom: 1px solid var(--line-dim); }
+
+/* A grid of checkboxes - the tiles a role may see, the skills it needs. A list
+   of nine things down the page is nine lines of scrolling to answer one
+   question; across, it is one glance. */
+.checkgrid {
+  display: grid; gap: var(--s1) var(--s4);
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  margin: var(--s2) 0 var(--s4);
+}
+.checkgrid .inlinelabel { margin: 0; }
+
+/* A label whose control goes UNDER it rather than beside it - used where four
+   textareas sit side by side and each needs its own heading. */
+label.stacked { display: flex; flex-direction: column; gap: var(--s1); flex: 1 1 14rem; }
+label.stacked textarea { width: 100%; }
+
+/* A section of a record - identity, nets, tiles - with its own save button.
+   The rule under the heading says where one ends and the next begins without
+   boxing every one of them. */
+.tsection > h2 {
+  border-bottom: 1px solid var(--line-dim);
+  padding-bottom: var(--s1);
+}
+.tsection form + p.dim { margin-top: var(--s2); }
+
+/* A trait TAC//PAC's skills own. Shown, so nobody wonders where it went, but
+   not editable - the role would not apply it anyway. */
+
+/* A Steam id that goes to its profile. Kept monospace because it is still an
+   id - the link is a way to find out whose, not a change of what it is. */
+a.steamid { font-family: var(--mono); font-size: .86em; }
+a.steamid::after { content: " 97"; font-family: inherit; opacity: .5; }
+
+/* A field that is a BLOCK, not a column: its own row under the one it belongs
+   to, the full width of the table. A paint scheme's SQF was a one-line box you
+   could read three words of, and it squeezed the four columns beside it. */
+.blockrow > td { padding-top: 0; border-top: 0; }
+.blockrow label { display: block; font-size: .78rem; letter-spacing: .04em;
+                  text-transform: uppercase; color: var(--dim); margin-bottom: var(--s1); }
+.blockrow label .dim { text-transform: none; letter-spacing: 0; font-size: .95em; }
+textarea.blockbox { min-height: 9rem; width: 100%; }
+/* The row above it reads as the same record, not a separate one. */
+.grid tr:has(+ .blockrow) > td { border-bottom: 0; }
+
+/* WIDTHS IN PER CENT, NOT rem. A field given a fixed width does not know how
+   wide the column it is in turned out to be, so a table with six of them runs
+   off the side of the page and the last one is cut off. The CELL is what gets a
+   width - and only ever a percentage - and the control simply fills it. */
+.grid { table-layout: fixed; width: 100%; }
+.grid th, .grid td { overflow-wrap: anywhere; }
+.grid input[type=text],
+.grid input[type=number],
+.grid select,
+.grid textarea { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+
+/* The same inside a fields block and a fieldbox row. */
+.fields input, .fields select, .fields textarea,
+.fieldbox input, .fieldbox select, .fieldbox textarea {
+  max-width: 100%; box-sizing: border-box;
+}
+.fieldbox { flex-wrap: wrap; }
+.fieldbox input[type=text] { flex: 1 1 30%; min-width: 0; }
+
+/* A checkbox must not be stretched to the cell. */
+.grid input[type=checkbox], .grid input[type=radio] { width: auto; }
+
+/* A record's uploaded picture, beside its game path. Small on purpose: it is
+   an insignia or a ribbon, and the row has to stay a row. */
+/* A rank's insignia beside its name, wherever a rank is named. */
+.rankimg { height: 1.4em; width: auto; max-width: 3.5em; vertical-align: middle; margin-right: .4em; object-fit: contain; }
+.recthumb { height: 2rem; width: auto; max-width: 6rem; object-fit: contain;
+            background: var(--well); border: 1px solid var(--line); border-radius: 3px; }
+
+/* The welcome screen's tag buttons. A row of small buttons over the box, so
+   applying a heading is pressing a button rather than typing a tag. */
+.tagbar { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center;
+          margin: 0 0 var(--s2); }
+.tagbar button { font-size: .78rem; padding: var(--s2) var(--s3); }
+.tagbar input[type=color] { width: 2.6rem; height: 1.9rem; min-width: 0; padding: 2px; }
+.tagbar .dim { font-size: .78rem; }
+
+/* A row with more than one button in its last cell - Edit beside Delete. They
+   sit on one line and do not stretch the row. */
+td.rowacts { white-space: nowrap; }
+td.rowacts > * { margin-right: .35rem; }
+td.rowacts > *:last-child { margin-right: 0; }
+
+/* The version row on a template editor: one line of links, the open one plain
+   text. Was a dropdown, an Open button, a text box and a Create button. */
+.vbar { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+.vbar a, .vbar > span.on { padding: .1rem .45rem; border-radius: 3px; }
+.vbar > span.on { background: var(--accent); color: #fff; font-weight: 600; }
+
+/* Wysi (public/wysi.min.js, MIT, vendored) follows the theme: its three
+   variables and its surfaces are the site's own colours, and wysi-site.js
+   flips its dark mode with the theme picker. */
+.wysi-wrapper {
+  --wysi-primary: var(--accent); --wysi-hover: var(--raise); --wysi-highlight: var(--accent-dim);
+  outline-color: var(--line); background: var(--well); color: var(--ink);
+  font: inherit; font-size: .92rem; line-height: 1.55; border-radius: var(--r); margin-bottom: var(--s2);
+}
+.wysi-wrapper .wysi-toolbar, .wysi-darkmode .wysi-toolbar { background-color: var(--panel); color: var(--ink); }
+.wysi-wrapper .wysi-toolbar button, .wysi-darkmode .wysi-toolbar button:not([aria-pressed=true]) {
+  color: var(--dim); text-transform: none; letter-spacing: 0; font-weight: 400;
+}
+.wysi-wrapper .wysi-toolbar button:hover, .wysi-wrapper .wysi-toolbar button:focus,
+.wysi-darkmode .wysi-toolbar > button:hover, .wysi-darkmode .wysi-toolbar > button:focus,
+.wysi-darkmode .wysi-toolbar > div > button:hover, .wysi-darkmode .wysi-toolbar > div > button:focus { background-color: var(--raise); color: var(--ink); }
+.wysi-wrapper .wysi-editor { color: var(--ink); }
+.wysi-wrapper .wysi-editor p { max-width: none; }
+.wysi-wrapper .wysi-editor img { max-width: 100%; height: auto; }
+.wysi-wrapper .wysi-listbox, .wysi-wrapper .wysi-popover { background-color: var(--panel); color: var(--ink); }
+
+/* The public home page. One card, as wide as Web settings says (a percent of
+   the window - small screens always get 92%), as tall as it says (a
+   min-height the page writes in its own <style>), in one of four layouts by
+   its l-* class. The card is a column, the words take the spare height, so
+   a tall card pins Sign in and Apply to the bottom. */
+.p-home main { width: 60%; }
+@media (max-width: 60rem) { .p-home main { width: 92% !important; } }
+.home { display: flex; flex-direction: column; }
+.home .gatemark { margin-bottom: var(--s2); }
+.home .gatelogo { height: var(--logo-home, var(--logo-login)); }
+.homewords { flex: 1; }
+.homeblock {
+  text-align: left; margin-top: var(--s5); padding-top: var(--s4);
+  border-top: 1px solid var(--line-dim);
+}
+.homeblock h2 { margin: 0 0 var(--s3); font-size: .76rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.homebody { color: var(--ink); line-height: 1.65; font-size: .95rem; }
+.homebody p { max-width: none; margin: 0 0 var(--s3); }
+.homebody p:last-child { margin-bottom: 0; }
+.homebody img { max-width: 100%; height: auto; }
+.homebody a { color: var(--accent); }
+.homebody h1, .homebody h2, .homebody h3, .homebody h4 { color: var(--ink); margin: var(--s3) 0 var(--s2); font-size: 1.05rem; text-transform: none; letter-spacing: 0; }
+.homebody ul, .homebody ol { margin: 0 0 var(--s3); padding-left: 1.4rem; }
+.homebody blockquote { margin: var(--s3) 0; padding: var(--s2) var(--s4); border-left: 3px solid var(--accent); color: var(--dim); }
+.homebody table { border-collapse: collapse; }
+.homebody th, .homebody td { border: 1px solid var(--line); padding: .3rem .6rem; }
+.homeactions {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s3);
+  margin-top: var(--s5); padding-top: var(--s5); border-top: 1px solid var(--line-dim);
+}
+.homeactions .btnlink { min-width: 12rem; text-align: center; padding: var(--s3) var(--s4); }
+.homeactions .btnlink.alt { background: transparent; color: var(--ink); border-color: var(--line); }
+.homeactions .btnlink.alt:hover { border-color: var(--accent); color: var(--accent); }
+.home .gatehelp { margin-top: var(--s4); }
+
+/* Split: the mark and the buttons stack in one column, the words fill the
+   other - words right (l-split) or words left (l-splitleft). Below 60rem
+   both are the stacked layout: two columns on a phone is two unreadable
+   columns. */
+@media (min-width: 60rem) {
+  .home.l-split, .home.l-splitleft {
+    display: grid; grid-template-rows: auto auto 1fr;
+    column-gap: var(--s6); align-items: start;
+  }
+  .home.l-split     { grid-template-columns: minmax(15rem, 2fr) 3fr; }
+  .home.l-splitleft { grid-template-columns: 3fr minmax(15rem, 2fr); }
+  .l-split .gatemark, .l-splitleft .gatemark { grid-row: 1; margin: 0; }
+  .l-split .homeactions, .l-splitleft .homeactions {
+    grid-row: 2; flex-direction: column; align-items: stretch;
+    margin: var(--s4) 0 0; padding: 0; border: 0;
+  }
+  .l-split .homewords, .l-splitleft .homewords { grid-row: 1 / span 3; }
+  .l-split .gatemark, .l-split .homeactions { grid-column: 1; }
+  .l-split .homewords { grid-column: 2; border-left: 1px solid var(--line-dim); padding-left: var(--s6); }
+  .l-splitleft .gatemark, .l-splitleft .homeactions { grid-column: 2; }
+  .l-splitleft .homewords { grid-column: 1; border-right: 1px solid var(--line-dim); padding-right: var(--s6); }
+  .l-split .homewords > .homeblock:first-child, .l-splitleft .homewords > .homeblock:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .l-split .gatehelp, .l-splitleft .gatehelp { grid-column: 1 / -1; }
+}
+
+/* Banner: the logo beside the name across the top, the words under a rule. */
+.l-banner .gatemark {
+  display: flex; align-items: center; gap: var(--s5); text-align: left;
+  margin: 0; padding-bottom: var(--s4); border-bottom: 1px solid var(--line-dim);
+}
+.l-banner .gatelogo { margin: 0; height: calc(var(--logo-home, var(--logo-login)) * .75); flex: none; }
+.l-banner .gatename { margin: 0 0 var(--s1); }
+.l-banner .gatetag { margin: 0; }
+.l-banner .homewords > .homeblock:first-child { margin-top: var(--s4); padding-top: 0; border-top: 0; }
+
+/* Cards: the one card comes apart into three panels with the background
+   showing between them. */
+.home.l-cards { background: none; border: 0; padding: 0; box-shadow: none; gap: var(--s3); }
+.l-cards .gatemark, .l-cards .homewords, .l-cards .homeactions {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  padding: var(--s5) var(--s6); margin: 0; box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+}
+.l-cards .homewords > .homeblock:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.l-cards .homeactions { padding: var(--s4) var(--s6); }
+.l-cards .gatehelp { margin: 0; }
+
+/* Web settings: the layout picker, each layout as a wireframe. The SVG is
+   drawn by ghostd_home_wireframe(); these classes colour its parts. */
+button.btnquiet { background: transparent; color: var(--ink); border-color: var(--line); }
+button.btnquiet:hover { border-color: var(--accent); color: var(--accent); }
+.sectionhead { margin-top: var(--s6); padding-top: var(--s4); border-top: 1px solid var(--line-dim); }
+.posrow { display: flex; flex-wrap: wrap; gap: var(--s4); }
+.posrow .inlinelabel { margin: 0; }
+.layoutpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--s3); margin: var(--s2) 0 var(--s3); }
+.layoutopt {
+  display: grid; gap: var(--s2); padding: var(--s3); cursor: pointer; text-align: center;
+  border: 1px solid var(--line-dim); border-radius: var(--r); background: var(--panel);
+}
+.layoutopt:hover { border-color: var(--line); }
+.layoutopt:has(input:checked) { border-color: var(--accent); background: var(--well); }
+.layoutopt .wireframe { width: 100%; height: auto; display: block; }
+.layoutopt .layoutname { display: flex; align-items: center; justify-content: center; gap: var(--s2); }
+.layoutopt input[type=radio] { width: auto; min-width: 0; margin: 0; }
+.layoutopt .dim { font-size: .74rem; line-height: 1.4; }
+.wireframe .wf-card { fill: var(--well); stroke: var(--line); stroke-width: 1; }
+.wireframe .wf-shape { fill: var(--dim); }
+.wireframe .wf-line { fill: var(--faint); }
+.wireframe .wf-rule { stroke: var(--line); stroke-width: 1; }
+.wireframe .wf-btn { fill: var(--accent); }
+.wireframe .wf-alt { fill: none; stroke: var(--line); stroke-width: 1; }
+
+/* Media: the upload box is one short row - files, who may read, note, Share -
+   capped at a readable width rather than spread across a wide screen, and
+   the Share button sits level with the fields. */
+.uploadbox {
+  display: grid; grid-template-columns: 1.2fr 1fr 1.2fr auto;
+  gap: var(--s3) var(--s4); align-items: end; max-width: 72rem;
+}
+.uploadbox label.stacked { flex: none; min-width: 0; }
+.uploadbox input[type=file] { max-width: 100%; }
+.uploadbox .actions { margin: 0; }
+@media (max-width: 60rem) {
+  .uploadbox { grid-template-columns: 1fr 1fr; }
+  .uploadbox .actions { grid-column: 1 / -1; }
+}
+@media (max-width: 40rem) { .uploadbox { grid-template-columns: 1fr; } }
+
+/* ORBAT view: an order of battle drawn as an army draws a division - the force
+   on top, its platoons in a row, each platoon's squads hanging under it. On
+   paper, as such a chart is printed; it scrolls sideways when the platoons
+   outrun the screen rather than wrapping, because a wrapped row reads as a
+   second echelon. */
+.obchart {
+  background: #fff; color: #111; border-radius: var(--r);
+  padding: var(--s5) var(--s5) var(--s6); overflow-x: auto;
+}
+.obchart .dim { color: #555; }
+.obnode { display: flex; align-items: center; gap: var(--s2); }
+.obsym { flex: none; color: #111; }
+.obtxt { display: flex; flex-direction: column; line-height: 1.2; font-size: .82rem; }
+.obtxt .dim { font-size: .74rem; }
+.obtop { display: flex; justify-content: center; position: relative; padding-bottom: var(--s5); }
+.obtop::after {          /* the stem from the force down to the bar over its platoons */
+  content: ""; position: absolute; left: 50%; bottom: 0; height: var(--s5); border-left: 2px solid #111;
+}
+.obcols { display: flex; gap: var(--s5); justify-content: center; width: max-content; min-width: 100%; }
+.obcol { position: relative; padding-top: var(--s5); min-width: 11rem; }
+.obcol::before {         /* the bar over the platoons, cut to span first to last */
+  content: ""; position: absolute; top: 0; left: calc(-1 * var(--s5) / 2); right: calc(-1 * var(--s5) / 2);
+  border-top: 2px solid #111;
+}
+.obcol:first-child::before { left: 22px; }
+.obcol:last-child::before { right: calc(100% - 22px); }
+.obcol::after {          /* each platoon's drop from the bar */
+  content: ""; position: absolute; top: 0; left: 22px; height: var(--s5); border-left: 2px solid #111;
+}
+.obsq { list-style: none; margin: var(--s2) 0 0 22px; padding: 0 0 0 var(--s4); border-left: 2px solid #111; }
+.obsq li { position: relative; margin: var(--s3) 0; }
+.obsq li::before {       /* the tick from the platoon's line to each squad */
+  content: ""; position: absolute; left: calc(-1 * var(--s4)); top: 50%; width: var(--s4); border-top: 2px solid #111;
+}
+.obsq li:last-child { margin-bottom: 0; }
