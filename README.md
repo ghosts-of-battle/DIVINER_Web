@@ -160,7 +160,7 @@ the four feeds has its own switch:
 
 | Address | What |
 |---|---|
-| `?page=feed&what=roster` | every player on the roster: name (the milsim name when there is one), rank, status, squad, role, skill tags, awards and enlistment date; plus the ranks (with an address for each insignia), skills, statuses, awards and role names to draw them with. Sorted element, squad, slot, name. |
+| `?page=feed&what=roster` | every player on the roster: name (the milsim name when there is one), rank, status, squad, role, skill tags, awards, enlistment date and whether they are staff (an admin); plus the ranks (with an address for each insignia), skills, statuses, awards and role names to draw them with, and the promotion formula (what earns points, what each rank needs). Sorted element, squad, slot, name. |
 | `?page=feed&what=orbat` | the live order of battle: each element, its squads, every slot and who fills it |
 | `?page=feed&what=events` | the public events: the next one, the upcoming ones and the last sixty days |
 | `?page=feed&what=wiki` | the public wiki pages |

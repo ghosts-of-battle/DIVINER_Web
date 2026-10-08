@@ -189,6 +189,60 @@ function ghostd_feed_role_names(array $ids): array
     return $out;
 }
 
+/** The unit's admin Steam ids - the feed calls them staff, and never hands the ids out. */
+function ghostd_feed_admin_ids(): array
+{
+    try {
+        $doc = ghostd_get(ghostd_config()['unit'] . '.admins');
+    } catch (Throwable $e) {
+        return [];
+    }
+    return array_map('strval', (array) ($doc['ids'] ?? []));
+}
+
+/**
+ * The promotion formula, as the unit keeps it: what earns points and what
+ * each rank needs. Operation values only - the site shows the rulebook.
+ */
+function ghostd_feed_promotion(): array
+{
+    $weights = [];
+    $ladder = [];
+    foreach (ghostd_feed_items('promotion') as $id => $it) {
+        $id = (string) $id;
+        $v = $it['value'] ?? 0;
+        $v = is_numeric($v) ? $v + 0 : 0;
+        if (str_starts_with($id, 'rank_')) {
+            $ladder[substr($id, 5)] = $v;
+        } else {
+            $weights[$id] = ['name' => (string) ($it['name'] ?? $id), 'value' => $v];
+        }
+    }
+    return ['weights' => $weights, 'ladder' => $ladder];
+}
+
+/** Role id => name, description and the rank it asks for, for the roles page. */
+function ghostd_feed_role_info(array $ids): array
+{
+    $out = [];
+    foreach (array_unique(array_filter($ids)) as $id) {
+        $id = (string) $id;
+        if (!ghostd_role_id_ok($id)) {
+            continue;
+        }
+        $r = ghostd_role($id);
+        if (!$r['exists']) {
+            continue;
+        }
+        $out[$id] = [
+            'name'        => $r['name'] !== '' ? $r['name'] : $id,
+            'description' => $r['description'],
+            'minRank'     => $r['minRank'],
+        ];
+    }
+    return $out;
+}
+
 /** The store's players, minus anyone who asked not to be shown. */
 function ghostd_feed_players(): array
 {
@@ -270,12 +324,16 @@ function ghostd_feed_roster(): array
         }
     }
     $ranks = ghostd_feed_ranks();
+    $admins = ghostd_feed_admin_ids();
     $rows = [];
-    foreach ($players as $p) {
+    foreach ($players as $uid => $p) {
         $pub = ghostd_feed_player_public($p);
         if ($pub['name'] === '') {
             continue;
         }
+        // STAFF ARE THE ADMINS (user, 2026-10-08): the id is matched here and
+        // goes no further.
+        $pub['staff'] = in_array((string) $uid, $admins, true);
         $sq = $squadOrder[$pub['group']] ?? 9999;
         $slot = 9999;
         if ($sq !== 9999) {
@@ -296,6 +354,7 @@ function ghostd_feed_roster(): array
         'statuses'    => ghostd_feed_statuses(),
         'awards'      => ghostd_feed_awards(),
         'roles'       => ghostd_feed_role_names(array_column($list, 'role')),
+        'promotion'   => ghostd_feed_promotion(),
         'players'     => $list,
     ];
 }
@@ -349,6 +408,7 @@ function ghostd_feed_orbat(): array
         'faction'     => $ob['faction'],
         'side'        => $ob['side'],
         'roles'       => ghostd_feed_role_names($roleIds),
+        'roleInfo'    => ghostd_feed_role_info($roleIds),
         'ranks'       => $ranks,
         'elements'    => $ob['elements'],
     ];
