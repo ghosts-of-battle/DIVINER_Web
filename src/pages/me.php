@@ -26,11 +26,20 @@ $uid     = ghostd_self_uid();
 $msg = null;
 $err = null;
 
+require_once __DIR__ . '/../photos.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ghostd_csrf_check();
     try {
+        $what = (string) ($_POST['what'] ?? 'details');
+        if ($what === 'photo') {
+            $msg = ghostd_photo_put_self($_FILES['photo'] ?? []);
+        } elseif ($what === 'photo_remove') {
+            ghostd_photo_remove_self();
+            $msg = 'Photo removed.';
+        }
         $saved = [];
-        foreach (GHOSTD_SELF_FIELDS as $field => $label) {
+        foreach ($what === 'details' ? GHOSTD_SELF_FIELDS : [] as $field => $label) {
             if (!array_key_exists($field, $_POST)) {
                 continue;
             }
@@ -138,6 +147,131 @@ rest is what you choose to share.</p>
 
   <div class="actions"><button type="submit">Save</button></div>
 </form>
+
+<?php $photo = ghostd_photo($uid); ?>
+<h2>Your photo</h2>
+<p class="dim">Optional. It goes on the roster card, on this site and on the
+unit's public website, so pick one you are happy for anyone to see. PNG,
+JPEG or WebP; a head shot works best. Once you pick a file you can drag it
+about and zoom it so the right part fills the card's frame.</p>
+<div class="card photo-card">
+  <div class="photo-cur">
+    <?php if ($photo !== null): ?>
+      <img src="<?= h(ghostd_photo_data_url($photo)) ?>" alt="Your photo">
+    <?php else: ?>
+      <span class="dim">no photo</span>
+    <?php endif; ?>
+  </div>
+  <div class="photo-forms">
+    <form method="post" enctype="multipart/form-data" class="fields" id="photo-form">
+      <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+      <input type="hidden" name="what" value="photo">
+      <input type="hidden" name="MAX_FILE_SIZE" value="<?= GHOSTD_PHOTO_MAX ?>">
+      <label for="f_photo"><?= $photo !== null ? 'Replace it' : 'Add one' ?></label>
+      <input type="file" id="f_photo" name="photo" accept="image/png,image/jpeg,image/webp" required>
+      <div class="crop" id="crop" hidden>
+        <canvas id="crop-c" width="240" height="280" aria-label="Your photo, as the card will frame it"></canvas>
+        <div class="crop-tools">
+          <label for="crop-z">Zoom</label>
+          <input type="range" id="crop-z" min="0.6" max="3" step="0.01" value="1">
+          <span class="dim">Drag the picture to place it. The frame is what the card shows; zoom out and the rest is the card's slate.</span>
+        </div>
+      </div>
+      <div class="actions"><button type="submit">Upload</button></div>
+    </form>
+    <?php if ($photo !== null): ?>
+    <form method="post" class="inline">
+      <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
+      <input type="hidden" name="what" value="photo_remove">
+      <button type="submit" class="btnquiet">Remove the photo</button>
+      <span class="dim">added <?= h($photo['at']) ?></span>
+    </form>
+    <?php endif; ?>
+  </div>
+</div>
+<script>
+// The frame is the roster card's photo box (6:7). The member places the
+// picture in it here - drag to move, slider to zoom - and what is sent is
+// that frame, rendered at 480x560 JPEG: cropped and shrunk in the browser,
+// since the server has no GD. Without this script the file goes up as it is
+// and the server's 1.5 MB cap decides.
+(() => {
+  const form = document.getElementById('photo-form');
+  const input = document.getElementById('f_photo');
+  const box = document.getElementById('crop');
+  const c = document.getElementById('crop-c');
+  const zoom = document.getElementById('crop-z');
+  if (!form || !input || !c || !window.DataTransfer || !window.createImageBitmap) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  let bmp = null, base = 1, z = 1, ox = 0, oy = 0, ready = false;
+
+  // The picture stays inside the frame when it is smaller than it (zoomed
+  // out) and covers it when it is larger: the offset is kept inside
+  // whichever slack the current zoom leaves. What it does not cover is the
+  // card's own slate, so the roster shows a border, not a hole.
+  const SLATE = '#2c3532';
+  const clamp = () => {
+    const s = base * z, w = bmp.width * s, h = bmp.height * s;
+    ox = Math.min(Math.max(0, W - w), Math.max(Math.min(0, W - w), ox));
+    oy = Math.min(Math.max(0, H - h), Math.max(Math.min(0, H - h), oy));
+  };
+  const draw = () => {
+    if (!bmp) return;
+    clamp();
+    ctx.fillStyle = SLATE; ctx.fillRect(0, 0, W, H);
+    const s = base * z;
+    ctx.drawImage(bmp, ox, oy, bmp.width * s, bmp.height * s);
+  };
+
+  input.addEventListener('change', async () => {
+    ready = false; bmp = null; box.hidden = true;
+    const f = input.files && input.files[0];
+    if (!f || !/^image\/(png|jpeg|webp)$/.test(f.type)) return;
+    try {
+      bmp = await createImageBitmap(f, { imageOrientation: 'from-image' });
+    } catch (e) { return; }
+    base = Math.max(W / bmp.width, H / bmp.height);
+    z = 1; zoom.value = '1';
+    ox = (W - bmp.width * base) / 2; oy = (H - bmp.height * base) / 2;
+    box.hidden = false; draw();
+  });
+
+  zoom.addEventListener('input', () => {
+    if (!bmp) return;
+    // Zoom about the centre of the frame, so the subject stays put.
+    const nz = Number(zoom.value), k = nz / z;
+    ox = W / 2 - (W / 2 - ox) * k; oy = H / 2 - (H / 2 - oy) * k;
+    z = nz; draw();
+  });
+
+  let drag = null;
+  c.addEventListener('pointerdown', (e) => { if (!bmp) return; drag = { x: e.clientX - ox, y: e.clientY - oy }; c.setPointerCapture(e.pointerId); });
+  c.addEventListener('pointermove', (e) => { if (!drag) return; ox = e.clientX - drag.x; oy = e.clientY - drag.y; draw(); });
+  const stop = () => { drag = null; };
+  c.addEventListener('pointerup', stop); c.addEventListener('pointercancel', stop);
+
+  form.addEventListener('submit', async (e) => {
+    if (!bmp || ready) return;          // nothing framed, or already rendered: let it go
+    e.preventDefault();
+    try {
+      const out = document.createElement('canvas'); out.width = 480; out.height = 560;
+      const k = out.width / W, s = base * z * k, o = out.getContext('2d');
+      o.fillStyle = SLATE; o.fillRect(0, 0, out.width, out.height);
+      o.drawImage(bmp, ox * k, oy * k, bmp.width * s, bmp.height * s);
+      const blob = await new Promise((r) => out.toBlob(r, 'image/jpeg', 0.88));
+      if (blob) {
+        const dt = new DataTransfer();
+        const name = (input.files[0].name || 'photo').replace(/\.[^.]+$/, '') + '.jpg';
+        dt.items.add(new File([blob], name, { type: 'image/jpeg' }));
+        input.files = dt.files;
+      }
+    } catch (err) { /* the original is sent instead */ }
+    ready = true;
+    form.submit();
+  });
+})();
+</script>
 
 <h2>My PAC requests</h2>
 <?php

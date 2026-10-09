@@ -144,7 +144,7 @@ browser, so a LAN box works.
 | **PAC actions** | the requests players raised |
 | **Orders** | the operation orders, section by section |
 | **Events** | the unit's calendar: operations, training nights, events - a title, a start in the unit's time zone, a length, the server, the order it briefs; public ones are shown to visitors with a countdown to the next |
-| **Wiki** | the unit's own pages - SOPs, guides, the radio plan - written in the HTML editor; a page marked public opens with no sign-in, the rest need a member's session |
+| **Wiki** | the unit's own documents, written in the HTML editor. A page is for admins unless opened up: "Visible to the unit" for signed-in members, "Public" (plus an are-you-sure tick) for anyone, which also offers it to the website's feed |
 | **Configs** | the unit's own records - ranks, skills, awards, statuses, promotion, training, admins |
 | **Templates** | what a mission's `config\` folder held: the welcome screen, arsenals, motorpool, cosmetics, the vehicle spawner, logistics crates, pylon presets, custom traits, messaging nets - plus the **Report deck** and **System** (the operation order's shape, the request kinds and the colour schemes) |
 | **ORBAT** | the orders of battle, communications, roles, squads and platoons |
@@ -160,12 +160,13 @@ the four feeds has its own switch:
 
 | Address | What |
 |---|---|
-| `?page=feed&what=roster` | every player on the roster: name (the milsim name when there is one), rank, status, squad, role, skill tags, awards, enlistment date and whether they are staff (an admin); plus the ranks (with an address for each insignia), skills, statuses, awards and role names to draw them with, and the promotion formula (what earns points, what each rank needs). Sorted element, squad, slot, name. |
+| `?page=feed&what=roster` | every player on the roster: name (the milsim name when there is one), rank, status, squad, role, skill tags, awards, enlistment date, whether they are staff (an admin) and the address of their photo if they added one; plus the ranks (with an address for each insignia), skills, statuses, awards and role names to draw them with, and the promotion formula (what earns points, what each rank needs). Sorted element, squad, slot, name. |
 | `?page=feed&what=orbat` | the live order of battle: each element, its squads, every slot and who fills it |
 | `?page=feed&what=events` | the public events: the next one, the upcoming ones and the last sixty days |
 | `?page=feed&what=wiki` | the public wiki pages |
 | `?page=feed&what=page&slug=<page>` | one public page, as cleaned HTML |
 | `?page=feed&what=image&k=<key>` | a rank's insignia or an award's image |
+| `?page=feed&what=avatar&p=<token>` | a member's own photo, added on My details; the token is derived from the Steam id and cannot be turned back into it |
 
 Nothing else leaves: no Steam or Discord ids, emails, notes, loadouts, admin
 actions or operator ids. A player with `publicHide: true` on their record is
@@ -224,8 +225,9 @@ Written by this site alone - the mod never reads them:
 | Key | What |
 |---|---|
 | `<unit>.web`, `.web.home`, `.web.images`, `.web.assets` | branding, the home page, the record pictures |
+| `<unit>.web.photo.<steam id>` | one member's own photo, framed and shrunk in the browser on My details (drag and zoom into the card's 6:7 frame, sent as a 480x560 JPEG) and stored as base64; written only by its owner, an admin may delete it |
 | `<unit>.web.feed` | the public feed's switches |
 | `<unit>.events` | `{section, timezone, items}` - the calendar |
-| `<unit>.wiki.<slug>` | one wiki page: `{section, id, title, html, public, order}` |
+| `<unit>.wiki.<slug>` | one wiki page: `{section, id, title, html, members, public, order}` - admins only unless `members` or `public` |
 
 A document edited here is read at the next mission start.

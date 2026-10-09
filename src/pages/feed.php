@@ -1,7 +1,8 @@
 <?php
 /**
  * The public feed's front door: ?page=feed&what=roster|orbat|events|wiki,
- * ?page=feed&what=page&slug=<page>, ?page=feed&what=image&k=<key>.
+ * ?page=feed&what=page&slug=<page>, ?page=feed&what=image&k=<key>,
+ * ?page=feed&what=avatar&p=<token> (a member's own photo, by its token).
  *
  * index.php sends this here before the login gate; there is no session and
  * no cookie, and nothing is written. Every answer is JSON except an image.
@@ -42,8 +43,16 @@ switch ($what) {
         // no break
 
     case 'image':
-        $key = (string) ($_GET['k'] ?? '');
-        $img = ghostd_feed_image_key_ok($key) ? ghostd_record_image($key) : null;
+    case 'avatar':
+        if ($what === 'avatar') {
+            if (empty($set['roster'])) {
+                ghostd_feed_out(['error' => 'That feed is off.'], 403, 0);
+            }
+            $img = ghostd_photo_by_token((string) ($_GET['p'] ?? ''));
+        } else {
+            $key = (string) ($_GET['k'] ?? '');
+            $img = ghostd_feed_image_key_ok($key) ? ghostd_record_image($key) : null;
+        }
         $bytes = $img === null ? false : base64_decode((string) $img['data'], true);
         if ($bytes === false) {
             http_response_code(404);
@@ -70,6 +79,6 @@ switch ($what) {
                 array_keys(GHOSTD_FEEDS),
                 static fn($k) => !empty($set[$k])
             )),
-            'help'  => '?page=feed&what=<roster|orbat|events|wiki>, &what=page&slug=<page>, &what=image&k=<key>',
+            'help'  => '?page=feed&what=<roster|orbat|events|wiki>, &what=page&slug=<page>, &what=image&k=<key>, &what=avatar&p=<token>',
         ], 200, 300);
 }

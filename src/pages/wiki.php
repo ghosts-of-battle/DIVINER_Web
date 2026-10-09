@@ -34,10 +34,17 @@ if ($slug !== '') {
         ghostd_foot();
         return;
     }
+    if (!$page['members'] && !$canEdit) {
+        ghostd_head('Wiki', 'wiki');
+        echo '<p class="note">That page is for admins.</p>';
+        echo '<p><a href="?page=wiki">&larr; Wiki</a></p>';
+        ghostd_foot();
+        return;
+    }
     ghostd_head($page['title'], 'wiki');
     ?>
     <p class="dim wk-crumbs"><a href="?page=wiki">&larr; Wiki</a>
-      <?php if (!$page['public']): ?> &middot; <span class="pill dimpill">members only</span><?php endif; ?>
+      <?php if (!$page['public']): ?> &middot; <span class="pill dimpill"><?= $page['members'] ? 'members only' : 'admins only' ?></span><?php endif; ?>
       <?php if ($canEdit): ?> &middot; <a href="?page=wikiedit&amp;p=<?= urlencode($page['slug']) ?>">Edit</a><?php endif; ?>
     </p>
     <article class="wk-body"><?= $page['html'] ?></article>
@@ -50,7 +57,7 @@ if ($slug !== '') {
 }
 
 // ---- the list --------------------------------------------------------------
-$pages = ghostd_wiki_index(!$signedIn);
+$pages = ghostd_wiki_index($canEdit ? 'admin' : ($signedIn ? 'member' : 'public'));
 
 ghostd_head('Wiki', 'wiki');
 ?>
@@ -64,7 +71,7 @@ ghostd_head('Wiki', 'wiki');
 <ul class="wk-list">
   <?php foreach ($pages as $p): ?>
     <li><a href="?page=wiki&amp;p=<?= urlencode($p['slug']) ?>"><?= h($p['title']) ?></a>
-      <?php if ($signedIn && !$p['public']): ?><span class="pill dimpill">members only</span><?php endif; ?>
+      <?php if ($signedIn && !$p['public']): ?><span class="pill dimpill"><?= $p['members'] ? 'members only' : 'admins only' ?></span><?php endif; ?>
       <?php if ($p['updatedAt'] !== ''): ?><span class="dim"><?= h(substr($p['updatedAt'], 0, 10)) ?></span><?php endif; ?>
       <?php if ($canEdit): ?><a class="dim" href="?page=wikiedit&amp;p=<?= urlencode($p['slug']) ?>">edit</a><?php endif; ?>
     </li>

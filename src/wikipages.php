@@ -9,9 +9,11 @@
  * reads. A page is a title, a piece of HTML written in the same Wysi editor
  * as the home page, a public flag, and an order for the list.
  *
- * PUBLIC MEANS PUBLIC. A page marked public is readable with no sign-in and
- * is offered by the feed, which is how the unit's website shows its SOP.
- * Everything else needs a member's session. The HTML is cleaned on save by
+ * THREE AUDIENCES, ADMINS BY DEFAULT (user, 2026-10-08: "by default make all
+ * docs admin only"). A new page is read by admins alone. `members` opens it
+ * to a signed-in member; `public` opens it to anyone and offers it to the feed,
+ * which is how the unit's website shows its SOP - and public takes a second
+ * tick in the editor, because public is the internet. The HTML is cleaned on save by
  * ghostd_html_clean(), for the same reason the home page's is: the page is
  * served to people who are not admins.
  */
@@ -58,7 +60,8 @@ function ghostd_wiki_slugify(string $title): string
  * Every page's slug, title, public flag and order, in ONE query - the list
  * must not cost a round-trip per page. [slug => [...]], by order then title.
  */
-function ghostd_wiki_index(bool $publicOnly = false): array
+/** Who is reading: 'public' (no session), 'member' (signed in), 'admin' (may edit). */
+function ghostd_wiki_index(string $who = 'public'): array
 {
     $prefix = ghostd_wiki_prefix();
     $out = [];
@@ -67,7 +70,7 @@ function ghostd_wiki_index(bool $publicOnly = false): array
             ghostd_ns(),
             new Query(
                 ['_id' => new Regex('^' . preg_quote($prefix, '/'), '')],
-                ['projection' => ['_id' => 1, 'title' => 1, 'public' => 1, 'order' => 1, 'updatedAt' => 1]]
+                ['projection' => ['_id' => 1, 'title' => 1, 'public' => 1, 'members' => 1, 'order' => 1, 'updatedAt' => 1]]
             )
         );
         $cur->setTypeMap(GHOSTD_TYPEMAP);
@@ -77,13 +80,18 @@ function ghostd_wiki_index(bool $publicOnly = false): array
                 continue;
             }
             $public = !empty($doc['public']);
-            if ($publicOnly && !$public) {
+            $members = $public || !empty($doc['members']);
+            if ($who === 'public' && !$public) {
+                continue;
+            }
+            if ($who === 'member' && !$members) {
                 continue;
             }
             $out[$slug] = [
                 'slug'      => $slug,
                 'title'     => trim((string) ($doc['title'] ?? '')) ?: $slug,
                 'public'    => $public,
+                'members'   => $members,
                 'order'     => (int) ($doc['order'] ?? 0),
                 'updatedAt' => (string) ($doc['updatedAt'] ?? ''),
             ];
@@ -116,6 +124,7 @@ function ghostd_wiki_page(string $slug): ?array
         // of this site, or by hand in Mongo, gets the same treatment.
         'html'      => ghostd_html_clean((string) ($doc['html'] ?? '')),
         'public'    => !empty($doc['public']),
+        'members'   => !empty($doc['public']) || !empty($doc['members']),
         'order'     => (int) ($doc['order'] ?? 0),
         'updatedAt' => (string) ($doc['updatedAt'] ?? ''),
         'updatedBy' => (string) ($doc['updatedBy'] ?? ''),
@@ -123,7 +132,7 @@ function ghostd_wiki_page(string $slug): ?array
 }
 
 /** Write a page whole. ghostd_put backs the previous version up first. */
-function ghostd_wiki_save(string $slug, string $title, string $html, bool $public, int $order, string $by): void
+function ghostd_wiki_save(string $slug, string $title, string $html, bool $public, int $order, string $by, bool $members = false): void
 {
     if (!ghostd_wiki_slug_ok($slug)) {
         throw new RuntimeException('A page address is lower-case letters, digits, dash and underscore - "radio-plan", not "Radio Plan".');
@@ -141,6 +150,7 @@ function ghostd_wiki_save(string $slug, string $title, string $html, bool $publi
         'title'     => mb_substr($title, 0, 120),
         'html'      => ghostd_html_clean($html),
         'public'    => $public,
+        'members'   => $members || $public,
         'order'     => $order,
         'updatedBy' => $by,
     ]);

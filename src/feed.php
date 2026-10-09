@@ -30,6 +30,7 @@ require_once __DIR__ . '/orbat.php';
 require_once __DIR__ . '/opords.php';
 require_once __DIR__ . '/events.php';
 require_once __DIR__ . '/wikipages.php';
+require_once __DIR__ . '/photos.php';
 
 const GHOSTD_FEEDS = [
     'roster' => 'Roster - name, rank, squad, role, skill tags, status',
@@ -325,6 +326,7 @@ function ghostd_feed_roster(): array
     }
     $ranks = ghostd_feed_ranks();
     $admins = ghostd_feed_admin_ids();
+    $photos = ghostd_photo_ids();   // uid => when added; the pictures stay in their documents
     $rows = [];
     foreach ($players as $uid => $p) {
         $pub = ghostd_feed_player_public($p);
@@ -332,8 +334,13 @@ function ghostd_feed_roster(): array
             continue;
         }
         // STAFF ARE THE ADMINS (user, 2026-10-08): the id is matched here and
-        // goes no further.
+        // goes no further. The photo likewise: served under a token, not the id.
         $pub['staff'] = in_array((string) $uid, $admins, true);
+        // The stamp in the address changes with the picture, so a replaced
+        // photo is not the old one from a browser's cache for a day.
+        $pub['avatar'] = isset($photos[(string) $uid])
+            ? ghostd_feed_url('avatar', ['p' => ghostd_photo_token((string) $uid), 'v' => substr(md5($photos[(string) $uid]), 0, 6)])
+            : null;
         $sq = $squadOrder[$pub['group']] ?? 9999;
         $slot = 9999;
         if ($sq !== 9999) {
@@ -484,7 +491,7 @@ function ghostd_feed_events(): array
 function ghostd_feed_wiki(): array
 {
     $pages = [];
-    foreach (ghostd_wiki_index(true) as $p) {
+    foreach (ghostd_wiki_index('public') as $p) {
         $pages[] = ['slug' => $p['slug'], 'title' => $p['title'], 'updatedAt' => $p['updatedAt']];
     }
     return ['unit' => ghostd_unit_name(), 'generatedAt' => gmdate('Y-m-d\TH:i:s\Z'), 'pages' => $pages];
