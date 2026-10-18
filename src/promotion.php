@@ -6,8 +6,18 @@
  * unit's data (<unit>.promotion) and the quantities are the store's, so both
  * sides can add them up and must agree. Change the weights and both change.
  *
- *   hour          points per hour on the server (all sessions)
- *   op            points per op attended (a closed window since enlistment)
+ *   hour          points per hour on an operation (sessions filed under a
+ *                 window of kind "operation" - user, 2026-10-11: "only
+ *                 operation missions count toward promotion")
+ *   op            points per op attended (a closed operation window since
+ *                 enlistment)
+ *   trainingSession  points per training window attended
+ *   trainingHour     points per hour in a training window
+ *
+ * A window is [id, name, startedAt, endedAt, source, kind]; kind is
+ * "operation", "training" or "special", and a window from before kinds reads
+ * as an operation. Special windows, and time under no window, count for
+ * nothing - the same rules as the game's jmfsb_pac_fnc_promotionPoints.
  *   serviceMonth  points per 30 days since enlistedAt
  *   gradeMonth    points per 30 days since promotedAt (enlistedAt if never)
  *   training      points per training entry
@@ -121,30 +131,43 @@ function ghostd_promotion_table(array $store): array
     $sessions = is_array($store['sessions'] ?? null) ? $store['sessions'] : [];
     $windows  = is_array($store['windows'] ?? null) ? $store['windows'] : [];
 
-    // Closed windows only - an op that has not finished is not an op attended.
+    // Every window's kind; closed windows only for attendance - an op that
+    // has not finished is not an op attended.
+    $kind   = [];
     $closed = [];
     foreach ($windows as $w) {
-        $w = (array) $w;
+        $w  = (array) $w;
+        $id = (string) ($w[0] ?? '');
+        $k  = (string) ($w[5] ?? 'operation');
+        $kind[$id] = in_array($k, ['operation', 'training', 'special'], true) ? $k : 'operation';
         if ((string) ($w[3] ?? '') !== '') {
-            $closed[(string) ($w[0] ?? '')] = ghostd_stamp_minutes((string) ($w[2] ?? ''));
+            $closed[$id] = ghostd_stamp_minutes((string) ($w[2] ?? ''));
         }
     }
 
-    $minutes  = [];
-    $attended = [];
+    $minutes  = [];   // operation minutes
+    $tminutes = [];   // training minutes
+    $attended = [];   // uid => [window id => kind]
     foreach ($sessions as $s) {
         $s   = (array) $s;
         $uid = (string) ($s[0] ?? '');
         if ($uid === '') {
             continue;
         }
-        $end = (string) ($s[4] ?? '') !== '' ? (string) $s[4] : (string) ($s[3] ?? '');
-        $m   = ghostd_stamp_minutes($end) - ghostd_stamp_minutes((string) ($s[2] ?? ''));
-        $minutes[$uid] = ($minutes[$uid] ?? 0) + max(0, $m);
-
         $win = (string) ($s[5] ?? '');
-        if ($win !== '' && isset($closed[$win])) {
-            $attended[$uid][$win] = true;
+        $k   = $kind[$win] ?? '';
+        if ($k !== 'operation' && $k !== 'training') {
+            continue;
+        }
+        $end = (string) ($s[4] ?? '') !== '' ? (string) $s[4] : (string) ($s[3] ?? '');
+        $m   = max(0, ghostd_stamp_minutes($end) - ghostd_stamp_minutes((string) ($s[2] ?? '')));
+        if ($k === 'operation') {
+            $minutes[$uid] = ($minutes[$uid] ?? 0) + $m;
+        } else {
+            $tminutes[$uid] = ($tminutes[$uid] ?? 0) + $m;
+        }
+        if (isset($closed[$win])) {
+            $attended[$uid][$win] = $k;
         }
     }
 
@@ -166,14 +189,16 @@ function ghostd_promotion_table(array $store): array
 
         // Only ops held since this player enlisted count as scheduled for them.
         $since = ghostd_stamp_minutes($enlisted);
-        $ops = 0;
-        foreach ((array) ($attended[$uid] ?? []) as $win => $_) {
+        $ops       = 0;
+        $trainings = 0;
+        foreach ((array) ($attended[$uid] ?? []) as $win => $k) {
             if (($closed[$win] ?? 0) >= $since) {
-                $ops++;
+                $k === 'operation' ? $ops++ : $trainings++;
             }
         }
 
-        $hours = ($minutes[$uid] ?? 0) / 60;
+        $hours  = ($minutes[$uid] ?? 0) / 60;
+        $thours = ($tminutes[$uid] ?? 0) / 60;
         $points = round(
             $hours * ghostd_promotion_weight('hour')
             + $ops * ghostd_promotion_weight('op')
@@ -181,6 +206,8 @@ function ghostd_promotion_table(array $store): array
             + ($days($promoted) / 30) * ghostd_promotion_weight('gradeMonth')
             + count((array) ($rec['training'] ?? [])) * ghostd_promotion_weight('training')
             + count((array) ($rec['awards'] ?? [])) * ghostd_promotion_weight('award')
+            + $trainings * ghostd_promotion_weight('trainingSession')
+            + $thours * ghostd_promotion_weight('trainingHour')
         );
 
         // The next rung is the lowest threshold strictly above the one the
@@ -201,6 +228,8 @@ function ghostd_promotion_table(array $store): array
             'points'    => (int) $points,
             'hours'     => round($hours, 1),
             'ops'       => $ops,
+            'trainings' => $trainings,
+            'trainingHours' => round($thours, 1),
             'next'      => $next,
             'needed'    => $nextAt < 0 ? 0 : max(0, (int) ($nextAt - $points)),
             'nextAt'    => $nextAt < 0 ? 0 : (int) $nextAt,

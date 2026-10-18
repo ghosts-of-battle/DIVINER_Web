@@ -67,8 +67,8 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 
   <label for="text">Text</label>
   <p class="dim">A paragraph is a line on the screen. Headings are the game's
-  text sizes, bold is its bold font. Arma has no italic and no lists, so the
-  editor has none either.</p>
+  text sizes, bold is its bold font. Arma has no italic and no real lists;
+  The list button on the toolbar puts a plain &bull; in front of the line instead.</p>
 
   <textarea id="text" name="text" data-wysi="arma" spellcheck="false"
             placeholder="Type the briefing."><?= h(ghostd_arma_to_html($w['text'])) ?></textarea>

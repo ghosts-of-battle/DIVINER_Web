@@ -127,7 +127,7 @@ foreach (array_slice(array_reverse($log), 0, 8) as $l) {
 <div class="tiles">
   <div class="tile"><span class="n"><?= count($players) ?></span>on the roster</div>
   <div class="tile"><span class="n"><?= count($sessions) ?></span>sessions recorded</div>
-  <div class="tile"><span class="n"><?= count($windows) ?></span>operation windows</div>
+  <div class="tile"><span class="n"><?= count($windows) ?></span>windows</div>
   <div class="tile"><span class="n"><?= count($sections['roles']) ?></span>roles</div>
   <div class="tile"><span class="n"><?= count($sections['opords']) ?></span>orders</div>
   <div class="tile"><span class="n"><?= $openTickets === null ? '?' : $openTickets ?></span>PAC actions open</div>
