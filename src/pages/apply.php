@@ -17,6 +17,7 @@ $msg  = null;
 $err  = null;
 
 $questions = ghostd_questions();
+$skillNames = ghostd_question_skills();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ghostd_csrf_check();
@@ -24,7 +25,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $answers = [];
         $missing = [];
         foreach ($questions as $qid => $q) {
-            $v = trim((string) ($_POST['q_' . $qid] ?? ''));
+            if ($q['type'] === 'skills') {
+                // the ticked skill ids, only ones the unit has, as a list
+                $posted = $_POST['q_' . $qid] ?? [];
+                $v = array_values(array_intersect(
+                    array_map('strval', is_array($posted) ? $posted : []),
+                    array_map('strval', array_keys($skillNames))
+                ));
+                if ($q['required'] && $v === []) {
+                    $missing[] = $q['label'];
+                }
+                if ($v !== []) {
+                    $answers[$qid] = $v;
+                }
+                continue;
+            }
+            $posted = $_POST['q_' . $qid] ?? '';
+            $v = trim(is_string($posted) ? $posted : '');
             if ($q['required'] && $v === '') {
                 $missing[] = $q['label'];
             }
@@ -76,8 +93,13 @@ accepted, nothing has to be retyped.</p>
 <form method="post" class="card fields">
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
   <?php foreach ($questions as $qid => $q): ?>
-    <?php $val = (string) ($prev[$qid] ?? ''); $id = 'q_' . $qid; ?>
-    <label for="<?= h($id) ?>">
+    <?php
+      $raw = $prev[$qid] ?? '';
+      $val = is_array($raw) ? '' : (string) $raw;
+      $ticked = is_array($raw) ? array_map('strval', $raw) : [];
+      $id = 'q_' . $qid;
+    ?>
+    <label <?= $q['type'] === 'skills' ? '' : 'for="' . h($id) . '"' ?>>
       <?= h($q['label']) ?>
       <?php if (!$q['required']): ?><span class="dim">optional</span><?php endif; ?>
     </label>
@@ -85,7 +107,22 @@ accepted, nothing has to be retyped.</p>
       <p class="dim qhelp"><?= h($q['help']) ?></p>
     <?php endif; ?>
 
-    <?php if ($q['type'] === 'textarea'): ?>
+    <?php if ($q['type'] === 'skills'): ?>
+      <p class="qhelp">I'm interested in</p>
+      <?php if ($skillNames === []): ?>
+        <p class="dim">The unit has no skills listed yet.</p>
+      <?php else: ?>
+        <div class="checkgrid">
+          <?php foreach ($skillNames as $sid => $sname): ?>
+            <label class="inlinelabel">
+              <input type="checkbox" name="<?= h($id) ?>[]" value="<?= h((string) $sid) ?>"
+                     <?= in_array((string) $sid, $ticked, true) ? 'checked' : '' ?>>
+              <?= h($sname) ?>
+            </label>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    <?php elseif ($q['type'] === 'textarea'): ?>
       <textarea id="<?= h($id) ?>" name="<?= h($id) ?>" rows="4" class="short"
                 <?= $q['required'] ? 'required' : '' ?>><?= h($val) ?></textarea>
     <?php elseif ($q['type'] === 'select'): ?>

@@ -115,7 +115,7 @@ application.</p>
         <input type="text" name="help[<?= $row ?>]" value="<?= h($q['help']) ?>"
                placeholder="Help text under the question (optional)">
         <input type="text" name="options[<?= $row ?>]" value="<?= h(implode(' | ', (array) ($q['options'] ?? []))) ?>"
-               placeholder="Choices, separated by | (only for 'Choose one')">
+               placeholder="Choices, separated by | (only for 'Choose one'; 'Tick skills' lists the unit's skills itself)">
       </div>
     </fieldset>
   <?php $row++; endforeach; ?>
@@ -145,8 +145,9 @@ application.</p>
   <input type="hidden" name="csrf" value="<?= h(ghostd_csrf_token()) ?>">
   <input type="hidden" name="action" value="defaults">
   <button type="submit" class="hot">Reset to the standard set</button>
-  <p class="dim">Replaces every question with the nine this site ships with,
-  including Arma experience and milsim experience.</p>
+  <p class="dim">Replaces every question with the ten this site ships with,
+  including Arma experience, milsim experience and the skills they are
+  interested in.</p>
 </form>
 <?php
 ghostd_foot();

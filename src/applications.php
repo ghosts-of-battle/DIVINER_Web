@@ -22,6 +22,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/players.php';
 
 /** The question set a unit gets before anybody edits one. */
 const GHOSTD_DEFAULT_QUESTIONS = [
@@ -34,9 +35,22 @@ const GHOSTD_DEFAULT_QUESTIONS = [
     'availability' => ['label' => 'When can you play?',     'type' => 'text',     'required' => false, 'help' => 'Which evenings, roughly.'],
     'why'        => ['label' => 'Why us?',                  'type' => 'textarea', 'required' => false, 'help' => 'Optional. What you are looking for in a unit.'],
     'heard'      => ['label' => 'How did you hear about us?', 'type' => 'text',   'required' => false, 'help' => ''],
+    // A checkbox for every skill the unit has (user, 2026-10-19). The game's
+    // fnc_questionsLoad carries the same list - keep the two in step.
+    'interests'  => ['label' => 'What do you want to be (when you do not grow up)?', 'type' => 'skills', 'required' => false, 'help' => ''],
 ];
 
-const GHOSTD_QUESTION_TYPES = ['text' => 'Short answer', 'textarea' => 'Long answer', 'select' => 'Choose one'];
+/**
+ * The kinds of question. "skills" is one checkbox per skill in <unit>.skills,
+ * under the line "I'm interested in"; its answer is the list of ticked skill
+ * ids, and required means at least one ticked.
+ */
+const GHOSTD_QUESTION_TYPES = [
+    'text'     => 'Short answer',
+    'textarea' => 'Long answer',
+    'select'   => 'Choose one',
+    'skills'   => "Tick skills (I'm interested in)",
+];
 const GHOSTD_APPLICATION_STATUSES = ['new' => 'New', 'accepted' => 'Accepted', 'rejected' => 'Rejected'];
 
 function ghostd_questions_doc_id(): string
@@ -93,6 +107,31 @@ function ghostd_normalise_questions(array $items): array
     }
     uasort($out, static fn($a, $b) => $a['order'] <=> $b['order']);
     return $out;
+}
+
+/**
+ * The skills a "skills" question offers: id => display name, by name. The
+ * same <unit>.skills document the player page's skill boxes read.
+ */
+function ghostd_question_skills(): array
+{
+    return ghostd_record_labels('skills');
+}
+
+/**
+ * An answer as text, for the admin page. A "skills" answer is a list of
+ * skill ids and reads as their names; an id the unit no longer has is shown
+ * as itself rather than dropped.
+ */
+function ghostd_answer_text($answer, array $skillNames): string
+{
+    if (is_array($answer)) {
+        return implode(', ', array_map(
+            static fn($sid) => $skillNames[(string) $sid] ?? (string) $sid,
+            array_values($answer)
+        ));
+    }
+    return (string) ($answer ?? '');
 }
 
 /** Admin only - the guard in db.php enforces that, not this. */

@@ -97,6 +97,7 @@ try {
     $dbErr = $e->getMessage();
 }
 $questions = ghostd_questions();
+$skillNames = ghostd_question_skills();
 
 ghostd_head('Applications', 'applications');
 if ($msg !== null) { ghostd_flash('good', $msg); }
@@ -135,7 +136,7 @@ $new = array_filter($apps, static fn($a) => ($a['status'] ?? 'new') === 'new');
         <tr>
           <th><?= h($q['label']) ?></th>
           <td><?php
-            $v = (string) (($a['answers'][$qid] ?? '') ?: '');
+            $v = ghostd_answer_text($a['answers'][$qid] ?? '', $skillNames);
             echo $v === '' ? '<span class="dim">-</span>' : nl2br(h($v));
           ?></td>
         </tr>
@@ -146,7 +147,7 @@ $new = array_filter($apps, static fn($a) => ($a['status'] ?? 'new') === 'new');
       ?>
       <?php foreach ($extra as $k => $v): ?>
         <tr><th><?= h((string) $k) ?> <span class="dim">(question removed)</span></th>
-            <td><?= nl2br(h((string) $v)) ?></td></tr>
+            <td><?= nl2br(h(ghostd_answer_text($v, $skillNames))) ?></td></tr>
       <?php endforeach; ?>
     </table>
 
