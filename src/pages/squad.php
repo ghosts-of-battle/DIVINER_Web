@@ -129,6 +129,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                             $items[$list] = $rows;
                         }
+                        // VON is keyed by the squad too - its team net and its
+                        // place on every custom net.
+                        ghostd_von_squad_moved($items, $name, $to);
                     });
                     header('Location: ?page=squad&sq=' . urlencode($to) . ($variant !== '' ? '&v=' . urlencode($variant) : '') . '&renamed=1');
                     exit;
@@ -202,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         $items[$list] = $rows;
                     }
+                    ghostd_von_squad_copied($items, $name, $to);
                 });
                 header('Location: ?page=squad&sq=' . urlencode($to) . ($variant !== '' ? '&v=' . urlencode($variant) : '') . '&copied=1');
                 exit;
@@ -222,6 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ghostd_radio_edit(static function (array &$items) use ($name) {
                     ghostd_channel_set($items, 'srSquadChannel', $name, null);
                     ghostd_channel_set($items, 'tfarNets', $name, null);
+                    ghostd_von_squad_moved($items, $name, null);
                 });
                 header('Location: ?page=orbat&s=squads' . ($variant !== '' ? '&v=' . urlencode($variant) : ''));
                 exit;
@@ -273,6 +278,8 @@ if ($sq === null) {
 $radio = ghostd_radio_items();
 $acre  = ghostd_acre_of($radio)[$name] ?? null;
 $tfar  = ghostd_tfar_of($radio)[$name] ?? [0, 0];
+$vonTeam = ghostd_von_team_of($radio)[$name] ?? '';
+$vonNets = ghostd_von_nets_of($radio)[$name] ?? [];
 
 $roleIds = ghostd_role_ids();
 $roleNames = [];
@@ -436,6 +443,22 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
     </div>
     <div class="actions"><button type="submit">Save channels</button></div>
   </form>
+
+  <h3>VON <span class="dim">the game's own voice, when the mission has no TFAR and no ACRE</span></h3>
+  <table class="kv">
+    <tr><th>Team net</th><td><?= h($vonTeam !== '' ? $vonTeam : $name) ?>
+        <span class="dim">- the Group channel<?= $vonTeam === '' ? ', named after the squad' : '' ?></span></td></tr>
+    <tr><th>Custom nets</th><td>
+      <?php if ($vonNets === []): ?>
+        <span class="dim">none</span>
+      <?php else: ?>
+        <?php foreach ($vonNets as $vn): ?>
+          <span class="pill dimpill"><?= h($vn[0]) ?> &middot; <?= h(strtoupper($vn[1])) ?></span>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </td></tr>
+  </table>
+  <p class="dim">Set on the <a href="?page=orbat&amp;s=radio&amp;r=von<?= $vq ?>">VON tab</a>.</p>
 </section>
 <?php endif; ?>
 

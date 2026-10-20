@@ -68,6 +68,153 @@ switch ($what) {
         });
         break;
 
+    // ---- VON: the game's own voice, when there is no TFAR and no ACRE -------
+    // Three saves, one per block on the VON tab. The shapes are the contract
+    // the two mods read - see the VON block in src/orbat.php - so every value
+    // is checked for its type here rather than cast into something plausible.
+
+    // The Side and Command channels, and who may talk on Global. A box left
+    // unticked posts nothing, so absent is false - the form says each one.
+    case 'vonflags':
+        $flags = [];
+        foreach (GHOSTD_VON_FLAGS as $k => $_def) {
+            $sent = $_POST[$k] ?? null;
+            if ($sent !== null && !is_string($sent)) {
+                throw new RuntimeException('The ' . $k . ' switch was not a tick box.');
+            }
+            $flags[$k] = $sent === '1';
+        }
+        $editRadio(static function (array &$items) use ($flags, &$msg) {
+            foreach ($flags as $k => $on) {
+                $items[$k] = $on;
+            }
+            $msg = 'VON channels saved.';
+        });
+        break;
+
+    // Each squad's TEAM net - the name its Group channel goes by. Only squads
+    // of this order of battle are taken; a row for a squad that is not in it
+    // (another order of battle running the same plan) is left as it was.
+    case 'vonteam':
+        $real = array_values(array_filter(array_map(
+            static fn($g) => is_scalar($g[0] ?? null) ? (string) $g[0] : '',
+            ghostd_orbat($variant)['groups']), static fn($s) => $s !== ''));
+        $sqs   = $_POST['vt_sq'] ?? [];
+        $names = $_POST['vt_name'] ?? [];
+        if (!is_array($sqs) || !is_array($names)) {
+            throw new RuntimeException('The team nets came in a shape this page did not send.');
+        }
+        $set = [];
+        foreach ($sqs as $i => $sq) {
+            $nm = $names[$i] ?? '';
+            if (!is_string($sq) || !is_string($nm)) {
+                throw new RuntimeException('The team nets came in a shape this page did not send.');
+            }
+            if (!in_array($sq, $real, true)) {
+                throw new RuntimeException('"' . $sq . '" is not a squad in this order of battle.');
+            }
+            $nm = trim($nm);
+            // The squad's own name IS the default, so it is not stored - a row
+            // saying "BANSHEE 1-1 is called BANSHEE 1-1" would keep the old
+            // name through a rename.
+            $set[$sq] = ($nm === '' || $nm === $sq) ? '' : ghostd_von_name_check($nm, 'A team net');
+        }
+        $editRadio(static function (array &$items) use ($set, &$msg) {
+            $rows = [];
+            foreach ((array) ($items['vonTeamNets'] ?? []) as $r) {
+                if (is_array($r) && is_scalar($r[0] ?? null) && !isset($set[(string) $r[0]])) {
+                    $rows[] = $r;
+                }
+            }
+            $named = 0;
+            foreach ($set as $sq => $nm) {
+                if ($nm !== '') {
+                    $rows[] = [(string) $sq, $nm];
+                    $named++;
+                }
+            }
+            $items['vonTeamNets'] = $rows;
+            $msg = $named . ' team nets named; the rest go by their squad.';
+        });
+        break;
+
+    // The custom nets - C2 and A2G. The game has ten custom channels, so ten
+    // is the most there can be. A net is a name, a kind and who is on it.
+    case 'vonnets':
+        $real = array_values(array_filter(array_map(
+            static fn($g) => is_scalar($g[0] ?? null) ? (string) $g[0] : '',
+            ghostd_orbat($variant)['groups']), static fn($s) => $s !== ''));
+        // A squad already on a net but not in THIS order of battle - another
+        // one runs the same plan - may stay ticked. It is not a name off the
+        // wire: it is one this document already holds.
+        $allowed = array_flip($real);
+        foreach (ghostd_von_nets(ghostd_radio_items($rv)) as $n) {
+            foreach ($n['squads'] as $s) {
+                $allowed[$s] = true;
+            }
+        }
+
+        $names   = $_POST['vn_name'] ?? [];
+        $kinds   = $_POST['vn_kind'] ?? [];
+        $members = $_POST['vn_sq'] ?? [];
+        $remove  = $_POST['vn_remove'] ?? [];
+        if (!is_array($names) || !is_array($kinds) || !is_array($members) || !is_array($remove)) {
+            throw new RuntimeException('The nets came in a shape this page did not send.');
+        }
+        $remove = array_map(static fn($x) => is_scalar($x) ? (string) $x : '', $remove);
+
+        $rows = [];
+        $seen = [];
+        foreach ($names as $i => $nm) {
+            $ticked = $members[$i] ?? [];
+            $kind   = $kinds[$i] ?? '';
+            if (!is_string($nm) || !is_array($ticked) || !is_string($kind)) {
+                throw new RuntimeException('The nets came in a shape this page did not send.');
+            }
+            if (in_array((string) $i, $remove, true)) {
+                continue;
+            }
+            $nm = trim($nm);
+            if ($nm === '') {
+                if ($ticked === []) {
+                    continue;              // an empty spare row
+                }
+                throw new RuntimeException('Net row ' . ((int) $i + 1) . ' has squads ticked but no name.');
+            }
+            $nm = ghostd_von_name_check($nm, 'A net');
+            $key = strtolower($nm);
+            if (isset($seen[$key])) {
+                throw new RuntimeException('Two nets are called "' . $nm . '". A net name is how a '
+                    . 'player tells the channels apart, so each is used once.');
+            }
+            $seen[$key] = true;
+            if (!isset(GHOSTD_VON_KINDS[$kind])) {
+                throw new RuntimeException('"' . $nm . '" needs a kind - C2 or A2G.');
+            }
+            $list = [];
+            foreach ($ticked as $s) {
+                if (!is_string($s)) {
+                    throw new RuntimeException('The nets came in a shape this page did not send.');
+                }
+                if (!isset($allowed[$s])) {
+                    throw new RuntimeException('"' . $s . '" is not a squad in this order of battle.');
+                }
+                if (!in_array($s, $list, true)) {
+                    $list[] = $s;
+                }
+            }
+            $rows[] = [$nm, $kind, $list];
+        }
+        if (count($rows) > GHOSTD_VON_MAX_NETS) {
+            throw new RuntimeException(count($rows) . ' nets is too many: the game has '
+                . GHOSTD_VON_MAX_NETS . ' custom channels and each net is one of them.');
+        }
+        $editRadio(static function (array &$items) use ($rows, &$msg) {
+            $items['vonNets'] = $rows;
+            $msg = count($rows) . ' of ' . GHOSTD_VON_MAX_NETS . ' custom nets saved.';
+        });
+        break;
+
     // Channel lists: [index, frequency, label] rows.
     case 'channels':
         $which = (string) ($_POST['which'] ?? '');
@@ -262,7 +409,7 @@ switch ($what) {
         break;
 
     // ---- deleting a whole comms template ----------------------------------
-    // The Messaging, ACRE and TFAR tabs each list their templates and each row
+    // The Messaging, ACRE, TFAR and VON tabs each list their templates and each row
     // has a Delete, like every other list on this site. A template an order of
     // battle still runs has no button - the list shows "in use" instead - so
     // this is the second line of that defence, not the first.

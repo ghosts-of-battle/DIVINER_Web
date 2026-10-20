@@ -756,6 +756,11 @@ p.dim a.on { color: var(--accent); }
 }
 .checkgrid .inlinelabel { margin: 0; }
 
+/* The squads on a VON net, ticked inside one table cell. Across and wrapping,
+   not one per line - twenty squads down a cell is a row taller than the page. */
+.vonsquads { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); }
+.vonsquads .inlinelabel { margin: 0; }
+
 /* A label whose control goes UNDER it rather than beside it - used where four
    textareas sit side by side and each needs its own heading. */
 label.stacked { display: flex; flex-direction: column; gap: var(--s1); flex: 1 1 14rem; }

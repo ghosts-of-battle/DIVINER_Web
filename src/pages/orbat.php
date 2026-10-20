@@ -9,7 +9,8 @@
  *
  * TWO DOCUMENTS, ONE PAGE. Platoons, squads and their roles live in
  * <unit>.orbat; the channel a squad sits on lives in <unit>.radio, because
- * that is where the mod reads it (srSquadChannel for ACRE, tfarNets for TFAR).
+ * that is where the mod reads it (srSquadChannel for ACRE, tfarNets for TFAR,
+ * vonTeamNets and vonNets for VON).
  * They are edited together because nobody thinks of them separately - a squad
  * without a channel is half a squad.
  *
@@ -66,7 +67,10 @@ const GHOSTD_ORBAT_SUBTABS = [
     // is gone (user, 2026-09-09: "no fucking shared nets ... acre and tfar tab
     // only for fucking radios"). A squad's channel is in the ACRE and TFAR
     // tables, keyed by the squad.
-    'radio' => ['nets' => 'Messaging', 'acre' => 'ACRE', 'tfar' => 'TFAR'],
+    // VON is the third radio (user, 2026-10-20: "add a base game voip option"):
+    // the game's own voice chat, used when a mission runs neither TFAR nor
+    // ACRE. Its plan lives in the same <unit>.radio document as the other two.
+    'radio' => ['nets' => 'Messaging', 'acre' => 'ACRE', 'tfar' => 'TFAR', 'von' => 'VON'],
 ];
 $subTabs = GHOSTD_ORBAT_SUBTABS[$tab] ?? [];
 $sub = (string) ($_GET['r'] ?? ($_POST['r'] ?? ''));

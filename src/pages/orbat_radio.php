@@ -1,6 +1,6 @@
 <?php
 /**
- * The radio plan, in two sub-tabs: ACRE and TFAR (drawn in orbat.php's bar).
+ * The radio plan, in three sub-tabs: ACRE, TFAR and VON (drawn in orbat.php's bar).
  *
  * THEY ARE NOT THE SAME SHAPE, so they do not share a form.
  *
@@ -15,6 +15,12 @@
  *          ninth channel to a radio that has eight.
  *
  * Showing TFAR as an open-ended list would be a lie about the radio.
+ *
+ *   VON    the game's own voice chat, used when the mission has no TFAR and no
+ *          ACRE. No frequencies at all: the engine's channels ARE the nets.
+ *          Group is each squad's team net, Vehicle is crew intercom, Direct is
+ *          local voice; the ten custom channels are the C2 and A2G nets. So
+ *          the plan is names and who is on what, not numbers.
  */
 
 declare(strict_types=1);
@@ -61,7 +67,8 @@ $assignedNow = $sub === 'nets' ? $assigned['nets'] : $assigned['radio'];
     $o = ghostd_orbat($ov);
     $runners[(string) ($fam === 'nets' ? $o['nets'] : $o['radio'])][] = $ov === '' ? 'Default' : $ov;
   }
-  $famLabel = ['nets' => 'Messaging', 'radio' => $sub === 'tfar' ? 'TFAR' : 'ACRE'][$fam];
+  $famLabel = ['nets' => 'Messaging',
+               'radio' => ['tfar' => 'TFAR', 'von' => 'VON'][$sub] ?? 'ACRE'][$fam];
   $byOpen   = $runners[$cur] ?? [];
 ?>
 <p class="vbar">
@@ -359,6 +366,169 @@ $assignedNow = $sub === 'nets' ? $assigned['nets'] : $assigned['radio'];
 
 <?php endif; ?>
 
+<?php if ($sub === 'von'): ?>
+
+  <?php
+    // THE ORBAT'S OWN SQUADS are what can be picked - never a typed name. A
+    // squad on a net that this order of battle does not have (another order of
+    // battle runs the same plan) is still shown, ticked, so it is not dropped
+    // by a save made from here.
+    $vonSquads = [];
+    foreach ($groups as $g) {
+        if (is_array($g) && is_scalar($g[0] ?? null) && (string) $g[0] !== '') {
+            $vonSquads[] = (string) $g[0];
+        }
+    }
+    $vonSquads = array_values(array_unique($vonSquads));
+    $vonFlags  = ghostd_von_flags($radio);
+    $vonTeam   = ghostd_von_team_of($radio);
+    $vonNets   = ghostd_von_nets($radio);
+    $vonRows   = max(GHOSTD_VON_MAX_NETS, count($vonNets));
+
+    // A squad on two C2 nets has two long-range nets - say so.
+    $c2Count = [];
+    foreach ($vonNets as $n) {
+        if ($n['kind'] === 'c2') {
+            foreach ($n['squads'] as $s) { $c2Count[$s] = ($c2Count[$s] ?? 0) + 1; }
+        }
+    }
+    $c2Twice = array_keys(array_filter($c2Count, static fn($c) => $c > 1));
+  ?>
+
+  <p class="note"><strong>VON is the game's own voice chat.</strong> It is only
+  used when the mission runs <strong>neither TFAR nor ACRE</strong>; with either
+  of those loaded, this tab is ignored. There are no frequencies: the game's
+  channels are the nets.</p>
+
+  <table class="kv">
+    <tr><th>Group</th><td>each squad's <strong>team net</strong> - everybody in
+        the squad, and nobody else. Named below.</td></tr>
+    <tr><th>Vehicle</th><td>crew <strong>intercom</strong> - whoever is in the
+        same vehicle. Nothing to set.</td></tr>
+    <tr><th>Direct</th><td><strong>local voice</strong> - whoever is close
+        enough to hear you. Nothing to set.</td></tr>
+    <tr><th>Custom 1 to <?= GHOSTD_VON_MAX_NETS ?></th><td>the <strong>C2</strong>
+        and <strong>A2G</strong> nets. The game allows
+        <?= GHOSTD_VON_MAX_NETS ?> custom channels, so there can be
+        <?= GHOSTD_VON_MAX_NETS ?> nets at most.</td></tr>
+    <tr><th>Side, Command, Global</th><td>the game's own wide channels - opened
+        or closed below.</td></tr>
+  </table>
+
+  <h2>Game channels</h2>
+  <form method="post">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <input type="hidden" name="v" value="<?= h($variant) ?>">
+    <input type="hidden" name="s" value="radio">
+    <input type="hidden" name="r" value="von">
+    <input type="hidden" name="what" value="vonflags">
+    <div class="checkgrid">
+      <label class="inlinelabel"><input type="checkbox" name="vonSide" value="1"
+        <?= $vonFlags['vonSide'] ? 'checked' : '' ?>> Side channel open
+        <span class="dim">- everybody on the side hears it</span></label>
+      <label class="inlinelabel"><input type="checkbox" name="vonCommand" value="1"
+        <?= $vonFlags['vonCommand'] ? 'checked' : '' ?>> Command channel open
+        <span class="dim">- the game's group leaders' channel</span></label>
+      <label class="inlinelabel"><input type="checkbox" name="vonGlobalAdminsOnly" value="1"
+        <?= $vonFlags['vonGlobalAdminsOnly'] ? 'checked' : '' ?>> Global talk for admins only</label>
+    </div>
+    <p class="dim">Side and Command are closed unless ticked; Global is
+    admins-only unless unticked.</p>
+    <div class="actions"><button type="submit">Save game channels</button></div>
+  </form>
+
+  <h2>Team nets <span class="dim">the Group channel, one per squad</span></h2>
+  <?php if ($vonSquads === []): ?>
+    <p class="note readonly">This order of battle has no squads yet.
+    <a href="?page=orbat&amp;s=squads<?= $vq ?>">Make them</a> first.</p>
+  <?php else: ?>
+    <form method="post">
+      <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+      <input type="hidden" name="v" value="<?= h($variant) ?>">
+      <input type="hidden" name="s" value="radio">
+      <input type="hidden" name="r" value="von">
+      <input type="hidden" name="what" value="vonteam">
+      <p class="dim">What each squad's team net is called. Leave it blank and it
+      goes by the squad's name. At most <?= GHOSTD_VON_NAME_MAX ?> characters.</p>
+      <table class="grid">
+        <thead><tr><th style="width:40%">Squad</th><th style="width:60%">Team net name</th></tr></thead>
+        <tbody>
+        <?php foreach ($vonSquads as $i => $s): ?>
+          <tr>
+            <td><?= h($s) ?><input type="hidden" name="vt_sq[<?= $i ?>]" value="<?= h($s) ?>"></td>
+            <td><input type="text" name="vt_name[<?= $i ?>]" maxlength="<?= GHOSTD_VON_NAME_MAX ?>"
+                       value="<?= h($vonTeam[$s] ?? '') ?>" placeholder="<?= h($s) ?>"></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+      <div class="actions"><button type="submit">Save team nets</button></div>
+    </form>
+  <?php endif; ?>
+
+  <h2>Custom nets <span class="dim"><?= count($vonNets) ?> of <?= GHOSTD_VON_MAX_NETS ?></span></h2>
+  <p class="dim"><strong>C2</strong> is a command net - a squad on it uses it as
+  its long-range net. <strong>A2G</strong> is air to ground. Tick the squads on
+  each. Names are unique, at most <?= GHOSTD_VON_NAME_MAX ?> characters; tick
+  Remove, or clear the name and the squads, to drop a net.</p>
+  <?php if ($c2Twice !== []): ?>
+    <p class="flash bad">On more than one C2 net: <?= h(implode(', ', $c2Twice)) ?>.
+    A squad's C2 net is its long-range net - give each one.</p>
+  <?php endif; ?>
+  <form method="post">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <input type="hidden" name="v" value="<?= h($variant) ?>">
+    <input type="hidden" name="s" value="radio">
+    <input type="hidden" name="r" value="von">
+    <input type="hidden" name="what" value="vonnets">
+    <table class="grid">
+      <thead><tr><th style="width:6%">#</th><th style="width:22%">Net</th><th style="width:16%">Kind</th>
+          <th style="width:46%">Squads on it</th><th style="width:10%">Remove</th></tr></thead>
+      <tbody>
+      <?php for ($i = 0; $i < $vonRows; $i++): ?>
+        <?php
+          $n = $vonNets[$i] ?? ['name' => '', 'kind' => 'c2', 'squads' => []];
+          $offer = array_values(array_unique(array_merge($vonSquads, $n['squads'])));
+        ?>
+        <tr>
+          <td><strong><?= $i + 1 ?></strong></td>
+          <td><input type="text" name="vn_name[<?= $i ?>]" maxlength="<?= GHOSTD_VON_NAME_MAX ?>"
+                     value="<?= h($n['name']) ?>" placeholder="<?= $n['name'] === '' ? 'new net' : '' ?>"></td>
+          <td>
+            <select name="vn_kind[<?= $i ?>]">
+              <?php foreach (GHOSTD_VON_KINDS as $k => $label): ?>
+                <option value="<?= h($k) ?>" <?= $n['kind'] === $k ? 'selected' : '' ?>><?= h($label) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </td>
+          <td>
+            <?php if ($offer === []): ?>
+              <span class="dim">no squads to pick</span>
+            <?php endif; ?>
+            <div class="vonsquads">
+            <?php foreach ($offer as $s): ?>
+              <label class="inlinelabel"><input type="checkbox" name="vn_sq[<?= $i ?>][]" value="<?= h($s) ?>"
+                <?= in_array($s, $n['squads'], true) ? 'checked' : '' ?>> <?= h($s) ?><?=
+                in_array($s, $vonSquads, true) ? '' : ' <span class="dim">- not in this order of battle</span>' ?></label>
+            <?php endforeach; ?>
+            </div>
+          </td>
+          <td><?php if ($n['name'] !== ''): ?><input type="checkbox" name="vn_remove[]" value="<?= $i ?>"><?php endif; ?></td>
+        </tr>
+      <?php endfor; ?>
+      </tbody>
+    </table>
+    <?php if (count($vonNets) > GHOSTD_VON_MAX_NETS): ?>
+      <p class="flash bad">This plan holds <?= count($vonNets) ?> nets and the game
+      has <?= GHOSTD_VON_MAX_NETS ?> custom channels. Remove some before it will save.</p>
+    <?php endif; ?>
+    <div class="actions"><button type="submit">Save custom nets</button></div>
+  </form>
+
+<?php else: ?>
+
 <p class="note">Which squad sits on which channel is on the
 <a href="?page=orbat&amp;s=squads<?= $vq ?>">Squads</a> tab - so adding a net
 here does not mean touching every squad.</p>
+
+<?php endif; ?>

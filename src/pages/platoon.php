@@ -384,6 +384,36 @@ if (isset($_GET['renamed'])) { ghostd_flash('good', 'Renamed, with its long rang
   </form>
   <p class="dim">Squad channels are short range and belong to the squad - set
   those on the squad's own page.</p>
+
+  <?php
+    $acreOf = ghostd_acre_of($radio);
+    $tfarOf = ghostd_tfar_of($radio);
+  ?>
+  <h3>Its squads on the radio</h3>
+  <?php if ($p['squads'] === []): ?>
+    <p class="dim">It lists no squads yet.</p>
+  <?php else: ?>
+    <table class="grid">
+      <thead><tr><th style="width:24%">Squad</th><th style="width:12%">ACRE</th>
+          <th style="width:20%">TFAR</th><th style="width:44%">VON</th></tr></thead>
+      <tbody>
+      <?php foreach ($p['squads'] as $s): ?>
+        <?php $tf = $tfarOf[$s] ?? [0, 0]; ?>
+        <tr>
+          <td><a href="?page=squad&amp;sq=<?= urlencode($s) ?>&amp;sec=radio<?= $vq ?>"><?= h($s) ?></a></td>
+          <td><?= isset($acreOf[$s]) ? (int) $acreOf[$s] : '<span class="dim">not set</span>' ?></td>
+          <td><?= $tf[0] || $tf[1]
+                ? 'short ' . (int) $tf[0] . ', long ' . (int) $tf[1]
+                : '<span class="dim">not set</span>' ?></td>
+          <td><?= h(ghostd_von_line($radio, $s)) ?></td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+    <p class="dim">VON - the game's own voice - is only used when the mission
+    runs neither TFAR nor ACRE. Its nets are on the
+    <a href="?page=orbat&amp;s=radio&amp;r=von<?= $vq ?>">VON tab</a>.</p>
+  <?php endif; ?>
 </section>
 <?php endif; ?>
 

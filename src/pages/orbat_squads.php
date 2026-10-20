@@ -116,6 +116,7 @@ $hit = static function (string ...$parts) use ($q): bool {
       <tr><th>TFAR</th><td><?= $tf[0] || $tf[1]
             ? 'short ' . (int) $tf[0] . ', long ' . (int) $tf[1]
             : '<span class="dim">not set</span>' ?></td></tr>
+      <tr><th>VON</th><td><?= h(ghostd_von_line($radio, $sn)) ?></td></tr>
       <tr><th>Arsenal</th><td>
         <?php $has = ghostd_variant_summary('arsenal', $sv); ?>
         <?= $has === '' ? '<span class="dim">no arsenal of its own</span>' : h($has) ?>

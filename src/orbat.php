@@ -14,6 +14,9 @@
  *   srSquadChannel    [squadName, acreChannel]
  *   tfarNets          [squadName, shortRange, longRange]
  *   lrPlatoonChannel  [platoonId, lrChannel]     - see CHANGES.md 2026-09-09
+ *   vonTeamNets       [squadName, teamNetName]   - base game VoIP, 2026-10-20
+ *   vonNets           [netName, "c2"|"a2g", [squadName, ...]]
+ *   vonSide, vonCommand, vonGlobalAdminsOnly     - plain booleans
  *
  * Everything here is used by the ORBAT tabs AND by the squad and platoon pages,
  * which is the point: two editors that disagree about what a squad is would be
@@ -335,6 +338,221 @@ function ghostd_channel_set(array &$items, string $list, string $key, ?array $va
         $rows[] = $values;
     }
     $items[$list] = $rows;
+}
+
+// ---------------------------------------------------------------------------
+// VON - the game's own voice chat, for a mission that runs neither TFAR nor
+// ACRE (user, 2026-10-20: "add a base game voip option to diviner and the
+// diviner web").
+//
+// THE CONTRACT IS SHARED WITH BOTH MODS and was agreed before this was written,
+// so these keys and shapes are not ours to change:
+//   vonTeamNets          [[squadName, teamNetName], ...]  blank or missing = the squad's name
+//   vonNets              [[netName, kind, [squadName, ...]], ...]  kind "c2" or "a2g"
+//   vonSide              bool, default false - the game's Side channel open
+//   vonCommand           bool, default false - the game's Command channel open
+//   vonGlobalAdminsOnly  bool, default true  - Global talk for admins alone
+//
+// The game's Group channel IS each squad's team net; Vehicle is crew intercom
+// and Direct is local voice, and neither needs a plan. The custom nets are the
+// engine's custom channels, of which there are ten - so ten nets, no more.
+// ---------------------------------------------------------------------------
+
+/** The engine has ten custom radio channels; every VON net is one of them. */
+const GHOSTD_VON_MAX_NETS = 10;
+
+/** Longest net name, the agreed limit - it is the label a player reads in the channel list. */
+const GHOSTD_VON_NAME_MAX = 24;
+
+/** The two kinds of custom net, by the value stored. */
+const GHOSTD_VON_KINDS = [
+    'c2'  => 'C2 - command net',
+    'a2g' => 'A2G - air to ground',
+];
+
+/** The three switches, by key, with their defaults. */
+const GHOSTD_VON_FLAGS = [
+    'vonSide'             => false,
+    'vonCommand'          => false,
+    'vonGlobalAdminsOnly' => true,
+];
+
+/** squad name => its team net name, for the squads that have one typed in. */
+function ghostd_von_team_of(array $radio): array
+{
+    $out = [];
+    foreach ((array) ($radio['vonTeamNets'] ?? []) as $r) {
+        if (is_array($r) && isset($r[0]) && is_scalar($r[0])) {
+            $n = trim(is_scalar($r[1] ?? null) ? (string) $r[1] : '');
+            if ($n !== '') {
+                $out[(string) $r[0]] = $n;
+            }
+        }
+    }
+    return $out;
+}
+
+/**
+ * The custom nets, in order, each ['name', 'kind', 'squads'].
+ *
+ * Read defensively - a row the mod or a hand edit left malformed is skipped
+ * rather than drawn as a net with no name.
+ */
+function ghostd_von_nets(array $radio): array
+{
+    $out = [];
+    foreach ((array) ($radio['vonNets'] ?? []) as $r) {
+        if (!is_array($r) || !isset($r[0]) || !is_scalar($r[0])) {
+            continue;
+        }
+        $name = trim((string) $r[0]);
+        if ($name === '') {
+            continue;
+        }
+        $kind = is_scalar($r[1] ?? null) ? strtolower((string) $r[1]) : '';
+        $squads = [];
+        foreach ((array) ($r[2] ?? []) as $s) {
+            if (is_scalar($s) && (string) $s !== '' && !in_array((string) $s, $squads, true)) {
+                $squads[] = (string) $s;
+            }
+        }
+        $out[] = ['name' => $name, 'kind' => isset(GHOSTD_VON_KINDS[$kind]) ? $kind : 'c2', 'squads' => $squads];
+    }
+    return $out;
+}
+
+/** squad name => [[netName, kind], ...] - the custom nets it is on. */
+function ghostd_von_nets_of(array $radio): array
+{
+    $out = [];
+    foreach (ghostd_von_nets($radio) as $n) {
+        foreach ($n['squads'] as $s) {
+            $out[$s][] = [$n['name'], $n['kind']];
+        }
+    }
+    return $out;
+}
+
+/** The three switches, each a real bool, missing ones at their defaults. */
+function ghostd_von_flags(array $radio): array
+{
+    $out = [];
+    foreach (GHOSTD_VON_FLAGS as $k => $def) {
+        $out[$k] = is_bool($radio[$k] ?? null) ? $radio[$k] : $def;
+    }
+    return $out;
+}
+
+/**
+ * One squad's VON, said in a line: its team net and the custom nets it is on.
+ *
+ * Plain text - the caller escapes it. Used by the squad, platoon and squads
+ * pages so the three say it the same way.
+ */
+function ghostd_von_line(array $radio, string $squad): string
+{
+    $team = ghostd_von_team_of($radio)[$squad] ?? $squad;
+    $parts = ['team ' . $team];
+    foreach (ghostd_von_nets_of($radio)[$squad] ?? [] as $n) {
+        $parts[] = $n[0] . ' (' . strtoupper($n[1]) . ')';
+    }
+    return implode(', ', $parts);
+}
+
+/**
+ * A name a VON net may have: trimmed, 1..24 characters, no control characters.
+ *
+ * Throws with a message a person can act on; returns the cleaned name. Counted
+ * in characters, not bytes, without needing mbstring: the /u match fails on
+ * text that is not UTF-8 as well.
+ */
+function ghostd_von_name_check(string $name, string $what): string
+{
+    $name = trim($name);
+    if ($name === '') {
+        throw new RuntimeException($what . ' needs a name.');
+    }
+    if (preg_match('/^[^\x00-\x1F\x7F]+$/u', $name) !== 1) {
+        throw new RuntimeException('"' . $name . '" has characters a channel name cannot show.');
+    }
+    if (preg_match('/^.{1,' . GHOSTD_VON_NAME_MAX . '}$/us', $name) !== 1) {
+        throw new RuntimeException('"' . $name . '" is longer than ' . GHOSTD_VON_NAME_MAX
+            . ' characters - the game cuts it off in the channel list.');
+    }
+    return $name;
+}
+
+/**
+ * A squad was renamed ($to) or deleted ($to null): carry its VON with it.
+ *
+ * The same job the squad page does for srSquadChannel and tfarNets, on the two
+ * VON lists - its team net row is renamed or dropped, and it is renamed in or
+ * taken out of every custom net's squad list. A net left with no squads stays:
+ * it is still a channel somebody set up, and deleting it is a choice for the
+ * VON tab.
+ */
+function ghostd_von_squad_moved(array &$items, string $from, ?string $to): void
+{
+    if (is_array($items['vonTeamNets'] ?? null)) {
+        $keep = [];
+        foreach ($items['vonTeamNets'] as $r) {
+            if (is_array($r) && is_scalar($r[0] ?? null) && (string) $r[0] === $from) {
+                if ($to === null) {
+                    continue;
+                }
+                $r[0] = $to;
+            }
+            $keep[] = $r;
+        }
+        $items['vonTeamNets'] = $keep;
+    }
+
+    if (!is_array($items['vonNets'] ?? null)) {
+        return;
+    }
+    foreach ($items['vonNets'] as $i => $r) {
+        if (!is_array($r) || !is_array($r[2] ?? null)) {
+            continue;
+        }
+        $squads = [];
+        foreach ($r[2] as $s) {
+            if (!is_scalar($s)) {
+                continue;
+            }
+            $s = (string) $s;
+            if ($s === $from) {
+                if ($to === null) {
+                    continue;
+                }
+                $s = $to;
+            }
+            if (!in_array($s, $squads, true)) {
+                $squads[] = $s;
+            }
+        }
+        $items['vonNets'][$i][2] = $squads;
+    }
+}
+
+/**
+ * A squad was copied: the copy joins the same custom nets.
+ *
+ * Its team net NAME is not copied - two squads answering to one name on the
+ * Group channel is the mistake, and no name already means the copy's own.
+ */
+function ghostd_von_squad_copied(array &$items, string $from, string $to): void
+{
+    if (!is_array($items['vonNets'] ?? null)) {
+        return;
+    }
+    foreach ($items['vonNets'] as $i => $r) {
+        if (is_array($r) && is_array($r[2] ?? null)) {
+            $on = array_map('strval', array_filter($r[2], 'is_scalar'));
+            if (in_array($from, $on, true) && !in_array($to, $on, true)) {
+                $items['vonNets'][$i][2][] = $to;
+            }
+        }
+    }
 }
 
 /**

@@ -147,7 +147,7 @@ browser, so a LAN box works.
 | **Wiki** | the unit's own documents, written in the HTML editor. A page is for admins unless opened up: "Visible to the unit" for signed-in members, "Public" (plus an are-you-sure tick) for anyone, which also offers it to the website's feed |
 | **Configs** | the unit's own records - ranks, skills, awards, statuses, promotion, training, admins |
 | **Templates** | what a mission's `config\` folder held: the welcome screen, arsenals, motorpool, cosmetics, the vehicle spawner, logistics crates, pylon presets, custom traits, messaging nets - plus the **Report deck** and **System** (the operation order's shape, the request kinds and the colour schemes) |
-| **ORBAT** | the orders of battle, communications, roles, squads and platoons |
+| **ORBAT** | the orders of battle, communications (Messaging, and the radio plan for ACRE, TFAR and VON - the game's own voice chat, for a mission with neither), roles, squads and platoons |
 | **Mongo docs** | every document, filterable, each openable as JSON |
 | **Backup** | the nightly copy of the database, read only, admins only |
 | **Web settings** | branding - the site's own name, colours and pictures, the one thing that is web only - the public home page shown before sign-in: the logo, the name and an About block written in an HTML editor, four layouts to pick from, width and height sliders (Wysi, MIT, vendored in `public/` - the welcome screen's editor is the same one) - and the public feed's switches |
@@ -219,6 +219,20 @@ Set by the mod, not by this site - see `tools/pacdb/README.md` in DIVINER:
 | `<unit>.admins` | a plain `ids` list |
 | `<unit>.role.<class>` | one role |
 | `<unit>.opord.<id>` | one order |
+
+The radio plan in `<unit>.radio` holds all three radios side by side. The VON
+keys - the game's own voice chat, used only when a mission runs neither TFAR nor
+ACRE - are a contract with the mods, positional like the rest:
+
+| Key | Shape |
+|---|---|
+| `vonTeamNets` | `[[squadName, teamNetName], ...]` - the name each squad's Group channel (its team net) goes by; missing or blank means the squad's name |
+| `vonNets` | `[[netName, kind, [squadName, ...]], ...]` - the custom-channel nets, `kind` `"c2"` (a command net; a squad on it uses it as its long-range net) or `"a2g"` (air to ground). At most 10 - the game has 10 custom channels. Names unique, 1 to 24 characters |
+| `vonSide`, `vonCommand` | booleans, default `false` - whether the game's Side and Command channels are open |
+| `vonGlobalAdminsOnly` | boolean, default `true` - Global talk for admins only |
+
+A squad renamed or deleted on its page is renamed in or pruned from these the
+same way as its ACRE and TFAR channels; a copied squad joins the same nets.
 
 Written by this site alone - the mod never reads them:
 
