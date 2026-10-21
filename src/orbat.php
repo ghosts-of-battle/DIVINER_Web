@@ -15,7 +15,7 @@
  *   tfarNets          [squadName, shortRange, longRange]
  *   lrPlatoonChannel  [platoonId, lrChannel]     - see CHANGES.md 2026-09-09
  *   vonTeamNets       [squadName, teamNetName]   - base game VoIP, 2026-10-20
- *   vonNets           [netName, "c2"|"a2g", [squadName, ...]]
+ *   vonNets           [netName, "c2"|"a2g", [squadName, ...], [roleId, ...], [skillId, ...]]
  *   vonSide, vonCommand, vonGlobalAdminsOnly     - plain booleans
  *
  * Everything here is used by the ORBAT tabs AND by the squad and platoon pages,
@@ -348,7 +348,15 @@ function ghostd_channel_set(array &$items, string $list, string $key, ?array $va
 // THE CONTRACT IS SHARED WITH BOTH MODS and was agreed before this was written,
 // so these keys and shapes are not ours to change:
 //   vonTeamNets          [[squadName, teamNetName], ...]  blank or missing = the squad's name
-//   vonNets              [[netName, kind, [squadName, ...]], ...]  kind "c2" or "a2g"
+//   vonNets              [[netName, kind, [squadName, ...], [roleId, ...], [skillId, ...]], ...]
+//                        kind "c2" or "a2g". The roles and skills columns came
+//                        2026-10-21 (user: C2 to every TL, ATL and the HQ, A2G to
+//                        everyone with the JFO skill): a man is on the net when
+//                        his squad, his role or one of his skills is listed. A
+//                        role is its BASE id - "teamleadGhost_t", the testing
+//                        copy, answers to "teamleadGhost". A skill is its PAC
+//                        skill id ("jfo"). Old three-column rows read as no
+//                        roles and no skills.
 //   vonSide              bool, default false - the game's Side channel open
 //   vonCommand           bool, default false - the game's Command channel open
 //   vonGlobalAdminsOnly  bool, default true  - Global talk for admins alone
@@ -369,6 +377,28 @@ const GHOSTD_VON_KINDS = [
     'c2'  => 'C2 - command net',
     'a2g' => 'A2G - air to ground',
 ];
+
+/** The testing copy of a role ends in this and answers to its base id. */
+const GHOSTD_VON_ROLE_TEST_SUFFIX = '_t';
+
+/** A role id as a VON net lists it: the base id, the testing suffix taken off. */
+function ghostd_von_role_base(string $id): string
+{
+    $n = strlen(GHOSTD_VON_ROLE_TEST_SUFFIX);
+    return strlen($id) > $n && substr($id, -$n) === GHOSTD_VON_ROLE_TEST_SUFFIX ? substr($id, 0, -$n) : $id;
+}
+
+/** A list column of a VON net row: unique non-empty strings, in order. */
+function ghostd_von_list($v): array
+{
+    $out = [];
+    foreach ((array) $v as $x) {
+        if (is_scalar($x) && trim((string) $x) !== '' && !in_array(trim((string) $x), $out, true)) {
+            $out[] = trim((string) $x);
+        }
+    }
+    return $out;
+}
 
 /** The three switches, by key, with their defaults. */
 const GHOSTD_VON_FLAGS = [
@@ -393,7 +423,7 @@ function ghostd_von_team_of(array $radio): array
 }
 
 /**
- * The custom nets, in order, each ['name', 'kind', 'squads'].
+ * The custom nets, in order, each ['name', 'kind', 'squads', 'roles', 'skills'].
  *
  * Read defensively - a row the mod or a hand edit left malformed is skipped
  * rather than drawn as a net with no name.
@@ -416,7 +446,13 @@ function ghostd_von_nets(array $radio): array
                 $squads[] = (string) $s;
             }
         }
-        $out[] = ['name' => $name, 'kind' => isset(GHOSTD_VON_KINDS[$kind]) ? $kind : 'c2', 'squads' => $squads];
+        $out[] = [
+            'name'   => $name,
+            'kind'   => isset(GHOSTD_VON_KINDS[$kind]) ? $kind : 'c2',
+            'squads' => $squads,
+            'roles'  => array_values(array_unique(array_map('ghostd_von_role_base', ghostd_von_list($r[3] ?? [])))),
+            'skills' => ghostd_von_list($r[4] ?? []),
+        ];
     }
     return $out;
 }

@@ -280,6 +280,23 @@ $acre  = ghostd_acre_of($radio)[$name] ?? null;
 $tfar  = ghostd_tfar_of($radio)[$name] ?? [0, 0];
 $vonTeam = ghostd_von_team_of($radio)[$name] ?? '';
 $vonNets = ghostd_von_nets_of($radio)[$name] ?? [];
+// Nets some of its men are on by their SLOT'S ROLE or by a skill (2026-10-21) -
+// not the whole squad, so said apart from the nets above.
+$vonSlotRoles = array_map('ghostd_von_role_base', $sq['roles']);
+$vonByRole = [];
+$vonBySkill = [];
+foreach (ghostd_von_nets($radio) as $vn) {
+    if (in_array($name, $vn['squads'], true)) {
+        continue;
+    }
+    $hit = array_values(array_intersect($vn['roles'], $vonSlotRoles));
+    if ($hit !== []) {
+        $vonByRole[] = [$vn['name'], $vn['kind'], array_values(array_unique($hit))];
+    }
+    if ($vn['skills'] !== []) {
+        $vonBySkill[] = [$vn['name'], $vn['kind'], $vn['skills']];
+    }
+}
 
 $roleIds = ghostd_role_ids();
 $roleNames = [];
@@ -457,6 +474,22 @@ if (isset($_GET['copied'])) { ghostd_flash('good', 'Copied. Its channels came wi
         <?php endforeach; ?>
       <?php endif; ?>
     </td></tr>
+    <?php if ($vonByRole !== []): ?>
+    <tr><th>By role</th><td>
+      <?php foreach ($vonByRole as $vn): ?>
+        <span class="pill dimpill"><?= h($vn[0]) ?> &middot; <?= h(strtoupper($vn[1])) ?></span>
+        <span class="dim">- <?= h(implode(', ', array_map(static fn($r) => $roleNames[$r] ?? $r, $vn[2]))) ?></span>
+      <?php endforeach; ?>
+    </td></tr>
+    <?php endif; ?>
+    <?php if ($vonBySkill !== []): ?>
+    <tr><th>By skill</th><td>
+      <?php foreach ($vonBySkill as $vn): ?>
+        <span class="pill dimpill"><?= h($vn[0]) ?> &middot; <?= h(strtoupper($vn[1])) ?></span>
+        <span class="dim">- anyone with <?= h(implode(', ', $vn[2])) ?></span>
+      <?php endforeach; ?>
+    </td></tr>
+    <?php endif; ?>
   </table>
   <p class="dim">Set on the <a href="?page=orbat&amp;s=radio&amp;r=von<?= $vq ?>">VON tab</a>.</p>
 </section>

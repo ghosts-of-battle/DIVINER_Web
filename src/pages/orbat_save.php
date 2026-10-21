@@ -139,8 +139,11 @@ switch ($what) {
         break;
 
     // The custom nets - C2 and A2G. The game has ten custom channels, so ten
-    // is the most there can be. A net is a name, a kind and who is on it.
+    // is the most there can be. A net is a name, a kind and who is on it:
+    // squads, roles (base ids) and skills (2026-10-21), at least one of them.
     case 'vonnets':
+        require_once __DIR__ . '/../roles.php';
+        require_once __DIR__ . '/../records.php';
         $real = array_values(array_filter(array_map(
             static fn($g) => is_scalar($g[0] ?? null) ? (string) $g[0] : '',
             ghostd_orbat($variant)['groups']), static fn($s) => $s !== ''));
@@ -148,17 +151,36 @@ switch ($what) {
         // one runs the same plan - may stay ticked. It is not a name off the
         // wire: it is one this document already holds.
         $allowed = array_flip($real);
+        // Roles and skills the same way: the unit's own, plus any this
+        // document already holds.
+        $allowedRoles = [];
+        foreach (ghostd_role_ids() as $rid) {
+            $allowedRoles[ghostd_von_role_base($rid)] = true;
+        }
+        $allowedSkills = [];
+        foreach (array_keys(ghostd_record_items('skills')) as $sid) {
+            $allowedSkills[(string) $sid] = true;
+        }
         foreach (ghostd_von_nets(ghostd_radio_items($rv)) as $n) {
             foreach ($n['squads'] as $s) {
                 $allowed[$s] = true;
+            }
+            foreach ($n['roles'] as $r) {
+                $allowedRoles[$r] = true;
+            }
+            foreach ($n['skills'] as $k) {
+                $allowedSkills[$k] = true;
             }
         }
 
         $names   = $_POST['vn_name'] ?? [];
         $kinds   = $_POST['vn_kind'] ?? [];
         $members = $_POST['vn_sq'] ?? [];
+        $roleSel = $_POST['vn_role'] ?? [];
+        $skillSel = $_POST['vn_skill'] ?? [];
         $remove  = $_POST['vn_remove'] ?? [];
-        if (!is_array($names) || !is_array($kinds) || !is_array($members) || !is_array($remove)) {
+        if (!is_array($names) || !is_array($kinds) || !is_array($members) || !is_array($roleSel)
+            || !is_array($skillSel) || !is_array($remove)) {
             throw new RuntimeException('The nets came in a shape this page did not send.');
         }
         $remove = array_map(static fn($x) => is_scalar($x) ? (string) $x : '', $remove);
@@ -167,8 +189,10 @@ switch ($what) {
         $seen = [];
         foreach ($names as $i => $nm) {
             $ticked = $members[$i] ?? [];
+            $tRoles = $roleSel[$i] ?? [];
+            $tSkills = $skillSel[$i] ?? [];
             $kind   = $kinds[$i] ?? '';
-            if (!is_string($nm) || !is_array($ticked) || !is_string($kind)) {
+            if (!is_string($nm) || !is_array($ticked) || !is_array($tRoles) || !is_array($tSkills) || !is_string($kind)) {
                 throw new RuntimeException('The nets came in a shape this page did not send.');
             }
             if (in_array((string) $i, $remove, true)) {
@@ -176,10 +200,10 @@ switch ($what) {
             }
             $nm = trim($nm);
             if ($nm === '') {
-                if ($ticked === []) {
+                if ($ticked === [] && $tRoles === [] && $tSkills === []) {
                     continue;              // an empty spare row
                 }
-                throw new RuntimeException('Net row ' . ((int) $i + 1) . ' has squads ticked but no name.');
+                throw new RuntimeException('Net row ' . ((int) $i + 1) . ' has squads, roles or skills ticked but no name.');
             }
             $nm = ghostd_von_name_check($nm, 'A net');
             $key = strtolower($nm);
@@ -203,7 +227,35 @@ switch ($what) {
                     $list[] = $s;
                 }
             }
-            $rows[] = [$nm, $kind, $list];
+            $roles = [];
+            foreach ($tRoles as $r) {
+                if (!is_string($r)) {
+                    throw new RuntimeException('The nets came in a shape this page did not send.');
+                }
+                $r = ghostd_von_role_base($r);
+                if (!isset($allowedRoles[$r])) {
+                    throw new RuntimeException('"' . $r . '" is not one of the unit roles.');
+                }
+                if (!in_array($r, $roles, true)) {
+                    $roles[] = $r;
+                }
+            }
+            $skills = [];
+            foreach ($tSkills as $k) {
+                if (!is_string($k)) {
+                    throw new RuntimeException('The nets came in a shape this page did not send.');
+                }
+                if (!isset($allowedSkills[$k])) {
+                    throw new RuntimeException('"' . $k . '" is not one of the unit skills.');
+                }
+                if (!in_array($k, $skills, true)) {
+                    $skills[] = $k;
+                }
+            }
+            if ($list === [] && $roles === [] && $skills === []) {
+                throw new RuntimeException('"' . $nm . '" has nobody on it - tick at least one squad, role or skill.');
+            }
+            $rows[] = [$nm, $kind, $list, $roles, $skills];
         }
         if (count($rows) > GHOSTD_VON_MAX_NETS) {
             throw new RuntimeException(count($rows) . ' nets is too many: the game has '

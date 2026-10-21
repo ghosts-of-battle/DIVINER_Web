@@ -26,6 +26,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../roles.php';
+require_once __DIR__ . '/../records.php';   // the skills a VON net may list
 
 // How many channels a TFAR radio actually has. Kept generous enough for the
 // long-range sets and honest about being fixed.
@@ -380,6 +381,23 @@ $assignedNow = $sub === 'nets' ? $assigned['nets'] : $assigned['radio'];
         }
     }
     $vonSquads = array_values(array_unique($vonSquads));
+
+    // ROLES AND SKILLS a net may list as well (2026-10-21): base role ids -
+    // the "_t" testing copies answer to their base - and the PAC skills.
+    $vonRoles = [];
+    foreach (ghostd_role_ids() as $rid) {
+        $base = ghostd_von_role_base($rid);
+        if (!isset($vonRoles[$base])) {
+            $rname = trim((string) (ghostd_role($base)['name'] ?? ''));
+            $vonRoles[$base] = $rname !== '' ? $rname : $base;
+        }
+    }
+    ksort($vonRoles);
+    $vonSkills = [];
+    foreach (ghostd_record_items('skills') as $sid => $sk) {
+        $abbrev = trim((string) ($sk['abbrev'] ?? ''));
+        $vonSkills[(string) $sid] = $abbrev !== '' ? $abbrev : (string) $sid;
+    }
     $vonFlags  = ghostd_von_flags($radio);
     $vonTeam   = ghostd_von_team_of($radio);
     $vonNets   = ghostd_von_nets($radio);
@@ -468,9 +486,11 @@ $assignedNow = $sub === 'nets' ? $assigned['nets'] : $assigned['radio'];
 
   <h2>Custom nets <span class="dim"><?= count($vonNets) ?> of <?= GHOSTD_VON_MAX_NETS ?></span></h2>
   <p class="dim"><strong>C2</strong> is a command net - a squad on it uses it as
-  its long-range net. <strong>A2G</strong> is air to ground. Tick the squads on
-  each. Names are unique, at most <?= GHOSTD_VON_NAME_MAX ?> characters; tick
-  Remove, or clear the name and the squads, to drop a net.</p>
+  its long-range net. <strong>A2G</strong> is air to ground. Tick who is on
+  each: whole squads, roles (a team lead in any squad), skills (everyone with
+  JFO), or a mix - a man is on the net when any of them is his. Each net needs
+  at least one. Names are unique, at most <?= GHOSTD_VON_NAME_MAX ?> characters;
+  tick Remove, or clear the name and every tick, to drop a net.</p>
   <?php if ($c2Twice !== []): ?>
     <p class="flash bad">On more than one C2 net: <?= h(implode(', ', $c2Twice)) ?>.
     A squad's C2 net is its long-range net - give each one.</p>
@@ -482,13 +502,20 @@ $assignedNow = $sub === 'nets' ? $assigned['nets'] : $assigned['radio'];
     <input type="hidden" name="r" value="von">
     <input type="hidden" name="what" value="vonnets">
     <table class="grid">
-      <thead><tr><th style="width:6%">#</th><th style="width:22%">Net</th><th style="width:16%">Kind</th>
-          <th style="width:46%">Squads on it</th><th style="width:10%">Remove</th></tr></thead>
+      <thead><tr><th style="width:4%">#</th><th style="width:15%">Net</th><th style="width:12%">Kind</th>
+          <th style="width:21%">Squads on it</th><th style="width:24%">Roles on it</th>
+          <th style="width:16%">Skills on it</th><th style="width:8%">Remove</th></tr></thead>
       <tbody>
       <?php for ($i = 0; $i < $vonRows; $i++): ?>
         <?php
-          $n = $vonNets[$i] ?? ['name' => '', 'kind' => 'c2', 'squads' => []];
+          $n = $vonNets[$i] ?? ['name' => '', 'kind' => 'c2', 'squads' => [], 'roles' => [], 'skills' => []];
           $offer = array_values(array_unique(array_merge($vonSquads, $n['squads'])));
+          // A role or skill the net holds that the unit no longer has stays
+          // offered, ticked, so a save from here does not drop it unseen.
+          $roleOffer = $vonRoles;
+          foreach ($n['roles'] as $rid) { $roleOffer[$rid] = $roleOffer[$rid] ?? $rid; }
+          $skillOffer = $vonSkills;
+          foreach ($n['skills'] as $sid) { $skillOffer[$sid] = $skillOffer[$sid] ?? $sid; }
         ?>
         <tr>
           <td><strong><?= $i + 1 ?></strong></td>
@@ -510,6 +537,24 @@ $assignedNow = $sub === 'nets' ? $assigned['nets'] : $assigned['radio'];
               <label class="inlinelabel"><input type="checkbox" name="vn_sq[<?= $i ?>][]" value="<?= h($s) ?>"
                 <?= in_array($s, $n['squads'], true) ? 'checked' : '' ?>> <?= h($s) ?><?=
                 in_array($s, $vonSquads, true) ? '' : ' <span class="dim">- not in this order of battle</span>' ?></label>
+            <?php endforeach; ?>
+            </div>
+          </td>
+          <td>
+            <div class="vonsquads">
+            <?php foreach ($roleOffer as $rid => $rname): ?>
+              <label class="inlinelabel"><input type="checkbox" name="vn_role[<?= $i ?>][]" value="<?= h((string) $rid) ?>"
+                <?= in_array((string) $rid, $n['roles'], true) ? 'checked' : '' ?>> <?= h((string) $rname) ?>
+                <span class="dim"><?= h((string) $rid) ?><?= isset($vonRoles[$rid]) ? '' : ' - not a role any more' ?></span></label>
+            <?php endforeach; ?>
+            </div>
+          </td>
+          <td>
+            <div class="vonsquads">
+            <?php foreach ($skillOffer as $sid => $sab): ?>
+              <label class="inlinelabel"><input type="checkbox" name="vn_skill[<?= $i ?>][]" value="<?= h((string) $sid) ?>"
+                <?= in_array((string) $sid, $n['skills'], true) ? 'checked' : '' ?>> <?= h((string) $sab) ?><?=
+                isset($vonSkills[$sid]) ? '' : ' <span class="dim">- not a skill any more</span>' ?></label>
             <?php endforeach; ?>
             </div>
           </td>
