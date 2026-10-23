@@ -21,7 +21,7 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/branding.php';
 
 // ---- the mod's own eight ----------------------------------------------------
-// THE EIGHT THE MOD SHIPS (six, and BRASS / NIGHT BRASS since 2026-10-07), and they are NOT editable - here or in game (user,
+// THE EIGHT THE MOD SHIPS (six, and JMSB DAY / NIGHT - BRASS / NIGHT BRASS went 2026-10-21), and they are NOT editable - here or in game (user,
 // 2026-09-09: "6 default colors schemes that can not be edited for game and
 // web"). They are hard-coded in ghostD_tacpad_fnc_theme and drawn as preset
 // cards on the TAC//PAD's settings screen; this is the same eight so the site
@@ -37,10 +37,11 @@ const GHOSTD_MOD_SCHEMES = [
     'dark'       => ['name' => 'NIGHT / RED', 'ground' => '#141514', 'ink' => '#e6e5e2', 'accent' => '#ff563c'],
     'nightOlive' => ['name' => 'NIGHT OLIVE', 'ground' => '#101411', 'ink' => '#d9e0d4', 'accent' => '#9cb43c'],
     'nightSand'  => ['name' => 'NIGHT SAND',  'ground' => '#161310', 'ink' => '#e5e0d6', 'accent' => '#c78221'],
-    // BRASS, the briefing deck's palette (2026-10-07) - day takes the deck's
-    // dark brass, night its bright one.
-    'brass'      => ['name' => 'BRASS',       'ground' => '#f4f2ec', 'ink' => '#1c2321', 'accent' => '#7a6224'],
-    'nightBrass' => ['name' => 'NIGHT BRASS', 'ground' => '#1c2321', 'ink' => '#f4f2ec', 'accent' => '#c8a24a'],
+    // JMSB DAY / JMSB NIGHT, the unit's ranger green and tan - what the mod ships in
+    // place of BRASS / NIGHT BRASS, which it dropped (removed here too, 2026-10-21).
+    // Values from the mod's tacpad_apps fnc_appSettings presets.
+    'jmsb'       => ['name' => 'JMSB DAY',    'ground' => '#e9e4d4', 'ink' => '#20261c', 'accent' => '#8a7550'],
+    'nightJmsb'  => ['name' => 'JMSB NIGHT',  'ground' => '#20261c', 'ink' => '#e9e4d4', 'accent' => '#c2a878'],
 ];
 
 /**
