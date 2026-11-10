@@ -373,6 +373,11 @@ edited by hand.</p>
   <button type="submit">Add training</button>
 </form>
 
+<h2>Ranges <span class="dim"><?= count((array) ($p['ranges'] ?? [])) ?></span></h2>
+<p class="dim">Shooting-range runs, written by the game when a run finishes on
+a range set to save to PAC. The latest run of each range is highlighted.</p>
+<?= ghostd_ranges_table($p['ranges'] ?? []) ?>
+
 <h2>Awards <span class="dim"><?= count((array) ($p['awards'] ?? [])) ?></span></h2>
 <table class="grid">
   <thead><tr><th style="width:26%">Award</th><th style="width:18%">When</th>

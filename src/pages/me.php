@@ -303,6 +303,11 @@ about and zoom it so the right part fills the card's frame.</p>
   also keep private notes, which you will not see.</p>
 <?php endif; ?>
 
+<h2>My ranges <span class="dim"><?= count((array) ($me['ranges'] ?? [])) ?></span></h2>
+<p class="dim">Your shooting-range runs. The latest run of each range is
+highlighted.</p>
+<?= ghostd_ranges_table($me['ranges'] ?? []) ?>
+
 <h2>What only an admin can change</h2>
 <table class="kv">
   <tr><th>Name</th><td><?= cell($me['name'] ?? null) ?></td></tr>

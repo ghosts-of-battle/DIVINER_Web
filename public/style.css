@@ -1063,3 +1063,7 @@ tr.ev-cancelled td strong { text-decoration: line-through; color: var(--dim); }
 .crop canvas:active { cursor: grabbing; }
 .crop-tools { flex: 1 1 12rem; display: grid; gap: var(--s2); align-content: start; }
 .crop-tools input[type="range"] { width: 100%; }
+
+/* Shooting-range runs (ghostd_ranges_table): the latest run of each range. */
+table.grid tr.latest td { background: var(--accent-dim); }
+table.grid tr.latest td:first-child { color: var(--accent); font-weight: 600; }

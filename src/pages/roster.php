@@ -62,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add')
             'adminActions'   => [],
             'notes'          => [],
             'training'       => [],
+            'ranges'         => [],
             // An empty PHP array encodes as a BSON array; loadouts is a map.
             'loadouts'       => new stdClass(),
             'updatedAt'      => gmdate('Y-m-d H:i:s'),

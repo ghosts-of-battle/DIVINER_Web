@@ -129,11 +129,11 @@ const GHOSTD_RECORDS = [
     'settings' => [
         'label'  => 'Settings',
         'blurb'  => 'How the unit behaves. Read at the NEXT mission start - a mission already running keeps what it booted with.',
-        'idHelp' => 'one of autoSlot, slotMatch, arsenalMode, savedLoadouts, autoPromote, newPlayers',
-        'idPattern' => '/^(autoSlot|slotMatch|arsenalMode|savedLoadouts|autoPromote|newPlayers)$/',
+        'idHelp' => 'one of autoSlot, slotMatch, arsenalMode, savedLoadouts, autoPromote, newPlayers, templateForm',
+        'idPattern' => '/^(autoSlot|slotMatch|arsenalMode|savedLoadouts|autoPromote|newPlayers|templateForm)$/',
         'fields' => [
             'value' => ['label' => 'Value', 'kind' => 'text',
-                        'help' => 'autoSlot 1 or 0 - slotMatch role or slot - arsenalMode role, skills or both - savedLoadouts a count, 0 for off - autoPromote 1 or 0 - newPlayers auto or apply'],
+                        'help' => 'autoSlot 1 or 0 - slotMatch role or slot - arsenalMode role, skills or both - savedLoadouts a count, 0 for off - autoPromote 1 or 0 - newPlayers auto or apply - templateForm real or simple'],
         ],
     ],
     'admins' => [
@@ -181,11 +181,20 @@ function ghostd_record_items(string $section): array
             // apply makes them fill in an application (website or the PAC
             // tile) and an admin accepts them under Applications.
             'newPlayers'    => 'auto: a record is seeded the moment somebody first connects | apply: they apply (here or on the PAC tile) and an admin accepts them',
+            // TEMPLATES: REAL WORLD / SIMPLE (2026-11-09): which view TAC//MSG
+            // opens a card in - the doctrinal form or the short one. The mod's
+            // PAC TEMPLATE_FORM_KEY; a player's own composer setting may still
+            // override it. Unlike the rest, the in-game toggle applies it at once.
+            'templateForm'  => 'Templates: real = REAL WORLD (the doctrinal form, the default) | simple = SIMPLE (only what the asset cannot act without)',
         ];
         $out = [];
         foreach ($help as $k => $h) {
             $v = $items[$k] ?? '';
             $out[$k] = ['name' => $h, 'value' => is_scalar($v) ? (string) $v : ''];
+        }
+        // Unset reads as REAL WORLD, which is what the mod does with it.
+        if ($out['templateForm']['value'] === '') {
+            $out['templateForm']['value'] = 'real';
         }
         return $out;
     }
@@ -219,6 +228,13 @@ function ghostd_record_save(string $section, array $items): void
         $keep = is_array($doc['items'] ?? null) ? $doc['items'] : [];
         foreach ($items as $k => $rec) {
             $v = is_array($rec) ? (string) ($rec['value'] ?? '') : (string) $rec;
+            // Two values only; anything else is REAL WORLD, as the mod reads it.
+            if ((string) $k === 'templateForm') {
+                $v = strtolower(trim($v));
+                if (!in_array($v, ['real', 'simple'], true)) {
+                    throw new RuntimeException('templateForm is real or simple.');
+                }
+            }
             $keep[(string) $k] = is_numeric($v) ? $v + 0 : $v;
         }
         $doc['section']   = 'settings';

@@ -275,3 +275,40 @@ function when($v): string
     }
     return (string) $v;
 }
+
+/**
+ * A record's shooting-range runs (the game's jmfsb_range, record key
+ * "ranges": [date, range, mode, detail, hits, shown, seconds]) as one table:
+ * by range, newest first, the latest run of each range highlighted.
+ */
+function ghostd_ranges_table($runs): string
+{
+    $byRange = [];
+    foreach ((array) $runs as $r) {
+        $r = array_values((array) $r);
+        $byRange[(string) ($r[1] ?? '')][] = $r;
+    }
+    ksort($byRange, SORT_NATURAL | SORT_FLAG_CASE);
+    $out = '<table class="grid"><thead><tr><th style="width:22%">Range</th><th style="width:18%">When</th>'
+         . '<th style="width:22%">Score</th><th style="width:38%">Mode</th></tr></thead><tbody>';
+    if ($byRange === []) {
+        $out .= '<tr><td class="dim" colspan="4">None yet.</td></tr>';
+    }
+    foreach ($byRange as $range => $list) {
+        // the stamps are YYYY-MM-DD HH:MM:SS, so a text sort is a date sort
+        usort($list, fn($a, $b) => strcmp((string) ($b[0] ?? ''), (string) ($a[0] ?? '')));
+        foreach ($list as $i => $r) {
+            $hits  = (int) ($r[4] ?? 0);
+            $shown = (int) ($r[5] ?? 0);
+            $pct   = $shown > 0 ? (int) round(100 * $hits / $shown) : 0;
+            $score = sprintf('%d / %d (%d%%) %s s', $hits, $shown, $pct, (string) ($r[6] ?? 0));
+            $mode  = trim((string) ($r[2] ?? '') . ' - ' . (string) ($r[3] ?? ''), ' -');
+            $out .= '<tr' . ($i === 0 ? ' class="latest"' : '') . '>'
+                  . '<td>' . h($range) . '</td>'
+                  . '<td class="dim">' . h(substr((string) ($r[0] ?? ''), 0, 16)) . '</td>'
+                  . '<td>' . h($score) . '</td>'
+                  . '<td class="dim">' . h($mode) . '</td></tr>';
+        }
+    }
+    return $out . '</tbody></table>';
+}

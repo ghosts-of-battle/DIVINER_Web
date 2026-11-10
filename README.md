@@ -152,6 +152,24 @@ browser, so a LAN box works.
 | **Backup** | the nightly copy of the database, read only, admins only |
 | **Web settings** | branding - the site's own name, colours and pictures, the one thing that is web only - the public home page shown before sign-in: the logo, the name and an About block written in an HTML editor, four layouts to pick from, width and height sliders (Wysi, MIT, vendored in `public/` - the welcome screen's editor is the same one) - and the public feed's switches |
 
+## The report deck (2026-11-09)
+
+- **REAL WORLD / SIMPLE.** Every card has two views with the same keys:
+  REAL WORLD (the doctrinal form) and SIMPLE (only what the asset cannot act
+  without). The unit default is the `templateForm` setting under Configs >
+  Settings: `real` (default) or `simple`. Players can switch per card.
+- **Short form.** A card's `shortLines` (line titles) and optional
+  `shortFields` (keys inside a kept line) say what SIMPLE keeps. A required
+  field is always kept. Lines it keeps show SIMPLE; lines with a required
+  field show REQ.
+- **Who is offered a card.** `assetOnly` (the asset's side), `answerOnly`
+  (only when the asset asks), `assetThread` (only in an asset's thread),
+  `roots` (only where the thread's current order is one of these cards).
+- **FRAGO.** A built-in card: it reopens the thread's current order and sends
+  only what changed (`openFields`).
+- **The mod's own card wins.** A deck card with the id of one the mod
+  carries is not used.
+
 ## The public feed
 
 A unit's own website can read from here with no sign-in, as JSON, once an

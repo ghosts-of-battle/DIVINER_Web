@@ -64,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'adminActions'   => [],
                     'notes'          => [],
                     'training'       => [],
+                    'ranges'         => [],
                     'loadouts'       => new stdClass(),
                     'updatedAt'      => gmdate('Y-m-d H:i:s'),
                     'serverId'       => (string) ($store['serverId'] ?? ''),

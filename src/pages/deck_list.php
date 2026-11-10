@@ -46,6 +46,10 @@ ksort($items);
         }
     }
     $isTask = ($opts['transitionsTo'] ?? '') !== '';
+    // THE SHORT FORM (2026-11-09): the lines the SIMPLE view keeps, by title
+    // or key - the mod strips the spaces either way.
+    $shortLines = array_map(static fn($x) => preg_replace('/\s+/', '', (string) $x),
+        is_array($opts['shortLines'] ?? null) ? $opts['shortLines'] : []);
 ?>
 <details class="card">
   <summary>
@@ -53,6 +57,10 @@ ksort($items);
     <code><?= h((string) $tid) ?></code>
     <?php if ($isTask): ?><span class="pill">task</span><?php else: ?><span class="pill dimpill">message</span><?php endif; ?>
     <?php if (($opts['priority'] ?? '') === 'high'): ?><span class="pill hot">flash</span><?php endif; ?>
+    <?php if ($shortLines !== []): ?><span class="pill dimpill">simple form</span><?php endif; ?>
+    <?php foreach (['assetOnly' => 'asset says', 'answerOnly' => 'answer only', 'assetThread' => 'asset thread', 'openFields' => 'open fields'] as $ok => $ol): ?>
+      <?php if (($opts[$ok] ?? false) === true): ?><span class="pill dimpill"><?= h($ol) ?></span><?php endif; ?>
+    <?php endforeach; ?>
     <a class="edit" href="?page=template_edit&amp;id=<?= urlencode((string) $tid) ?>">edit</a>
   </summary>
 
@@ -72,10 +80,25 @@ ksort($items);
         $lineKey   = (string) ($line[0] ?? ('L' . $i));
         $lineLabel = (string) ($line[1] ?? '');
         $fields    = (array) ($line[2] ?? []);
+        // The field key the mod files under: the line title, spaces stripped.
+        $keyStem   = preg_replace('/\s+/', '', $lineKey);
+        $keyStem   = $keyStem !== '' ? $keyStem : 'L' . $i;
+        $lineReq   = false;
+        foreach ($fields as $f) {
+            foreach ((array) ($f[3] ?? []) as $fo) {
+                if (is_array($fo) && ($fo[0] ?? '') === 'required' && ($fo[1] ?? false) === true) {
+                    $lineReq = true;
+                }
+            }
+        }
       ?>
       <tr>
         <td><code><?= h($lineKey !== '' ? $lineKey : 'L' . $i) ?></code></td>
-        <td><?= h($lineLabel) ?></td>
+        <td>
+          <?= h($lineLabel) ?>
+          <?php if ($lineReq): ?><span class="pill hot" title="the card will not send without it">REQ</span><?php endif; ?>
+          <?php if (in_array($keyStem, $shortLines, true)): ?><span class="pill dimpill" title="kept in the SIMPLE form">SIMPLE</span><?php endif; ?>
+        </td>
         <td>
           <?php foreach ($fields as $fi => $f): ?>
             <?php
@@ -83,10 +106,17 @@ ksort($items);
               $prefix = (string) ($f[0] ?? '');
               $hint   = (string) ($f[1] ?? '');
               $type   = (string) ($f[2] ?? 'text');
+              $req    = false;
+              foreach ((array) ($f[3] ?? []) as $fo) {
+                  if (is_array($fo) && ($fo[0] ?? '') === 'required' && ($fo[1] ?? false) === true) {
+                      $req = true;
+                  }
+              }
             ?>
             <div class="fieldrow">
-              <code><?= h(($lineKey !== '' ? $lineKey : 'L' . $i) . '.' . $letter) ?></code>
+              <code><?= h($keyStem . '.' . $letter) ?></code>
               <span class="pill dimpill"><?= h($type) ?></span>
+              <?php if ($req): ?><span class="pill hot">REQ</span><?php endif; ?>
               <?php if ($prefix !== ''): ?><strong><?= h($prefix) ?></strong><?php endif; ?>
               <span class="dim"><?= h($hint) ?></span>
             </div>

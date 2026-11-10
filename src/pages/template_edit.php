@@ -74,6 +74,37 @@ function unparse_opts(array $pairs): string
     return implode("\n", $out);
 }
 
+/** A comma list from the form, blanks dropped. */
+function comma_list(string $raw): array
+{
+    return array_values(array_filter(array_map('trim', explode(',', $raw)), static fn($s) => $s !== ''));
+}
+
+/** Whether a field's opts carry required=true. */
+function field_required(array $f): bool
+{
+    foreach ((array) ($f[3] ?? []) as $o) {
+        if (is_array($o) && ($o[0] ?? '') === 'required' && ($o[1] ?? false) === true) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// THE CLASS AND SHORT-FORM OPTIONS (mod, 2026-11-09 - docs/DESIGN_MESSAGE_
+// TEMPLATES.md): who is offered a card, and what its SIMPLE view keeps.
+const OPT_LISTS = ['shortLines', 'shortFields', 'roots'];
+const OPT_FLAGS = [
+    'assetOnly'   => 'asset says - never in the requester\'s menu',
+    'answerOnly'  => 'answer only - offered when the asset asks for it',
+    'assetThread' => 'asset thread - offered only in a thread an asset answers',
+    'openFields'  => 'open fields - carries another card\'s keys (FRAGO)',
+];
+// The options this form writes; any other stored option (allowedFrom,
+// dangerClose, broadcast ...) is carried across a save untouched.
+const OPT_MANAGED = ['kind', 'priority', 'subject', 'anchor', 'transitionsTo', 'senderMustBe', 'replyableWith',
+    'shortLines', 'shortFields', 'roots', 'assetOnly', 'answerOnly', 'assetThread', 'openFields'];
+
 /** A line title becomes its key the way registerTemplate does it. */
 function line_key(string $title, int $i): string
 {
@@ -163,6 +194,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save'
     if ($reply !== []) {
         $opts[] = ['replyableWith', $reply];
     }
+    foreach (OPT_LISTS as $ok) {
+        $list = comma_list((string) ($_POST[$ok] ?? ''));
+        if ($list !== []) {
+            $opts[] = [$ok, $list];
+        }
+    }
+    $flags = [];
+    foreach (array_keys(OPT_FLAGS) as $ok) {
+        $flags[$ok] = isset($_POST['flag'][$ok]);
+        if ($flags[$ok]) {
+            $opts[] = [$ok, true];
+        }
+    }
+    // Carried across: what the stored card had that this form does not edit.
+    if ($orig !== '' && isset($items[$orig])) {
+        foreach ((array) ($items[$orig]['options'] ?? []) as $p) {
+            if (is_array($p) && count($p) >= 2 && !in_array((string) $p[0], OPT_MANAGED, true)) {
+                $opts[] = $p;
+            }
+        }
+    }
 
     // Keep the form filled in if anything below refuses it.
     $form = [
@@ -172,9 +224,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save'
         'subject' => (string) ($_POST['subject'] ?? ''), 'anchor' => $anchor,
         'transitionsTo' => $trans, 'senderMustBe' => $senderMustBe,
         'replyableWith' => (string) ($_POST['replyableWith'] ?? ''),
+        'shortLines' => (string) ($_POST['shortLines'] ?? ''),
+        'shortFields' => (string) ($_POST['shortFields'] ?? ''),
+        'roots' => (string) ($_POST['roots'] ?? ''),
+        'flags' => $flags,
     ];
 
-    if ($id === '' || !preg_match('/^[a-z0-9_]+$/', $id)) {
+    // A short line must be one of the card's lines.
+    $lineKeys = [];
+    foreach ($lines as $i => $l) {
+        $lineKeys[] = line_key((string) $l[0], $i);
+    }
+    $badShort = array_values(array_diff(array_map(static fn($x) => line_key((string) $x, 0), comma_list($form['shortLines'])), $lineKeys));
+    $badField = array_values(array_diff(comma_list($form['shortFields']), $keys));
+
+    if ($badShort !== []) {
+        $err = 'Short lines names a line this card does not have: ' . implode(', ', $badShort) . '. Lines are: ' . implode(', ', $lineKeys);
+    } elseif ($badField !== []) {
+        $err = 'Short fields names a key this card does not produce: ' . implode(', ', $badField) . '. Keys are: ' . implode(', ', $keys);
+    } elseif ($id === '' || !preg_match('/^[a-z0-9_]+$/', $id)) {
         $err = 'The id must be lower case letters, digits or underscore, with no spaces - it is how every reply and reference names this card.';
     } elseif ($title === '') {
         $err = 'A title is required.';
@@ -223,6 +291,10 @@ if ($form === null) {
             'transitionsTo' => (string) ($o['transitionsTo'] ?? ''),
             'senderMustBe' => (string) ($o['senderMustBe'] ?? ''),
             'replyableWith' => is_array($o['replyableWith'] ?? null) ? implode(', ', $o['replyableWith']) : '',
+            'shortLines' => is_array($o['shortLines'] ?? null) ? implode(', ', $o['shortLines']) : '',
+            'shortFields' => is_array($o['shortFields'] ?? null) ? implode(', ', $o['shortFields']) : '',
+            'roots' => is_array($o['roots'] ?? null) ? implode(', ', $o['roots']) : '',
+            'flags' => array_map(static fn($k) => ($o[$k] ?? false) === true, array_combine(array_keys(OPT_FLAGS), array_keys(OPT_FLAGS))),
         ];
     } else {
         $form = [
@@ -230,11 +302,14 @@ if ($form === null) {
             'lines' => [['', '', [['', '', 'text', []]]]],
             'kind' => 'root', 'priority' => 'normal', 'subject' => '',
             'anchor' => '', 'transitionsTo' => '', 'senderMustBe' => '', 'replyableWith' => '',
+            'shortLines' => '', 'shortFields' => '', 'roots' => '', 'flags' => [],
         ];
     }
 }
 
 $isEdit = $form['orig'] !== '';
+// The lines the SIMPLE form keeps, as keys - for the markers below.
+$shortKeys = array_map(static fn($x) => line_key((string) $x, 0), comma_list((string) $form['shortLines']));
 
 // Keys this template currently produces, for the anchor datalist.
 $keyList = [];
@@ -304,6 +379,22 @@ if ($err !== null) { ghostd_flash('bad', $err); }
 
     <label>Repliable with <span class="dim">comma separated ids, e.g. roger, wilco, freetext, close</span>
       <input type="text" name="replyableWith" value="<?= h($form['replyableWith']) ?>"></label>
+
+    <label>Offered where <span class="dim">roots - comma separated card ids; the thread's current order must be one of them. Empty = any</span>
+      <input type="text" name="roots" value="<?= h($form['roots']) ?>"></label>
+
+    <?php foreach (OPT_FLAGS as $ok => $ol): ?>
+      <label class="check"><input type="checkbox" name="flag[<?= h($ok) ?>]" value="1" <?= !empty($form['flags'][$ok]) ? 'checked' : '' ?>> <?= h($ol) ?></label>
+    <?php endforeach; ?>
+  </div>
+
+  <h2>Simple form</h2>
+  <p class="dim">One card, two views - REAL WORLD (every line) and SIMPLE (these). The same keys, so the asset reads either. A required field is always kept. Empty = the card has one form.</p>
+  <div class="fields">
+    <label>Short lines <span class="dim">comma separated line titles, e.g. Line 5, Line 6, Line 8</span>
+      <input type="text" name="shortLines" value="<?= h($form['shortLines']) ?>"></label>
+    <label>Short fields <span class="dim">optional - inside a kept line, the only keys kept, e.g. Line8.B</span>
+      <input type="text" name="shortFields" list="keylist" value="<?= h($form['shortFields']) ?>"></label>
   </div>
 
   <h2>Lines</h2>
@@ -316,7 +407,14 @@ if ($err !== null) { ghostd_flash('bad', $err); }
       if ($lf === []) { $lf = [['', '', 'text', []]]; }
     ?>
     <fieldset class="line" data-line="<?= (int) $i ?>">
-      <legend>Line <?= (int) $i + 1 ?> <span class="dim key">key: <code><?= h(line_key($lt, $i)) ?></code></span></legend>
+      <?php
+        $lineReq = false;
+        foreach ($lf as $f) { $lineReq = $lineReq || field_required((array) $f); }
+      ?>
+      <legend>Line <?= (int) $i + 1 ?> <span class="dim key">key: <code><?= h(line_key($lt, $i)) ?></code></span>
+        <?php if ($lineReq): ?><span class="pill hot" title="the card will not send without it">REQ</span><?php endif; ?>
+        <?php if (in_array(line_key($lt, $i), $shortKeys, true)): ?><span class="pill dimpill" title="kept in the SIMPLE form">SIMPLE</span><?php endif; ?>
+      </legend>
       <div class="fields">
         <label>Line title <span class="dim">makes the key</span>
           <input type="text" name="line[<?= (int) $i ?>][key]" value="<?= h($lt) ?>"></label>
@@ -327,6 +425,7 @@ if ($err !== null) { ghostd_flash('bad', $err); }
       <?php foreach ($lf as $fi => $f): ?>
         <div class="fieldbox">
           <span class="pill dimpill"><?= h(line_key($lt, $i) . '.' . chr(65 + (int) $fi)) ?></span>
+          <?php if (field_required((array) $f)): ?><span class="pill hot">REQ</span><?php endif; ?>
           <input type="text" name="line[<?= (int) $i ?>][field][<?= (int) $fi ?>][prefix]"
                  value="<?= h((string) ($f[0] ?? '')) ?>" placeholder="prefix">
           <input type="text" name="line[<?= (int) $i ?>][field][<?= (int) $fi ?>][hint]"
